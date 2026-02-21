@@ -14,13 +14,344 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      match_events: {
+        Row: {
+          created_at: string
+          detail_json: Json | null
+          id: string
+          match_id: string
+          minute: number | null
+          player_name: string | null
+          team_id: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          detail_json?: Json | null
+          id?: string
+          match_id: string
+          minute?: number | null
+          player_name?: string | null
+          team_id?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          detail_json?: Json | null
+          id?: string
+          match_id?: string
+          minute?: number | null
+          player_name?: string | null
+          team_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_events_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_events_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matches: {
+        Row: {
+          away_score: number | null
+          away_team_id: string | null
+          external_id: string | null
+          group: string | null
+          home_score: number | null
+          home_team_id: string | null
+          id: string
+          kickoff_utc: string
+          last_updated: string | null
+          stage: string
+          status: string
+          venue: string | null
+        }
+        Insert: {
+          away_score?: number | null
+          away_team_id?: string | null
+          external_id?: string | null
+          group?: string | null
+          home_score?: number | null
+          home_team_id?: string | null
+          id?: string
+          kickoff_utc: string
+          last_updated?: string | null
+          stage?: string
+          status?: string
+          venue?: string | null
+        }
+        Update: {
+          away_score?: number | null
+          away_team_id?: string | null
+          external_id?: string | null
+          group?: string | null
+          home_score?: number | null
+          home_team_id?: string | null
+          id?: string
+          kickoff_utc?: string
+          last_updated?: string | null
+          stage?: string
+          status?: string
+          venue?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_away_team_id_fkey"
+            columns: ["away_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_home_team_id_fkey"
+            columns: ["home_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pool_members: {
+        Row: {
+          id: string
+          joined_at: string
+          pool_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          pool_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          pool_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pool_members_pool_id_fkey"
+            columns: ["pool_id"]
+            isOneToOne: false
+            referencedRelation: "pools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pools: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          invite_code: string
+          name: string
+          scoring_rules_json: Json | null
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          invite_code?: string
+          name: string
+          scoring_rules_json?: Json | null
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          invite_code?: string
+          name?: string
+          scoring_rules_json?: Json | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pools_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      predictions: {
+        Row: {
+          away_pred: number | null
+          created_at: string
+          home_pred: number | null
+          id: string
+          match_id: string
+          points_awarded: number | null
+          pool_id: string
+          updated_at: string
+          user_id: string
+          winner_pred: string | null
+        }
+        Insert: {
+          away_pred?: number | null
+          created_at?: string
+          home_pred?: number | null
+          id?: string
+          match_id: string
+          points_awarded?: number | null
+          pool_id: string
+          updated_at?: string
+          user_id: string
+          winner_pred?: string | null
+        }
+        Update: {
+          away_pred?: number | null
+          created_at?: string
+          home_pred?: number | null
+          id?: string
+          match_id?: string
+          points_awarded?: number | null
+          pool_id?: string
+          updated_at?: string
+          user_id?: string
+          winner_pred?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "predictions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "predictions_pool_id_fkey"
+            columns: ["pool_id"]
+            isOneToOne: false
+            referencedRelation: "pools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "predictions_winner_pred_fkey"
+            columns: ["winner_pred"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      teams: {
+        Row: {
+          created_at: string
+          external_id: string | null
+          flag_url: string | null
+          group: string | null
+          id: string
+          name: string
+          short_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          external_id?: string | null
+          flag_url?: string | null
+          group?: string | null
+          id?: string
+          name: string
+          short_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          external_id?: string | null
+          flag_url?: string | null
+          group?: string | null
+          id?: string
+          name?: string
+          short_name?: string | null
+        }
+        Relationships: []
+      }
+      tenants: {
+        Row: {
+          allowed_email_domain: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          primary_color: string | null
+          secondary_color: string | null
+        }
+        Insert: {
+          allowed_email_domain?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          primary_color?: string | null
+          secondary_color?: string | null
+        }
+        Update: {
+          allowed_email_domain?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          primary_color?: string | null
+          secondary_color?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_pool_member: {
+        Args: { _pool_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
