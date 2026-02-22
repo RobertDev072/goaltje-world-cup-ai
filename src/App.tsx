@@ -19,6 +19,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 import { AuthGate } from "@/components/AuthGate";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,6 +38,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <InstallPrompt />
         <BrowserRouter>
           <Routes>
             {/* Public landing pages */}
