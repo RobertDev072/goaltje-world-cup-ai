@@ -77,7 +77,7 @@ export default function Landing() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-primary border-b border-primary-foreground/10">
+      <header className="sticky top-0 z-50 bg-primary border-b border-primary-foreground/10 safe-top">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img src={goaltjeLogo} alt="Goaltje" className="w-9 h-9" />
@@ -161,7 +161,7 @@ export default function Landing() {
                 </Button>
               </Link>
               <Link to="/auth">
-                <Button size="lg" variant="outline" className="h-14 px-8 text-base md:text-lg font-semibold w-full sm:w-auto border-white/30 text-white hover:bg-white/10">
+                <Button size="lg" variant="outline" className="h-14 px-8 text-base md:text-lg font-semibold w-full sm:w-auto border-white/30 text-white bg-transparent hover:bg-white/10">
                   🔗 {t(lang, "cta_join")}
                 </Button>
               </Link>
