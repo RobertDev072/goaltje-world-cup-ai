@@ -15,7 +15,7 @@ export default function Profile() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [isDark, setIsDark] = useState(document.documentElement.classList.contains("dark"));
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -54,8 +54,10 @@ export default function Profile() {
   });
 
   const toggleDark = () => {
-    document.documentElement.classList.toggle("dark");
-    setIsDark(!isDark);
+    const next = !isDark;
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+    setIsDark(next);
   };
 
   const handleSignOut = async () => {

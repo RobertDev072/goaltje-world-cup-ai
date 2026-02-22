@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { trackSignUp } from "@/lib/analytics";
 
 interface AuthContextType {
   user: User | null;
@@ -19,24 +20,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const sessionTracked = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
 
-      // Track login sessions
+      // Track login sessions (debounced - only once per session)
       if (event === "SIGNED_IN" && session?.user) {
-        setTimeout(() => {
-          supabase.from("user_sessions").insert({
-            user_id: session.user.id,
-            device_info: navigator.userAgent?.substring(0, 200) || null,
-          }).then(() => {});
-        }, 0);
+        const sessionKey = session.access_token?.substring(0, 16);
+        if (sessionKey && !sessionTracked.current.has(sessionKey)) {
+          sessionTracked.current.add(sessionKey);
+          setTimeout(() => {
+            supabase.from("user_sessions").insert({
+              user_id: session.user.id,
+              device_info: navigator.userAgent?.substring(0, 200) || null,
+            }).then(() => {});
+          }, 0);
+        }
       }
     });
 
+    // THEN check existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -55,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { name: name || email.split("@")[0] },
       },
     });
+    if (!error) trackSignUp();
     return { error: error as Error | null };
   };
 

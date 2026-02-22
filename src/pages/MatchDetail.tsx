@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Lock, Check, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import { trackFirstPrediction } from "@/lib/analytics";
 
 export default function MatchDetail() {
   const { id } = useParams();
@@ -122,6 +123,7 @@ export default function MatchDetail() {
       }
     },
     onSuccess: () => {
+      if (!existingPred) trackFirstPrediction();
       toast({ title: "Voorspelling opgeslagen! ✅" });
       queryClient.invalidateQueries({ queryKey: ["my-predictions", id] });
     },
