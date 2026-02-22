@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Users, Trophy, Target, Activity, TrendingUp, TrendingDown, Clock, RefreshCw, Zap, Wifi, WifiOff, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Users, Trophy, Target, Activity, TrendingUp, TrendingDown, Clock, CheckCircle2, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { formatNLDateTime, formatNLDate } from "@/lib/timezone";
@@ -46,12 +46,16 @@ function StatCard({ label, value, icon: Icon, sub, trend }: {
   );
 }
 
+type MatchFilter = "today" | "live" | "scheduled" | "finished" | "all";
+
 function AdminMatchEditor() {
   const queryClient = useQueryClient();
   const [editingMatch, setEditingMatch] = useState<string | null>(null);
   const [homeScore, setHomeScore] = useState("");
   const [awayScore, setAwayScore] = useState("");
   const [matchStatus, setMatchStatus] = useState("scheduled");
+  const [filter, setFilter] = useState<MatchFilter>("today");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: matches, isLoading } = useQuery({
     queryKey: ["admin-matches"],
@@ -66,7 +70,6 @@ function AdminMatchEditor() {
 
   const updateMatch = useMutation({
     mutationFn: async (matchId: string) => {
-      // Auto-set status to "finished" if both scores are filled and status is still "scheduled"
       let finalStatus = matchStatus;
       if (homeScore !== "" && awayScore !== "" && matchStatus === "scheduled") {
         finalStatus = "finished";
@@ -78,173 +81,203 @@ function AdminMatchEditor() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Wedstrijd bijgewerkt ✅" });
+      toast({ title: "✅ Opgeslagen", description: "Score opgeslagen & punten herberekend!" });
       setEditingMatch(null);
       queryClient.invalidateQueries({ queryKey: ["admin-matches"] });
+      queryClient.invalidateQueries({ queryKey: ["matches"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-matches"] });
+      queryClient.invalidateQueries({ queryKey: ["my-predictions"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
     },
     onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
   });
 
+  const filteredMatches = matches?.filter((m: any) => {
+    // Search filter
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const homeMatch = m.home_team?.name?.toLowerCase().includes(q) || m.home_team?.short_name?.toLowerCase().includes(q);
+      const awayMatch = m.away_team?.name?.toLowerCase().includes(q) || m.away_team?.short_name?.toLowerCase().includes(q);
+      if (!homeMatch && !awayMatch) return false;
+    }
+
+    // Status filter
+    const kickoff = new Date(m.kickoff_utc);
+    const today = new Date();
+    const isToday = kickoff.toDateString() === today.toDateString();
+
+    switch (filter) {
+      case "today": return isToday;
+      case "live": return m.status === "live";
+      case "scheduled": return m.status === "scheduled";
+      case "finished": return m.status === "finished";
+      case "all": return true;
+      default: return true;
+    }
+  }) || [];
+
+  const filterButtons: { key: MatchFilter; label: string; count?: number }[] = [
+    { key: "today", label: "📅 Vandaag", count: matches?.filter((m: any) => new Date(m.kickoff_utc).toDateString() === new Date().toDateString()).length },
+    { key: "scheduled", label: "🕐 Gepland", count: matches?.filter((m: any) => m.status === "scheduled").length },
+    { key: "live", label: "🔴 Live", count: matches?.filter((m: any) => m.status === "live").length },
+    { key: "finished", label: "✅ Gespeeld", count: matches?.filter((m: any) => m.status === "finished").length },
+    { key: "all", label: "Alles", count: matches?.length },
+  ];
+
   if (isLoading) return <Skeleton className="h-40 rounded-xl" />;
 
   return (
-    <div className="space-y-2">
-      {matches?.map((m: any) => (
-        <Card key={m.id} className="border-0 shadow-sm">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 text-sm">
-                  <span>{m.home_team?.flag_url || "🏳️"}</span>
-                  <span className="font-medium truncate">{m.home_team?.short_name || "TBD"}</span>
-                  <span className="text-muted-foreground mx-1">
-                    {m.home_score != null ? `${m.home_score} - ${m.away_score}` : "vs"}
-                  </span>
-                  <span>{m.away_team?.flag_url || "🏳️"}</span>
-                  <span className="font-medium truncate">{m.away_team?.short_name || "TBD"}</span>
+    <div className="space-y-3">
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Zoek team..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 h-9"
+        />
+      </div>
+
+      {/* Filter pills */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+        {filterButtons.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-all flex-shrink-0 ${
+              filter === f.key
+                ? "gradient-primary text-primary-foreground shadow-sm"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {f.label} {f.count != null && f.count > 0 ? `(${f.count})` : ""}
+          </button>
+        ))}
+      </div>
+
+      {/* Match count */}
+      <p className="text-xs text-muted-foreground">
+        {filteredMatches.length} wedstrijd{filteredMatches.length !== 1 ? "en" : ""} gevonden
+      </p>
+
+      {/* Match list */}
+      {filteredMatches.length === 0 ? (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6 text-center text-sm text-muted-foreground">
+            Geen wedstrijden gevonden voor dit filter.
+          </CardContent>
+        </Card>
+      ) : (
+        filteredMatches.map((m: any) => (
+          <Card key={m.id} className={`border-0 shadow-sm ${m.status === "live" ? "ring-2 ring-destructive/30" : ""}`}>
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 text-sm">
+                    <span className="flex-shrink-0">{m.home_team?.flag_url || "🏳️"}</span>
+                    <span className="font-medium truncate">{m.home_team?.short_name || m.home_team?.name || "TBD"}</span>
+                    <span className="text-muted-foreground mx-1 font-bold flex-shrink-0">
+                      {m.home_score != null ? `${m.home_score} - ${m.away_score}` : "vs"}
+                    </span>
+                    <span className="flex-shrink-0">{m.away_team?.flag_url || "🏳️"}</span>
+                    <span className="font-medium truncate">{m.away_team?.short_name || m.away_team?.name || "TBD"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] text-muted-foreground">{formatNLDate(m.kickoff_utc)}</span>
+                    <Badge
+                      variant={m.status === "live" ? "destructive" : m.status === "finished" ? "secondary" : "outline"}
+                      className="text-[9px] px-1.5 py-0"
+                    >
+                      {m.status === "scheduled" ? "Gepland" : m.status === "live" ? "Live" : m.status === "finished" ? "Gespeeld" : m.status}
+                    </Badge>
+                    {m.status === "finished" && <CheckCircle2 className="h-3 w-3 text-primary" />}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[10px] text-muted-foreground">{formatNLDate(m.kickoff_utc)}</span>
-                  <Badge variant={m.status === "live" ? "destructive" : m.status === "finished" ? "secondary" : "outline"} className="text-[9px] px-1.5 py-0">
-                    {m.status}
-                  </Badge>
-                </div>
+                <Button
+                  variant={editingMatch === m.id ? "default" : "ghost"}
+                  size="sm"
+                  className="text-xs flex-shrink-0"
+                  onClick={() => {
+                    setEditingMatch(editingMatch === m.id ? null : m.id);
+                    setHomeScore(m.home_score?.toString() || "");
+                    setAwayScore(m.away_score?.toString() || "");
+                    setMatchStatus(m.status);
+                  }}
+                >
+                  ✏️ Score
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-xs"
-                onClick={() => {
-                  setEditingMatch(editingMatch === m.id ? null : m.id);
-                  setHomeScore(m.home_score?.toString() || "");
-                  setAwayScore(m.away_score?.toString() || "");
-                  setMatchStatus(m.status);
-                }}
-              >
-                ✏️
-              </Button>
-            </div>
-            {editingMatch === m.id && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                className="mt-3 space-y-2 border-t pt-3"
-              >
-                <div className="flex gap-2 items-center">
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="Home"
-                    value={homeScore}
-                    onChange={(e) => setHomeScore(e.target.value)}
-                    className="h-9 w-20 text-center"
-                  />
-                  <span className="text-sm font-bold">-</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="Away"
-                    value={awayScore}
-                    onChange={(e) => setAwayScore(e.target.value)}
-                    className="h-9 w-20 text-center"
-                  />
+
+              {editingMatch === m.id && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  className="mt-3 space-y-3 border-t pt-3"
+                >
+                  <div className="text-xs text-muted-foreground text-center">
+                    {m.home_team?.name || "Thuis"} vs {m.away_team?.name || "Uit"}
+                  </div>
+                  <div className="flex gap-2 items-center justify-center">
+                    <div className="text-center">
+                      <span className="text-[10px] text-muted-foreground block mb-1">{m.home_team?.short_name || "Home"}</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={20}
+                        placeholder="0"
+                        value={homeScore}
+                        onChange={(e) => setHomeScore(e.target.value)}
+                        className="h-12 w-16 text-center text-lg font-bold"
+                      />
+                    </div>
+                    <span className="text-xl font-bold text-muted-foreground mt-4">-</span>
+                    <div className="text-center">
+                      <span className="text-[10px] text-muted-foreground block mb-1">{m.away_team?.short_name || "Away"}</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={20}
+                        placeholder="0"
+                        value={awayScore}
+                        onChange={(e) => setAwayScore(e.target.value)}
+                        className="h-12 w-16 text-center text-lg font-bold"
+                      />
+                    </div>
+                  </div>
                   <Select value={matchStatus} onValueChange={setMatchStatus}>
-                    <SelectTrigger className="h-9 w-28">
+                    <SelectTrigger className="h-9">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="scheduled">Gepland</SelectItem>
-                      <SelectItem value="live">Live</SelectItem>
-                      <SelectItem value="finished">Gespeeld</SelectItem>
-                      <SelectItem value="cancelled">Afgelast</SelectItem>
+                      <SelectItem value="scheduled">🕐 Gepland</SelectItem>
+                      <SelectItem value="live">🔴 Live</SelectItem>
+                      <SelectItem value="finished">✅ Gespeeld</SelectItem>
+                      <SelectItem value="cancelled">❌ Afgelast</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <Button
-                  size="sm"
-                  className="w-full gradient-primary text-primary-foreground"
-                  onClick={() => updateMatch.mutate(m.id)}
-                  disabled={updateMatch.isPending}
-                >
-                  {updateMatch.isPending ? "Opslaan..." : "Opslaan + Punten herberekenen"}
-                </Button>
-              </motion.div>
-            )}
-          </CardContent>
-        </Card>
-      ))}
+                  <Button
+                    size="sm"
+                    className="w-full gradient-primary text-primary-foreground h-10"
+                    onClick={() => updateMatch.mutate(m.id)}
+                    disabled={updateMatch.isPending}
+                  >
+                    {updateMatch.isPending ? "Opslaan..." : "💾 Opslaan & Punten Herberekenen"}
+                  </Button>
+                </motion.div>
+              )}
+            </CardContent>
+          </Card>
+        ))
+      )}
     </div>
-  );
-}
-
-function ApiStatusCard() {
-  const { data: status, isLoading, refetch } = useQuery({
-    queryKey: ["api-status-check"],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("fetch-scores", {
-        body: { action: "status-check" },
-      });
-      if (error) throw error;
-      return data;
-    },
-    staleTime: 5 * 60 * 1000,
-    retry: 1,
-  });
-
-  return (
-    <Card className="border-0 shadow-md">
-      <CardContent className="p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-display font-semibold flex items-center gap-2">
-            {isLoading ? (
-              <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
-            ) : status?.connected ? (
-              <Wifi className="h-4 w-4 text-success" />
-            ) : (
-              <WifiOff className="h-4 w-4 text-destructive" />
-            )}
-            API Status
-          </h3>
-          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isLoading}>
-            <RefreshCw className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`} />
-          </Button>
-        </div>
-        {status && (
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Verbinding</span>
-              <Badge variant={status.connected ? "default" : "destructive"} className={status.connected ? "bg-success text-white" : ""}>
-                {status.connected ? "✅ Online" : "❌ Offline"}
-              </Badge>
-            </div>
-            {status.plan && (
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Plan</span>
-                <span className="font-medium capitalize">{status.plan}</span>
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">API calls vandaag</span>
-              <span className="font-medium">{status.requests_today ?? 0} / {status.requests_limit ?? 100}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">DB teller</span>
-              <span className="font-medium">{status.daily_db_count ?? 0}</span>
-            </div>
-          </div>
-        )}
-        {!isLoading && !status && (
-          <p className="text-sm text-destructive">Kon geen verbinding maken met de API.</p>
-        )}
-      </CardContent>
-    </Card>
   );
 }
 
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"stats" | "matches" | "api">("stats");
+  const [tab, setTab] = useState<"stats" | "matches">("matches");
 
   const { data: isAdmin, isLoading: roleLoading } = useQuery({
     queryKey: ["is-admin", user?.id],
@@ -268,31 +301,6 @@ export default function AdminDashboard() {
     refetchInterval: 60000,
   });
 
-  // API usage
-  const { data: apiUsage } = useQuery({
-    queryKey: ["api-usage"],
-    queryFn: async () => {
-      const today = new Date().toISOString().split("T")[0];
-      const { data } = await supabase.from("api_usage").select("*").eq("usage_date", today).maybeSingle();
-      return data;
-    },
-    enabled: isAdmin === true && tab === "api",
-  });
-
-  const syncMutation = useMutation({
-    mutationFn: async (action: string) => {
-      const { data, error } = await supabase.functions.invoke("fetch-scores", {
-        body: { action },
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      toast({ title: "Sync voltooid ✅", description: JSON.stringify(data, null, 2).slice(0, 100) });
-    },
-    onError: (err: any) => toast({ title: "Sync fout", description: err.message, variant: "destructive" }),
-  });
-
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
   }, [authLoading, user, navigate]);
@@ -313,9 +321,8 @@ export default function AdminDashboard() {
   }
 
   const tabs = [
+    { key: "matches" as const, label: "⚽ Scores invoeren" },
     { key: "stats" as const, label: "📊 Stats" },
-    { key: "matches" as const, label: "⚽ Scores" },
-    { key: "api" as const, label: "🔌 API" },
   ];
 
   return (
@@ -326,10 +333,10 @@ export default function AdminDashboard() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-display">Developer Dashboard</h1>
+          <h1 className="text-2xl font-bold font-display">Admin Dashboard</h1>
           <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
             <Clock className="h-3 w-3" />
-            Laatst bijgewerkt: {dataUpdatedAt ? formatNLDateTime(new Date(dataUpdatedAt).toISOString()) : "..."}
+            {dataUpdatedAt ? formatNLDateTime(new Date(dataUpdatedAt).toISOString()) : "..."}
           </p>
         </div>
         <Badge className="gradient-primary text-primary-foreground">Admin</Badge>
@@ -349,6 +356,20 @@ export default function AdminDashboard() {
           </button>
         ))}
       </div>
+
+      {/* Matches Tab - Primary */}
+      {tab === "matches" && (
+        <div className="space-y-3">
+          <Card className="border-0 shadow-sm bg-muted/50">
+            <CardContent className="p-3 text-xs text-muted-foreground space-y-1">
+              <p>📋 <strong>Workflow:</strong> Zoek de wedstrijd → vul de score in → klik opslaan.</p>
+              <p>🔄 Punten worden <strong>automatisch</strong> herberekend voor alle gebruikers.</p>
+              <p>💡 Tip: Google "WK 2026 uitslagen" voor de scores.</p>
+            </CardContent>
+          </Card>
+          <AdminMatchEditor />
+        </div>
+      )}
 
       {/* Stats Tab */}
       {tab === "stats" && (
@@ -411,65 +432,6 @@ export default function AdminDashboard() {
             </>
           )}
         </>
-      )}
-
-      {/* Matches Tab - Score Editor */}
-      {tab === "matches" && (
-        <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Klik ✏️ om score + status bij te werken. Punten worden automatisch herberekend.
-          </p>
-          <AdminMatchEditor />
-        </div>
-      )}
-
-      {/* API Tab */}
-      {tab === "api" && (
-        <div className="space-y-4">
-          {/* API Status Check */}
-          <ApiStatusCard />
-
-          <Card className="border-0 shadow-md">
-            <CardContent className="p-4 space-y-3">
-              <h3 className="font-display font-semibold">API-Football Gebruik</h3>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Vandaag</span>
-                <span className="text-lg font-bold">{apiUsage?.request_count ?? 0} / 90</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-3">
-                <div
-                  className="gradient-primary h-3 rounded-full transition-all"
-                  style={{ width: `${Math.min(((apiUsage?.request_count ?? 0) / 90) * 100, 100)}%` }}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant="outline"
-              className="h-16 flex-col gap-1"
-              onClick={() => syncMutation.mutate("sync-fixtures")}
-              disabled={syncMutation.isPending}
-            >
-              <RefreshCw className={`h-5 w-5 ${syncMutation.isPending ? "animate-spin" : ""}`} />
-              <span className="text-xs">Sync Fixtures</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-16 flex-col gap-1"
-              onClick={() => syncMutation.mutate("sync-live")}
-              disabled={syncMutation.isPending}
-            >
-              <Zap className="h-5 w-5" />
-              <span className="text-xs">Sync Live</span>
-            </Button>
-          </div>
-
-          <p className="text-[10px] text-muted-foreground">
-            ⚠️ Elke sync gebruikt 1 API call. Max 90/dag (buffer van 10). Cache: fixtures 12u, live on-demand.
-          </p>
-        </div>
       )}
     </div>
   );
