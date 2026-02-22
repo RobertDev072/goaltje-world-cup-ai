@@ -19,50 +19,81 @@ export default function PoolDetail() {
   const { data: pool, isLoading } = useQuery({
     queryKey: ["pool", id],
     queryFn: async () => {
-      const { data } = await supabase.from("pools").select("*").eq("id", id!).single();
+      const { data, error } = await supabase.from("pools").select("*").eq("id", id!).single();
+      if (error) throw error;
       return data;
     },
     enabled: !!id,
   });
 
+  // Fetch members + their profiles separately (no FK between pool_members and profiles)
   const { data: members } = useQuery({
     queryKey: ["pool-members", id],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: memberRows, error } = await supabase
         .from("pool_members")
-        .select("*, profile:profiles(name, avatar_url)")
+        .select("*")
         .eq("pool_id", id!)
         .order("joined_at", { ascending: true });
-      return data || [];
-    },
-    enabled: !!id,
-  });
+      if (error) throw error;
+      if (!memberRows || memberRows.length === 0) return [];
 
-  const { data: leaderboard } = useQuery({
-    queryKey: ["leaderboard", id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("predictions")
-        .select("user_id, points_awarded")
-        .eq("pool_id", id!);
-
-      if (!data) return [];
-      const userPoints: Record<string, number> = {};
-      data.forEach((p: any) => {
-        userPoints[p.user_id] = (userPoints[p.user_id] || 0) + (p.points_awarded || 0);
-      });
-
-      // Get profiles for these users
-      const userIds = Object.keys(userPoints);
-      if (userIds.length === 0) return [];
-      
+      const userIds = memberRows.map((m) => m.user_id);
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, name, avatar_url")
         .in("user_id", userIds);
-      
+
+      const profileMap: Record<string, { name: string | null; avatar_url: string | null }> = {};
+      profiles?.forEach((p) => {
+        profileMap[p.user_id] = p;
+      });
+
+      return memberRows.map((m) => ({
+        ...m,
+        profile: profileMap[m.user_id] || { name: null, avatar_url: null },
+      }));
+    },
+    enabled: !!id,
+  });
+
+  // Build leaderboard from members + predictions
+  const { data: leaderboard } = useQuery({
+    queryKey: ["leaderboard", id],
+    queryFn: async () => {
+      // Get all members first
+      const { data: memberRows } = await supabase
+        .from("pool_members")
+        .select("user_id, role")
+        .eq("pool_id", id!);
+      if (!memberRows || memberRows.length === 0) return [];
+
+      const userIds = memberRows.map((m) => m.user_id);
+
+      // Get predictions for this pool
+      const { data: preds } = await supabase
+        .from("predictions")
+        .select("user_id, points_awarded")
+        .eq("pool_id", id!);
+
+      const userPoints: Record<string, number> = {};
+      // Initialize all members with 0
+      userIds.forEach((uid) => { userPoints[uid] = 0; });
+      preds?.forEach((p: any) => {
+        userPoints[p.user_id] = (userPoints[p.user_id] || 0) + (p.points_awarded || 0);
+      });
+
+      // Get profiles
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, name, avatar_url")
+        .in("user_id", userIds);
+
       const profileMap: Record<string, any> = {};
       profiles?.forEach((p: any) => { profileMap[p.user_id] = p; });
+
+      const roleMap: Record<string, string> = {};
+      memberRows.forEach((m) => { roleMap[m.user_id] = m.role; });
 
       return Object.entries(userPoints)
         .map(([userId, points]) => ({
@@ -70,6 +101,7 @@ export default function PoolDetail() {
           name: profileMap[userId]?.name || "Onbekend",
           avatar_url: profileMap[userId]?.avatar_url || null,
           points,
+          role: roleMap[userId] || "member",
         }))
         .sort((a, b) => b.points - a.points);
     },
@@ -136,13 +168,13 @@ export default function PoolDetail() {
           <div className="gradient-primary p-1" />
           <CardContent className="p-6 text-center space-y-4">
             <h1 className="text-2xl font-bold font-display">{pool.name}</h1>
-            {(pool as any).description && (
-              <p className="text-sm text-muted-foreground">{(pool as any).description}</p>
+            {pool.description && (
+              <p className="text-sm text-muted-foreground">{pool.description}</p>
             )}
-            {(pool as any).prize_text && (
+            {pool.prize_text && (
               <div className="bg-secondary/10 rounded-xl p-3">
                 <p className="text-xs text-muted-foreground">🏆 Prijs</p>
-                <p className="font-semibold text-secondary text-sm">{(pool as any).prize_text}</p>
+                <p className="font-semibold text-secondary text-sm">{pool.prize_text}</p>
               </div>
             )}
 
@@ -207,7 +239,9 @@ export default function PoolDetail() {
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-sm">
-                        {entry.name} {entry.userId === user?.id && <span className="text-primary">(jij)</span>}
+                        {entry.name}
+                        {entry.userId === user?.id && <span className="text-primary ml-1">(jij)</span>}
+                        {entry.role === "admin" && <span className="ml-1">👑</span>}
                       </p>
                     </div>
                     <span className="font-bold text-primary text-lg">{entry.points}</span>
@@ -219,31 +253,43 @@ export default function PoolDetail() {
           ) : (
             <Card className="border-0 shadow-sm">
               <CardContent className="p-6 text-center text-muted-foreground text-sm">
-                Nog geen voorspellingen. Ga naar Matches om te beginnen! ⚽
+                Nog geen deelnemers. Nodig vrienden uit! ⚽
               </CardContent>
             </Card>
           )}
         </TabsContent>
 
         <TabsContent value="members" className="mt-4 space-y-2">
-          {members?.map((member: any) => (
-            <Card key={member.id} className="border-0 shadow-sm">
-              <CardContent className="p-3 flex items-center gap-3">
-                <div className="h-8 w-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-sm font-bold">
-                  {(member.profile?.name || "?")[0].toUpperCase()}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{member.profile?.name || "Onbekend"}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {member.role === "admin" ? "👑 Owner" : "Lid"}
-                  </p>
-                </div>
-                {member.user_id === user?.id && (
-                  <Badge variant="outline" className="text-xs">Jij</Badge>
-                )}
+          {members && members.length > 0 ? (
+            members.map((member: any) => (
+              <Card key={member.id} className="border-0 shadow-sm">
+                <CardContent className="p-3 flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-sm font-bold overflow-hidden">
+                    {member.profile?.avatar_url ? (
+                      <img src={member.profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      (member.profile?.name || "?")[0].toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{member.profile?.name || "Onbekend"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {member.role === "admin" ? "👑 Aanmaker" : "Lid"}
+                    </p>
+                  </div>
+                  {member.user_id === user?.id && (
+                    <Badge variant="outline" className="text-xs">Jij</Badge>
+                  )}
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-6 text-center text-muted-foreground text-sm">
+                Nog geen leden
               </CardContent>
             </Card>
-          ))}
+          )}
         </TabsContent>
       </Tabs>
     </div>

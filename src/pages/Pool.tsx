@@ -55,7 +55,7 @@ export default function Pool() {
       });
       return pool;
     },
-    onSuccess: () => {
+    onSuccess: (pool) => {
       trackPoolCreated();
       toast({ title: "Poule aangemaakt! 🎉" });
       setPoolName(""); setPoolDesc(""); setPrizeText("");
