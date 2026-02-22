@@ -117,7 +117,7 @@ export default function Profile() {
 
   if (!user) {
     return (
-      <div className="max-w-lg mx-auto px-4 pt-6 text-center space-y-4">
+      <div className="max-w-lg mx-auto px-4 pt-4 text-center space-y-4">
         <h1 className="text-2xl font-bold font-display">Profiel</h1>
         <p className="text-muted-foreground">Log in om je profiel te bekijken.</p>
         <Link to="/auth"><Button className="bg-primary text-primary-foreground">Inloggen</Button></Link>
@@ -126,7 +126,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-6 space-y-4">
+    <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-4">
       <h1 className="text-2xl font-bold font-display">Profiel</h1>
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>

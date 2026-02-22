@@ -97,7 +97,7 @@ export default function Pool() {
 
   if (!user) {
     return (
-      <div className="max-w-lg mx-auto px-4 pt-6 text-center space-y-4">
+      <div className="max-w-lg mx-auto px-4 pt-4 text-center space-y-4">
         <h1 className="text-2xl font-bold font-display">Poules</h1>
         <p className="text-muted-foreground">Log in om poules te maken en mee te doen.</p>
         <Link to="/auth">
@@ -108,7 +108,7 @@ export default function Pool() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-6 space-y-4">
+    <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold font-display">Poules</h1>
         <div className="flex gap-2">

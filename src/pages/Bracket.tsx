@@ -26,7 +26,7 @@ export default function Bracket() {
   });
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-6 space-y-6">
+    <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-5">
       <h1 className="text-2xl font-bold font-display">Bracket 🏆</h1>
 
       {isLoading ? (
