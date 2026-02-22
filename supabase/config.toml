@@ -2,3 +2,6 @@ project_id = "piahvmeitbcibtsjagur"
 
 [functions.seed-wc2026]
 verify_jwt = false
+
+[functions.fetch-scores]
+verify_jwt = false
