@@ -45,9 +45,22 @@ export default function Matches() {
     { key: "finished", label: "Gespeeld" },
   ];
 
+  // Find last updated time from matches data
+  const lastUpdated = matches?.reduce((latest: string | null, m: any) => {
+    if (!latest || (m.last_updated && m.last_updated > latest)) return m.last_updated;
+    return latest;
+  }, null);
+
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 space-y-4">
-      <h1 className="text-2xl font-bold font-display">Wedstrijden</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold font-display">Wedstrijden</h1>
+        {lastUpdated && (
+          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+            🔄 {formatNLTime(lastUpdated)}
+          </span>
+        )}
+      </div>
 
       {/* Filters */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">

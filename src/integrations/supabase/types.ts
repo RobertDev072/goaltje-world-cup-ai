@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_cache: {
+        Row: {
+          cache_key: string
+          data: Json
+          expires_at: string
+          fetched_at: string
+          id: string
+        }
+        Insert: {
+          cache_key: string
+          data: Json
+          expires_at: string
+          fetched_at?: string
+          id?: string
+        }
+        Update: {
+          cache_key?: string
+          data?: Json
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      api_usage: {
+        Row: {
+          id: string
+          request_count: number
+          usage_date: string
+        }
+        Insert: {
+          id?: string
+          request_count?: number
+          usage_date?: string
+        }
+        Update: {
+          id?: string
+          request_count?: number
+          usage_date?: string
+        }
+        Relationships: []
+      }
       match_events: {
         Row: {
           created_at: string
