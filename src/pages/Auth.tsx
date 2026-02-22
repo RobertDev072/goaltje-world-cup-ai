@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import goaltjeLogo from "@/assets/goaltje-logo.png";
 
 type AuthMode = "login" | "register" | "forgot";
 
@@ -18,8 +19,21 @@ export default function Auth() {
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { user, signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      const joinCode = sessionStorage.getItem("joinCode");
+      if (joinCode) {
+        sessionStorage.removeItem("joinCode");
+        navigate(`/join/${joinCode}`);
+      } else {
+        navigate("/");
+      }
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,15 +43,14 @@ export default function Auth() {
       if (mode === "login") {
         const { error } = await signIn(email, password);
         if (error) throw error;
-        navigate("/");
       } else if (mode === "register") {
         const { error } = await signUp(email, password, name);
         if (error) throw error;
-        toast({ title: "Account aangemaakt!", description: "Check je e-mail om je account te bevestigen." });
+        toast({ title: "Account aangemaakt! 🎉", description: "Check je e-mail om je account te bevestigen." });
       } else {
         const { error } = await resetPassword(email);
         if (error) throw error;
-        toast({ title: "E-mail verstuurd", description: "Check je inbox voor de reset link." });
+        toast({ title: "E-mail verstuurd ✉️", description: "Check je inbox voor de reset link." });
       }
     } catch (err: any) {
       toast({ title: "Fout", description: err.message, variant: "destructive" });
@@ -51,11 +64,11 @@ export default function Auth() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-sm space-y-8"
+        className="w-full max-w-sm space-y-6"
       >
         {/* Logo */}
         <div className="text-center space-y-2">
-          <h1 className="text-5xl font-bold font-display text-gradient">⚽ Goaltje</h1>
+          <img src={goaltjeLogo} alt="Goaltje" className="w-32 h-32 mx-auto" />
           <p className="text-muted-foreground">
             {mode === "login" && "Welkom terug!"}
             {mode === "register" && "Maak je account aan"}
@@ -85,27 +98,13 @@ export default function Auth() {
               {mode === "register" && (
                 <div className="space-y-2">
                   <Label htmlFor="name">Naam</Label>
-                  <Input
-                    id="name"
-                    placeholder="Jouw naam"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="h-12 text-base"
-                  />
+                  <Input id="name" placeholder="Jouw naam" value={name} onChange={(e) => setName(e.target.value)} className="h-12 text-base" />
                 </div>
               )}
 
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="naam@voorbeeld.nl"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="h-12 text-base"
-                />
+                <Input id="email" type="email" placeholder="naam@voorbeeld.nl" value={email} onChange={(e) => setEmail(e.target.value)} required className="h-12 text-base" />
               </div>
 
               {mode !== "forgot" && (
@@ -121,11 +120,7 @@ export default function Auth() {
                       required
                       className="h-12 text-base pr-12"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                    >
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
@@ -133,27 +128,13 @@ export default function Auth() {
               )}
 
               {mode === "login" && (
-                <button
-                  type="button"
-                  onClick={() => setMode("forgot")}
-                  className="text-sm text-primary hover:underline"
-                >
+                <button type="button" onClick={() => setMode("forgot")} className="text-sm text-primary hover:underline">
                   Wachtwoord vergeten?
                 </button>
               )}
 
-              <Button
-                type="submit"
-                className="w-full h-12 text-base font-semibold gradient-primary text-primary-foreground"
-                disabled={loading}
-              >
-                {loading
-                  ? "Even geduld..."
-                  : mode === "login"
-                  ? "Inloggen"
-                  : mode === "register"
-                  ? "Registreren"
-                  : "Reset link versturen"}
+              <Button type="submit" className="w-full h-12 text-base font-semibold gradient-primary text-primary-foreground" disabled={loading}>
+                {loading ? "Even geduld..." : mode === "login" ? "Inloggen" : mode === "register" ? "Registreren" : "Reset link versturen"}
               </Button>
             </form>
           </CardContent>
@@ -162,10 +143,7 @@ export default function Auth() {
         {mode !== "forgot" && (
           <p className="text-center text-sm text-muted-foreground">
             {mode === "login" ? "Nog geen account? " : "Al een account? "}
-            <button
-              onClick={() => setMode(mode === "login" ? "register" : "login")}
-              className="text-primary font-semibold hover:underline"
-            >
+            <button onClick={() => setMode(mode === "login" ? "register" : "login")} className="text-primary font-semibold hover:underline">
               {mode === "login" ? "Registreren" : "Inloggen"}
             </button>
           </p>
