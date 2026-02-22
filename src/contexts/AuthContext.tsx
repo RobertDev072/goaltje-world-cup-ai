@@ -21,10 +21,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+
+      // Track login sessions
+      if (event === "SIGNED_IN" && session?.user) {
+        setTimeout(() => {
+          supabase.from("user_sessions").insert({
+            user_id: session.user.id,
+            device_info: navigator.userAgent?.substring(0, 200) || null,
+          }).then(() => {});
+        }, 0);
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
