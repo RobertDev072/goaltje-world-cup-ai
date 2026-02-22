@@ -119,34 +119,34 @@ export default function Landing() {
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-primary/5 to-background">
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Ccircle cx='30' cy='30' r='28' fill='none' stroke='%23000' stroke-width='1'/%3E%3Cpath d='M30 2 L30 58 M2 30 L58 30 M8 8 L52 52 M52 8 L8 52' fill='none' stroke='%23000' stroke-width='0.5'/%3E%3C/svg%3E")`,
+      <section className="relative overflow-hidden bg-gradient-to-br from-[hsl(var(--goaltje-navy))] via-[hsl(var(--goaltje-darkblue))] to-[hsl(var(--primary))]">
+        <div className="absolute inset-0 opacity-[0.05]" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Ccircle cx='30' cy='30' r='28' fill='none' stroke='%23fff' stroke-width='1'/%3E%3Cpath d='M30 2 L30 58 M2 30 L58 30 M8 8 L52 52 M52 8 L8 52' fill='none' stroke='%23fff' stroke-width='0.5'/%3E%3C/svg%3E")`,
           backgroundSize: "60px 60px",
         }} />
         <div className="max-w-5xl mx-auto px-4 py-16 md:py-28 text-center relative">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <img src={goaltjeLogo} alt="Goaltje" className="w-24 h-24 md:w-32 md:h-32 mx-auto mb-6" loading="eager" />
-            <h1 className="text-3xl md:text-5xl lg:text-6xl font-display font-bold mb-4 leading-tight">
-              GOALTJE <span className="text-primary">⚽</span>
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-display font-bold mb-4 leading-tight text-white">
+              GOALTJE <span className="text-secondary">⚽</span>
             </h1>
-            <p className="text-lg md:text-2xl font-display font-semibold text-foreground/90 mb-2">
+            <p className="text-lg md:text-2xl font-display font-semibold text-white/90 mb-2">
               {t(lang, "hero_title")}
             </p>
-            <p className="text-muted-foreground text-sm md:text-lg max-w-xl mx-auto mb-3">
+            <p className="text-white/60 text-sm md:text-lg max-w-xl mx-auto mb-3">
               {t(lang, "hero_subtitle")}
             </p>
-            <p className="text-muted-foreground text-xs md:text-sm max-w-md mx-auto mb-8">
+            <p className="text-white/50 text-xs md:text-sm max-w-md mx-auto mb-8">
               {t(lang, "hero_accessible")}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link to="/auth">
-                <Button size="lg" className="bg-primary text-primary-foreground h-14 px-8 text-base md:text-lg font-semibold shadow-lg hover:shadow-xl transition-shadow w-full sm:w-auto">
+                <Button size="lg" className="bg-secondary text-secondary-foreground h-14 px-8 text-base md:text-lg font-semibold shadow-lg hover:shadow-xl hover:bg-secondary/90 transition-all w-full sm:w-auto">
                   🏆 {t(lang, "cta_create")}
                 </Button>
               </Link>
               <Link to="/auth">
-                <Button size="lg" variant="outline" className="h-14 px-8 text-base md:text-lg font-semibold w-full sm:w-auto">
+                <Button size="lg" variant="outline" className="h-14 px-8 text-base md:text-lg font-semibold w-full sm:w-auto border-white/30 text-white hover:bg-white/10">
                   🔗 {t(lang, "cta_join")}
                 </Button>
               </Link>
