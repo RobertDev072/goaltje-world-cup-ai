@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
 
 type AuthMode = "login" | "register" | "forgot";
@@ -46,7 +47,7 @@ export default function Auth() {
       } else if (mode === "register") {
         const { error } = await signUp(email, password, name);
         if (error) throw error;
-        toast({ title: "Account aangemaakt! 🎉", description: "Check je e-mail om je account te bevestigen." });
+        toast({ title: "Account aangemaakt! 🎉", description: "Je bent nu ingelogd. Veel plezier!" });
       } else {
         const { error } = await resetPassword(email);
         if (error) throw error;
@@ -60,16 +61,19 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-[hsl(var(--goaltje-navy))] via-[hsl(var(--goaltje-darkblue))] to-[hsl(var(--primary))]">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-sm space-y-6"
       >
-        {/* Logo */}
+        {/* Logo + link to landing */}
         <div className="text-center space-y-2">
-          <img src={goaltjeLogo} alt="Goaltje" className="w-32 h-32 mx-auto" />
-          <p className="text-muted-foreground">
+          <Link to="/landing" className="inline-block">
+            <img src={goaltjeLogo} alt="Goaltje" className="w-28 h-28 mx-auto hover:scale-105 transition-transform" />
+          </Link>
+          <h1 className="font-display font-bold text-xl text-white">GOALTJE ⚽</h1>
+          <p className="text-white/70 text-sm">
             {mode === "login" && "Welkom terug!"}
             {mode === "register" && "Maak je account aan"}
             {mode === "forgot" && "Wachtwoord vergeten?"}
@@ -141,13 +145,17 @@ export default function Auth() {
         </Card>
 
         {mode !== "forgot" && (
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="text-center text-sm text-white/70">
             {mode === "login" ? "Nog geen account? " : "Al een account? "}
-            <button onClick={() => setMode(mode === "login" ? "register" : "login")} className="text-primary font-semibold hover:underline">
+            <button onClick={() => setMode(mode === "login" ? "register" : "login")} className="text-secondary font-semibold hover:underline">
               {mode === "login" ? "Registreren" : "Inloggen"}
             </button>
           </p>
         )}
+
+        <Link to="/landing" className="block text-center text-xs text-white/50 hover:text-white/80 transition-colors">
+          ← Terug naar homepage
+        </Link>
       </motion.div>
     </div>
   );

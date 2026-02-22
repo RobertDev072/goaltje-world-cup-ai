@@ -38,7 +38,7 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-[hsl(var(--goaltje-navy))] via-[hsl(var(--goaltje-darkblue))] to-[hsl(var(--primary))]">
       <Card className="w-full max-w-sm border-0 shadow-xl">
         <CardHeader>
           <CardTitle className="font-display text-center">Nieuw wachtwoord</CardTitle>
