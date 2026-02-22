@@ -124,6 +124,21 @@ export default function Landing() {
           backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Ccircle cx='30' cy='30' r='28' fill='none' stroke='%23fff' stroke-width='1'/%3E%3Cpath d='M30 2 L30 58 M2 30 L58 30 M8 8 L52 52 M52 8 L8 52' fill='none' stroke='%23fff' stroke-width='0.5'/%3E%3C/svg%3E")`,
           backgroundSize: "60px 60px",
         }} />
+        {/* Rolling football */}
+        <motion.div
+          className="absolute bottom-6 text-4xl md:text-6xl opacity-20 pointer-events-none select-none"
+          animate={{ x: ["0vw", "100vw"], rotate: [0, 720] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+        >
+          ⚽
+        </motion.div>
+        <motion.div
+          className="absolute top-10 text-2xl md:text-4xl opacity-10 pointer-events-none select-none"
+          animate={{ x: ["100vw", "0vw"], rotate: [0, -540] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "linear", delay: 3 }}
+        >
+          ⚽
+        </motion.div>
         <div className="max-w-5xl mx-auto px-4 py-16 md:py-28 text-center relative">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <img src={goaltjeLogo} alt="Goaltje" className="w-24 h-24 md:w-32 md:h-32 mx-auto mb-6" loading="eager" />
