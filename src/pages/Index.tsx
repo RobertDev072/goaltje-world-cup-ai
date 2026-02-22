@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { formatNLDate, formatNLTime } from "@/lib/timezone";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Users, Calendar, TrendingUp, ChevronRight, Clock } from "lucide-react";
+import { Trophy, Users, Calendar, TrendingUp, ChevronRight, Clock, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,26 @@ export default function Index() {
     },
   });
 
+  // Fetch user's predictions for upcoming matches
+  const matchIds = upcomingMatches?.map((m: any) => m.id) || [];
+  const { data: myPredictions } = useQuery({
+    queryKey: ["home-predictions", user?.id, matchIds],
+    queryFn: async () => {
+      if (!user || matchIds.length === 0) return [];
+      const { data } = await supabase
+        .from("predictions")
+        .select("match_id, home_pred, away_pred")
+        .eq("user_id", user.id)
+        .in("match_id", matchIds);
+      return data || [];
+    },
+    enabled: !!user && matchIds.length > 0,
+  });
+
+  const predictionMap = new Map(
+    myPredictions?.map((p: any) => [p.match_id, p]) || []
+  );
+
   const { data: pools } = useQuery({
     queryKey: ["my-pools", user?.id],
     queryFn: async () => {
@@ -57,7 +77,7 @@ export default function Index() {
   };
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-6 space-y-6">
+    <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-5">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <img src={goaltjeLogo} alt="Goaltje" className="w-14 h-14" />
@@ -116,55 +136,69 @@ export default function Index() {
           </div>
         ) : upcomingMatches && upcomingMatches.length > 0 ? (
           <div className="space-y-3">
-            {upcomingMatches.map((match: any, i: number) => (
-              <motion.div key={match.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                <Link to={`/matches/${match.id}`}>
-                  <Card className="border-0 shadow-md hover:shadow-lg transition-all overflow-hidden">
-                    {/* Match header bar */}
-                    <div className="bg-primary px-4 py-1.5 flex items-center justify-between">
-                      <span className="text-[10px] font-medium text-primary-foreground/80">
-                        {match.stage === "group" ? `Groep ${match.group}` : match.stage}
-                      </span>
-                      <span className="text-[10px] text-primary-foreground/80 flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> {formatNLTime(match.kickoff_utc)}
-                      </span>
-                    </div>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        {/* Home team */}
-                        <div className="flex items-center gap-2 flex-1">
-                          <span className="text-2xl">{match.home_team?.flag_url || "🏳️"}</span>
-                          <span className="font-semibold text-sm">{match.home_team?.short_name || match.home_team?.name || "TBD"}</span>
-                        </div>
-
-                        {/* Score / Time */}
-                        <div className="px-4 text-center">
-                          {match.home_score != null && match.away_score != null ? (
-                            <span className="text-2xl font-bold font-display">
-                              {match.home_score} - {match.away_score}
-                            </span>
-                          ) : (
-                            <span className="text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
-                              {formatNLDate(match.kickoff_utc)}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Away team */}
-                        <div className="flex items-center gap-2 flex-1 justify-end">
-                          <span className="font-semibold text-sm text-right">{match.away_team?.short_name || match.away_team?.name || "TBD"}</span>
-                          <span className="text-2xl">{match.away_team?.flag_url || "🏳️"}</span>
-                        </div>
+            {upcomingMatches.map((match: any, i: number) => {
+              const pred = predictionMap.get(match.id);
+              return (
+                <motion.div key={match.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                  <Link to={`/matches/${match.id}`}>
+                    <Card className="border-0 shadow-md hover:shadow-lg transition-all overflow-hidden">
+                      {/* Match header bar */}
+                      <div className="bg-primary px-4 py-1.5 flex items-center justify-between">
+                        <span className="text-[10px] font-medium text-primary-foreground/80">
+                          {match.stage === "group" ? `Groep ${match.group}` : match.stage}
+                        </span>
+                        <span className="text-[10px] text-primary-foreground/80 flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> {formatNLTime(match.kickoff_utc)}
+                        </span>
                       </div>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          {/* Home team */}
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="text-2xl shrink-0">{match.home_team?.flag_url || "🏳️"}</span>
+                            <span className="font-semibold text-sm truncate">{match.home_team?.short_name || match.home_team?.name || "TBD"}</span>
+                          </div>
 
-                      {match.venue && (
-                        <p className="text-[10px] text-muted-foreground text-center mt-2">📍 {match.venue}</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Link>
-              </motion.div>
-            ))}
+                          {/* Score / Time */}
+                          <div className="px-3 text-center shrink-0">
+                            {match.home_score != null && match.away_score != null ? (
+                              <span className="text-2xl font-bold font-display">
+                                {match.home_score} - {match.away_score}
+                              </span>
+                            ) : (
+                              <span className="text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
+                                {formatNLDate(match.kickoff_utc)}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Away team */}
+                          <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                            <span className="font-semibold text-sm truncate text-right">{match.away_team?.short_name || match.away_team?.name || "TBD"}</span>
+                            <span className="text-2xl shrink-0">{match.away_team?.flag_url || "🏳️"}</span>
+                          </div>
+                        </div>
+
+                        {/* User prediction row */}
+                        {pred ? (
+                          <div className="mt-2 flex items-center justify-center gap-2 text-xs">
+                            <Check className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-muted-foreground">Jouw voorspelling:</span>
+                            <span className="font-bold text-primary">{pred.home_pred} - {pred.away_pred}</span>
+                          </div>
+                        ) : user ? (
+                          <p className="text-[10px] text-muted-foreground text-center mt-2">Nog geen voorspelling →</p>
+                        ) : null}
+
+                        {match.venue && (
+                          <p className="text-[10px] text-muted-foreground text-center mt-1">📍 {match.venue}</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </motion.div>
+              );
+            })}
           </div>
         ) : (
           <Card className="border-0 shadow-md">

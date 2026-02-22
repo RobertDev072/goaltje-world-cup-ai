@@ -125,7 +125,11 @@ export default function MatchDetail() {
     onSuccess: () => {
       if (!existingPred) trackFirstPrediction();
       toast({ title: "Voorspelling opgeslagen! ✅" });
-      queryClient.invalidateQueries({ queryKey: ["my-predictions", id] });
+      // Invalidate all prediction-related queries so Home + other screens update
+      queryClient.invalidateQueries({ queryKey: ["my-predictions"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-matches"] });
+      queryClient.invalidateQueries({ queryKey: ["matches"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
     },
     onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
   });
@@ -159,7 +163,7 @@ export default function MatchDetail() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-6 space-y-4 pb-8">
+    <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-4">
       <Link to="/matches" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm">
         <ArrowLeft className="h-4 w-4" /> Terug
       </Link>

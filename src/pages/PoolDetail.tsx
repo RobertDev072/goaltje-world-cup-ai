@@ -159,7 +159,7 @@ export default function PoolDetail() {
   const isOwner = user?.id === pool.created_by;
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-6 space-y-4 pb-8">
+    <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-4">
       <Link to="/pool" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm">
         <ArrowLeft className="h-4 w-4" /> Terug
       </Link>
