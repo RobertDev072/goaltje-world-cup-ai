@@ -108,7 +108,9 @@ export default function PoolDetail() {
     enabled: !!id,
   });
 
-  const poolLink = `${window.location.origin}/join/${pool?.invite_code}`;
+  // Use published URL so QR codes and share links always work
+  const appOrigin = import.meta.env.PROD ? "https://goaltje-world-cup-ai.lovable.app" : window.location.origin;
+  const poolLink = `${appOrigin}/join/${pool?.invite_code}`;
   const shareText = `Doe mee met mijn WK 2026 poule "${pool?.name}" op Goaltje! 🏆⚽\n\nCode: ${pool?.invite_code}\n${poolLink}`;
 
   const copyLink = () => {
