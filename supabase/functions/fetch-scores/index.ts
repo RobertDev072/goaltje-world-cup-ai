@@ -236,6 +236,37 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ===== ACTION: status-check =====
+    if (action === "status-check") {
+      try {
+        const res = await fetch(`${API_FOOTBALL_BASE}/status`, {
+          headers: { "x-apisports-key": apiKey },
+        });
+        const json = await res.json();
+        const account = json?.response?.account;
+        const subscription = json?.response?.subscription;
+        const requests = json?.response?.requests;
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            connected: true,
+            account: account || null,
+            plan: subscription?.plan || "unknown",
+            requests_today: requests?.current || 0,
+            requests_limit: requests?.limit_day || 100,
+            daily_db_count: currentCount,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (e) {
+        return new Response(
+          JSON.stringify({ success: false, connected: false, error: String(e) }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     return new Response(
       JSON.stringify({ error: "Unknown action. Use: sync-fixtures, sync-live, usage" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

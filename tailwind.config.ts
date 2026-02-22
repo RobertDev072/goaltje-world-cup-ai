@@ -54,6 +54,15 @@ export default {
         success: "hsl(var(--success))",
         warning: "hsl(var(--warning))",
         live: "hsl(var(--live))",
+        goaltje: {
+          navy: "hsl(var(--goaltje-navy))",
+          darkblue: "hsl(var(--goaltje-darkblue))",
+          blue: "hsl(var(--goaltje-blue))",
+          cyan: "hsl(var(--goaltje-cyan))",
+          yellow: "hsl(var(--goaltje-yellow))",
+          orange: "hsl(var(--goaltje-orange))",
+          red: "hsl(var(--goaltje-red))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
