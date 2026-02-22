@@ -122,13 +122,13 @@ export default function Matches() {
                           <span className="font-medium text-sm">{match.away_team?.name || "TBD"}</span>
                         </div>
                       </div>
-                      {match.status === "finished" || match.status === "live" ? (
+                      {match.home_score != null && match.away_score != null ? (
                         <div className="text-right">
                           <div className="text-2xl font-bold font-display">
-                            {match.home_score ?? 0}
+                            {match.home_score}
                           </div>
                           <div className="text-2xl font-bold font-display">
-                            {match.away_score ?? 0}
+                            {match.away_score}
                           </div>
                         </div>
                       ) : (

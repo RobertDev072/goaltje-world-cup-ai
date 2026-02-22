@@ -184,9 +184,9 @@ export default function MatchDetail() {
                 <p className="font-semibold text-sm">{match.home_team?.name || "TBD"}</p>
               </div>
               <div className="text-center px-4">
-                {match.status !== "scheduled" ? (
+                {match.home_score != null && match.away_score != null ? (
                   <p className="text-4xl font-bold font-display">
-                    {match.home_score ?? 0} - {match.away_score ?? 0}
+                    {match.home_score} - {match.away_score}
                   </p>
                 ) : (
                   <p className="text-xl font-bold text-primary">VS</p>

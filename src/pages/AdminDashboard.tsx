@@ -66,7 +66,12 @@ function AdminMatchEditor() {
 
   const updateMatch = useMutation({
     mutationFn: async (matchId: string) => {
-      const updateData: any = { status: matchStatus, last_updated: new Date().toISOString() };
+      // Auto-set status to "finished" if both scores are filled and status is still "scheduled"
+      let finalStatus = matchStatus;
+      if (homeScore !== "" && awayScore !== "" && matchStatus === "scheduled") {
+        finalStatus = "finished";
+      }
+      const updateData: any = { status: finalStatus, last_updated: new Date().toISOString() };
       if (homeScore !== "") updateData.home_score = parseInt(homeScore);
       if (awayScore !== "") updateData.away_score = parseInt(awayScore);
       const { error } = await supabase.from("matches").update(updateData).eq("id", matchId);
