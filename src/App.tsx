@@ -18,6 +18,7 @@ import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
+import { AuthGate } from "@/components/AuthGate";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,6 +40,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             {/* Public landing pages */}
+            <Route path="/landing" element={<Landing />} />
             <Route path="/nl" element={<Landing />} />
             <Route path="/en" element={<Landing />} />
             <Route path="/es" element={<Landing />} />
@@ -49,8 +51,8 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/join/:code" element={<JoinPool />} />
             
-            {/* App routes */}
-            <Route element={<AppLayout />}>
+            {/* App routes - auth required */}
+            <Route element={<AuthGate><AppLayout /></AuthGate>}>
               <Route path="/" element={<Index />} />
               <Route path="/matches" element={<Matches />} />
               <Route path="/matches/:id" element={<MatchDetail />} />
