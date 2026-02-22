@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, Users, Calendar, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import goaltjeLogo from "@/assets/goaltje-logo.png";
 
 export default function Index() {
   const { user } = useAuth();
@@ -38,11 +40,11 @@ export default function Index() {
     queryKey: ["my-pools", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data: memberships } = await supabase
+      const { data } = await supabase
         .from("pool_members")
-        .select("pool_id, pools(*)")
+        .select("pool_id, pools(id, name, invite_code)")
         .eq("user_id", user.id);
-      return memberships?.map((m: any) => m.pools) || [];
+      return data?.map((m: any) => m.pools).filter(Boolean) || [];
     },
     enabled: !!user,
   });
@@ -57,11 +59,14 @@ export default function Index() {
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 space-y-6">
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <p className="text-muted-foreground text-sm">{greeting()}</p>
-        <h1 className="text-2xl font-bold font-display">
-          {profile?.name || "Voetbalfan"} <span className="text-gradient">⚽</span>
-        </h1>
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
+        <img src={goaltjeLogo} alt="Goaltje" className="w-14 h-14" />
+        <div>
+          <p className="text-muted-foreground text-sm">{greeting()}</p>
+          <h1 className="text-2xl font-bold font-display">
+            {profile?.name || "Voetbalfan"} ⚽
+          </h1>
+        </div>
       </motion.div>
 
       {/* Quick Stats */}
@@ -105,37 +110,29 @@ export default function Index() {
 
         {matchesLoading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-20 rounded-xl" />
-            ))}
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
           </div>
         ) : upcomingMatches && upcomingMatches.length > 0 ? (
           <div className="space-y-3">
             {upcomingMatches.map((match: any, i: number) => (
-              <motion.div
-                key={match.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-              >
+              <motion.div key={match.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                 <Link to={`/matches/${match.id}`}>
                   <Card className="border-0 shadow-md hover:shadow-lg transition-all">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
-                        <div className="flex-1">
+                        <div className="flex-1 space-y-1">
                           <div className="flex items-center gap-2 text-sm font-medium">
-                            <span>{match.home_team?.flag_url && "🏳️"} {match.home_team?.name || "TBD"}</span>
+                            <span className="text-lg">{match.home_team?.flag_url || "🏳️"}</span>
+                            <span>{match.home_team?.name || "TBD"}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-sm font-medium mt-1">
-                            <span>{match.away_team?.flag_url && "🏳️"} {match.away_team?.name || "TBD"}</span>
+                          <div className="flex items-center gap-2 text-sm font-medium">
+                            <span className="text-lg">{match.away_team?.flag_url || "🏳️"}</span>
+                            <span>{match.away_team?.name || "TBD"}</span>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="text-xs text-muted-foreground">{formatNLDate(match.kickoff_utc)}</p>
                           <p className="text-sm font-semibold text-primary">{formatNLTime(match.kickoff_utc)}</p>
-                          {match.venue && (
-                            <p className="text-[10px] text-muted-foreground mt-1">{match.venue}</p>
-                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -148,9 +145,7 @@ export default function Index() {
           <Card className="border-0 shadow-md">
             <CardContent className="p-6 text-center">
               <Trophy className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground text-sm">
-                Nog geen wedstrijden gepland. Het WK 2026 schema wordt binnenkort geladen!
-              </p>
+              <p className="text-muted-foreground text-sm">Nog geen wedstrijden gepland.</p>
             </CardContent>
           </Card>
         )}
@@ -178,6 +173,18 @@ export default function Index() {
             ))}
           </div>
         </div>
+      )}
+
+      {!user && (
+        <Card className="border-0 shadow-lg">
+          <CardContent className="p-6 text-center space-y-3">
+            <p className="font-display font-semibold">Klaar om mee te doen?</p>
+            <p className="text-sm text-muted-foreground">Maak een account aan en doe mee met poules!</p>
+            <Link to="/auth">
+              <Button className="gradient-primary text-primary-foreground mt-2">Aan de slag</Button>
+            </Link>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

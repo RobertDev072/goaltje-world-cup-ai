@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Plus, LogIn, Users, Trophy, Copy, Share2 } from "lucide-react";
+import { Plus, LogIn, Users, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function Pool() {
@@ -16,9 +17,11 @@ export default function Pool() {
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [poolName, setPoolName] = useState("");
+  const [poolDesc, setPoolDesc] = useState("");
+  const [prizeText, setPrizeText] = useState("");
   const [joinCode, setJoinCode] = useState("");
 
-  const { data: pools, isLoading } = useQuery({
+  const { data: pools } = useQuery({
     queryKey: ["my-pools", user?.id],
     queryFn: async () => {
       if (!user) return [];
@@ -34,13 +37,16 @@ export default function Pool() {
   const createPool = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Niet ingelogd");
+      const insertData: any = { name: poolName, created_by: user.id };
+      if (poolDesc.trim()) insertData.description = poolDesc;
+      if (prizeText.trim()) insertData.prize_text = prizeText;
+      
       const { data: pool, error } = await supabase
         .from("pools")
-        .insert({ name: poolName, created_by: user.id })
+        .insert(insertData)
         .select()
         .single();
       if (error) throw error;
-      // Auto-join as admin
       await supabase.from("pool_members").insert({
         pool_id: pool.id,
         user_id: user.id,
@@ -50,7 +56,7 @@ export default function Pool() {
     },
     onSuccess: () => {
       toast({ title: "Poule aangemaakt! 🎉" });
-      setPoolName("");
+      setPoolName(""); setPoolDesc(""); setPrizeText("");
       setShowCreate(false);
       queryClient.invalidateQueries({ queryKey: ["my-pools"] });
     },
@@ -65,7 +71,7 @@ export default function Pool() {
         .select("id")
         .eq("invite_code", joinCode.toUpperCase().trim())
         .single();
-      if (findError || !pool) throw new Error("Poule niet gevonden. Controleer de code.");
+      if (findError || !pool) throw new Error("Deze code bestaat niet. Controleer en probeer opnieuw.");
       const { error } = await supabase.from("pool_members").insert({
         pool_id: pool.id,
         user_id: user.id,
@@ -77,7 +83,7 @@ export default function Pool() {
       }
       return pool;
     },
-    onSuccess: () => {
+    onSuccess: (pool) => {
       toast({ title: "Je bent lid! 🎉" });
       setJoinCode("");
       setShowJoin(false);
@@ -103,18 +109,10 @@ export default function Pool() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold font-display">Poules</h1>
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => { setShowJoin(!showJoin); setShowCreate(false); }}
-          >
+          <Button size="sm" variant="outline" onClick={() => { setShowJoin(!showJoin); setShowCreate(false); }}>
             <LogIn className="h-4 w-4 mr-1" /> Join
           </Button>
-          <Button
-            size="sm"
-            className="gradient-primary text-primary-foreground"
-            onClick={() => { setShowCreate(!showCreate); setShowJoin(false); }}
-          >
+          <Button size="sm" className="gradient-primary text-primary-foreground" onClick={() => { setShowCreate(!showCreate); setShowJoin(false); }}>
             <Plus className="h-4 w-4 mr-1" /> Nieuw
           </Button>
         </div>
@@ -125,12 +123,9 @@ export default function Pool() {
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
           <Card className="border-0 shadow-lg">
             <CardContent className="pt-4 space-y-3">
-              <Input
-                placeholder="Naam van de poule"
-                value={poolName}
-                onChange={(e) => setPoolName(e.target.value)}
-                className="h-12"
-              />
+              <Input placeholder="Naam van de poule *" value={poolName} onChange={(e) => setPoolName(e.target.value)} className="h-12" />
+              <Textarea placeholder="Beschrijving (optioneel)" value={poolDesc} onChange={(e) => setPoolDesc(e.target.value)} rows={2} />
+              <Input placeholder="Prijs (optioneel, bijv. '€50 cadeaubon')" value={prizeText} onChange={(e) => setPrizeText(e.target.value)} className="h-12" />
               <Button
                 className="w-full h-12 gradient-primary text-primary-foreground"
                 disabled={!poolName.trim() || createPool.isPending}
@@ -171,12 +166,7 @@ export default function Pool() {
       {pools && pools.length > 0 ? (
         <div className="space-y-3">
           {pools.map((membership: any, i: number) => (
-            <motion.div
-              key={membership.pool_id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-            >
+            <motion.div key={membership.pool_id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Link to={`/pool/${membership.pool_id}`}>
                 <Card className="border-0 shadow-md hover:shadow-lg transition-all">
                   <CardContent className="p-4 flex items-center justify-between">
@@ -187,7 +177,7 @@ export default function Pool() {
                       <div>
                         <p className="font-semibold">{membership.pools?.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {membership.role === "admin" ? "👑 Admin" : "Lid"}
+                          {membership.role === "admin" ? "👑 Owner" : "Lid"} · Code: {membership.pools?.invite_code}
                         </p>
                       </div>
                     </div>

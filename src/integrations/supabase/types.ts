@@ -158,27 +158,36 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          description: string | null
           id: string
           invite_code: string
           name: string
+          privacy: string
+          prize_text: string | null
           scoring_rules_json: Json | null
           tenant_id: string | null
         }
         Insert: {
           created_at?: string
           created_by: string
+          description?: string | null
           id?: string
           invite_code?: string
           name: string
+          privacy?: string
+          prize_text?: string | null
           scoring_rules_json?: Json | null
           tenant_id?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string
+          description?: string | null
           id?: string
           invite_code?: string
           name?: string
+          privacy?: string
+          prize_text?: string | null
           scoring_rules_json?: Json | null
           tenant_id?: string | null
         }
