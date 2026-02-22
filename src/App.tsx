@@ -15,6 +15,7 @@ import PoolDetail from "./pages/PoolDetail";
 import JoinPool from "./pages/JoinPool";
 import Bracket from "./pages/Bracket";
 import Profile from "./pages/Profile";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/pool/:id" element={<PoolDetail />} />
               <Route path="/bracket" element={<Bracket />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/admin" element={<AdminDashboard />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

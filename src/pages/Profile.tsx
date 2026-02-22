@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, Moon, Sun } from "lucide-react";
+import { LogOut, Moon, Sun, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Profile() {
@@ -27,16 +27,23 @@ export default function Profile() {
     enabled: !!user,
   });
 
+  const { data: isAdmin } = useQuery({
+    queryKey: ["is-admin", user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      const { data } = await supabase.rpc("has_role", { _user_id: user.id, _role: "admin" });
+      return data === true;
+    },
+    enabled: !!user,
+  });
+
   const [name, setName] = useState("");
   const nameValue = name || profile?.name || "";
 
   const updateProfile = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Niet ingelogd");
-      const { error } = await supabase
-        .from("profiles")
-        .update({ name: nameValue })
-        .eq("user_id", user.id);
+      const { error } = await supabase.from("profiles").update({ name: nameValue }).eq("user_id", user.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -61,9 +68,7 @@ export default function Profile() {
       <div className="max-w-lg mx-auto px-4 pt-6 text-center space-y-4">
         <h1 className="text-2xl font-bold font-display">Profiel</h1>
         <p className="text-muted-foreground">Log in om je profiel te bekijken.</p>
-        <Link to="/auth">
-          <Button className="gradient-primary text-primary-foreground">Inloggen</Button>
-        </Link>
+        <Link to="/auth"><Button className="gradient-primary text-primary-foreground">Inloggen</Button></Link>
       </div>
     );
   }
@@ -73,7 +78,6 @@ export default function Profile() {
       <h1 className="text-2xl font-bold font-display">Profiel</h1>
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        {/* Avatar + Name */}
         <Card className="border-0 shadow-xl overflow-hidden">
           <div className="gradient-primary h-20" />
           <CardContent className="pt-0 -mt-10 text-center space-y-4 pb-6">
@@ -92,17 +96,8 @@ export default function Profile() {
       <Card className="border-0 shadow-md">
         <CardContent className="pt-4 space-y-3">
           <Label>Naam</Label>
-          <Input
-            value={nameValue}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Jouw naam"
-            className="h-12"
-          />
-          <Button
-            className="w-full h-12 gradient-primary text-primary-foreground"
-            onClick={() => updateProfile.mutate()}
-            disabled={updateProfile.isPending}
-          >
+          <Input value={nameValue} onChange={(e) => setName(e.target.value)} placeholder="Jouw naam" className="h-12" />
+          <Button className="w-full h-12 gradient-primary text-primary-foreground" onClick={() => updateProfile.mutate()} disabled={updateProfile.isPending}>
             {updateProfile.isPending ? "Opslaan..." : "Naam opslaan"}
           </Button>
         </CardContent>
@@ -111,19 +106,18 @@ export default function Profile() {
       {/* Settings */}
       <Card className="border-0 shadow-md">
         <CardContent className="pt-4 space-y-3">
-          <Button
-            variant="outline"
-            className="w-full h-12 justify-start"
-            onClick={toggleDark}
-          >
+          {isAdmin && (
+            <Link to="/admin">
+              <Button variant="outline" className="w-full h-12 justify-start gap-3">
+                <Shield className="h-5 w-5 text-primary" /> Developer Dashboard
+              </Button>
+            </Link>
+          )}
+          <Button variant="outline" className="w-full h-12 justify-start" onClick={toggleDark}>
             {isDark ? <Sun className="h-5 w-5 mr-3" /> : <Moon className="h-5 w-5 mr-3" />}
             {isDark ? "Licht thema" : "Donker thema"}
           </Button>
-          <Button
-            variant="outline"
-            className="w-full h-12 justify-start text-destructive hover:text-destructive"
-            onClick={handleSignOut}
-          >
+          <Button variant="outline" className="w-full h-12 justify-start text-destructive hover:text-destructive" onClick={handleSignOut}>
             <LogOut className="h-5 w-5 mr-3" /> Uitloggen
           </Button>
         </CardContent>
