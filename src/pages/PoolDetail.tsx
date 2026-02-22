@@ -68,6 +68,7 @@ export default function PoolDetail() {
         .map(([userId, points]) => ({
           userId,
           name: profileMap[userId]?.name || "Onbekend",
+          avatar_url: profileMap[userId]?.avatar_url || null,
           points,
         }))
         .sort((a, b) => b.points - a.points);
@@ -197,8 +198,12 @@ export default function PoolDetail() {
                     }`}>
                       {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}
                     </span>
-                    <div className="h-8 w-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-sm font-bold">
-                      {entry.name[0]?.toUpperCase() || "?"}
+                    <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold overflow-hidden">
+                      {entry.avatar_url ? (
+                        <img src={entry.avatar_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        entry.name[0]?.toUpperCase() || "?"
+                      )}
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-sm">
