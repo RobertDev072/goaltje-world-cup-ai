@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Users, Trophy, Target, Activity, TrendingUp, TrendingDown, Clock, RefreshCw, Zap } from "lucide-react";
+import { ArrowLeft, Users, Trophy, Target, Activity, TrendingUp, TrendingDown, Clock, RefreshCw, Zap, Wifi, WifiOff, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { formatNLDateTime, formatNLDate } from "@/lib/timezone";
@@ -174,6 +174,70 @@ function AdminMatchEditor() {
         </Card>
       ))}
     </div>
+  );
+}
+
+function ApiStatusCard() {
+  const { data: status, isLoading, refetch } = useQuery({
+    queryKey: ["api-status-check"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("fetch-scores", {
+        body: { action: "status-check" },
+      });
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  return (
+    <Card className="border-0 shadow-md">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="font-display font-semibold flex items-center gap-2">
+            {isLoading ? (
+              <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : status?.connected ? (
+              <Wifi className="h-4 w-4 text-success" />
+            ) : (
+              <WifiOff className="h-4 w-4 text-destructive" />
+            )}
+            API Status
+          </h3>
+          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isLoading}>
+            <RefreshCw className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
+        {status && (
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Verbinding</span>
+              <Badge variant={status.connected ? "default" : "destructive"} className={status.connected ? "bg-success text-white" : ""}>
+                {status.connected ? "✅ Online" : "❌ Offline"}
+              </Badge>
+            </div>
+            {status.plan && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Plan</span>
+                <span className="font-medium capitalize">{status.plan}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">API calls vandaag</span>
+              <span className="font-medium">{status.requests_today ?? 0} / {status.requests_limit ?? 100}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">DB teller</span>
+              <span className="font-medium">{status.daily_db_count ?? 0}</span>
+            </div>
+          </div>
+        )}
+        {!isLoading && !status && (
+          <p className="text-sm text-destructive">Kon geen verbinding maken met de API.</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -362,6 +426,9 @@ export default function AdminDashboard() {
       {/* API Tab */}
       {tab === "api" && (
         <div className="space-y-4">
+          {/* API Status Check */}
+          <ApiStatusCard />
+
           <Card className="border-0 shadow-md">
             <CardContent className="p-4 space-y-3">
               <h3 className="font-display font-semibold">API-Football Gebruik</h3>

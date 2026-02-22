@@ -74,18 +74,18 @@ export default function Landing() {
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 glass border-b">
+      <header className="sticky top-0 z-50 bg-goaltje-navy border-b border-goaltje-darkblue">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img src={goaltjeLogo} alt="Goaltje" className="w-10 h-10" />
-            <span className="font-display font-bold text-xl">GOALTJE</span>
+            <span className="font-display font-bold text-xl text-white">GOALTJE</span>
           </div>
           <div className="flex items-center gap-3">
             {/* Language Switcher */}
             <div className="relative">
               <button
                 onClick={() => setShowLangMenu(!showLangMenu)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-sm font-medium hover:bg-muted/80 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
               >
                 <Globe className="h-4 w-4" />
                 {currentLang.flag} {currentLang.code.toUpperCase()}
@@ -108,7 +108,7 @@ export default function Landing() {
               )}
             </div>
             <Link to="/auth">
-              <Button size="sm" variant="outline" className="font-semibold">Login</Button>
+              <Button size="sm" variant="outline" className="font-semibold border-white/30 text-white hover:bg-white/10">Login</Button>
             </Link>
           </div>
         </div>
