@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { formatNLDate, formatNLTime } from "@/lib/timezone";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Users, Calendar, TrendingUp } from "lucide-react";
+import { Trophy, Users, Calendar, TrendingUp, ChevronRight, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -72,27 +72,27 @@ export default function Index() {
       {/* Quick Stats */}
       <div className="grid grid-cols-2 gap-3">
         <Link to="/pool">
-          <Card className="border-0 shadow-md hover:shadow-lg transition-shadow">
+          <Card className="border-0 shadow-md hover:shadow-lg transition-shadow bg-primary text-primary-foreground">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center">
-                <Users className="h-5 w-5 text-primary-foreground" />
+              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <Users className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-2xl font-bold font-display">{pools?.length || 0}</p>
-                <p className="text-xs text-muted-foreground">Poules</p>
+                <p className="text-xs opacity-80">Poules</p>
               </div>
             </CardContent>
           </Card>
         </Link>
         <Link to="/matches">
-          <Card className="border-0 shadow-md hover:shadow-lg transition-shadow">
+          <Card className="border-0 shadow-md hover:shadow-lg transition-shadow bg-secondary text-secondary-foreground">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center">
-                <Trophy className="h-5 w-5 text-secondary-foreground" />
+              <div className="h-10 w-10 rounded-xl bg-black/10 flex items-center justify-center">
+                <Trophy className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-2xl font-bold font-display">WK '26</p>
-                <p className="text-xs text-muted-foreground">Toernooi</p>
+                <p className="text-xs opacity-80">Toernooi</p>
               </div>
             </CardContent>
           </Card>
@@ -103,38 +103,63 @@ export default function Index() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-display font-semibold text-lg flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary" /> Komende wedstrijden
+            <Calendar className="h-5 w-5 text-primary" /> Voorspellingen
           </h2>
-          <Link to="/matches" className="text-sm text-primary font-medium">Alles →</Link>
+          <Link to="/matches" className="text-sm text-primary font-medium flex items-center gap-1">
+            Alles <ChevronRight className="h-4 w-4" />
+          </Link>
         </div>
 
         {matchesLoading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
           </div>
         ) : upcomingMatches && upcomingMatches.length > 0 ? (
           <div className="space-y-3">
             {upcomingMatches.map((match: any, i: number) => (
               <motion.div key={match.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                 <Link to={`/matches/${match.id}`}>
-                  <Card className="border-0 shadow-md hover:shadow-lg transition-all">
+                  <Card className="border-0 shadow-md hover:shadow-lg transition-all overflow-hidden">
+                    {/* Match header bar */}
+                    <div className="bg-primary px-4 py-1.5 flex items-center justify-between">
+                      <span className="text-[10px] font-medium text-primary-foreground/80">
+                        {match.stage === "group" ? `Groep ${match.group}` : match.stage}
+                      </span>
+                      <span className="text-[10px] text-primary-foreground/80 flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {formatNLTime(match.kickoff_utc)}
+                      </span>
+                    </div>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
-                        <div className="flex-1 space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            <span className="text-lg">{match.home_team?.flag_url || "🏳️"}</span>
-                            <span>{match.home_team?.name || "TBD"}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            <span className="text-lg">{match.away_team?.flag_url || "🏳️"}</span>
-                            <span>{match.away_team?.name || "TBD"}</span>
-                          </div>
+                        {/* Home team */}
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-2xl">{match.home_team?.flag_url || "🏳️"}</span>
+                          <span className="font-semibold text-sm">{match.home_team?.short_name || match.home_team?.name || "TBD"}</span>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">{formatNLDate(match.kickoff_utc)}</p>
-                          <p className="text-sm font-semibold text-primary">{formatNLTime(match.kickoff_utc)}</p>
+
+                        {/* Score / Time */}
+                        <div className="px-4 text-center">
+                          {match.home_score != null && match.away_score != null ? (
+                            <span className="text-2xl font-bold font-display">
+                              {match.home_score} - {match.away_score}
+                            </span>
+                          ) : (
+                            <span className="text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
+                              {formatNLDate(match.kickoff_utc)}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Away team */}
+                        <div className="flex items-center gap-2 flex-1 justify-end">
+                          <span className="font-semibold text-sm text-right">{match.away_team?.short_name || match.away_team?.name || "TBD"}</span>
+                          <span className="text-2xl">{match.away_team?.flag_url || "🏳️"}</span>
                         </div>
                       </div>
+
+                      {match.venue && (
+                        <p className="text-[10px] text-muted-foreground text-center mt-2">📍 {match.venue}</p>
+                      )}
                     </CardContent>
                   </Card>
                 </Link>
@@ -166,7 +191,7 @@ export default function Index() {
                       <p className="font-semibold">{pool.name}</p>
                       <p className="text-xs text-muted-foreground">Code: {pool.invite_code}</p>
                     </div>
-                    <div className="text-primary font-bold">→</div>
+                    <ChevronRight className="h-5 w-5 text-primary" />
                   </CardContent>
                 </Card>
               </Link>
@@ -176,12 +201,12 @@ export default function Index() {
       )}
 
       {!user && (
-        <Card className="border-0 shadow-lg">
+        <Card className="border-0 shadow-lg bg-primary text-primary-foreground">
           <CardContent className="p-6 text-center space-y-3">
-            <p className="font-display font-semibold">Klaar om mee te doen?</p>
-            <p className="text-sm text-muted-foreground">Maak een account aan en doe mee met poules!</p>
+            <p className="font-display font-semibold text-lg">Klaar om mee te doen?</p>
+            <p className="text-sm opacity-80">Maak een account aan en doe mee met poules!</p>
             <Link to="/auth">
-              <Button className="gradient-primary text-primary-foreground mt-2">Aan de slag</Button>
+              <Button className="bg-white text-primary hover:bg-white/90 mt-2 font-semibold">Aan de slag</Button>
             </Link>
           </CardContent>
         </Card>

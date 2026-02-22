@@ -15,7 +15,7 @@ export function BottomNav() {
   const location = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t safe-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-primary border-t border-primary-foreground/10 safe-bottom">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.to || 
@@ -29,20 +29,20 @@ export function BottomNav() {
               {isActive && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute -top-px left-2 right-2 h-0.5 rounded-full gradient-primary"
+                  className="absolute -top-px left-2 right-2 h-0.5 rounded-full bg-secondary"
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 />
               )}
               <tab.icon
                 className={cn(
                   "h-5 w-5 transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground"
+                  isActive ? "text-white" : "text-primary-foreground/60"
                 )}
               />
               <span
                 className={cn(
                   "text-[10px] font-medium transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground"
+                  isActive ? "text-white" : "text-primary-foreground/60"
                 )}
               >
                 {tab.label}

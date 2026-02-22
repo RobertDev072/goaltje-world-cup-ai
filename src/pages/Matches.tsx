@@ -5,6 +5,7 @@ import { formatNLDate, formatNLTime } from "@/lib/timezone";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 
@@ -45,7 +46,6 @@ export default function Matches() {
     { key: "finished", label: "Gespeeld" },
   ];
 
-  // Find last updated time from matches data
   const lastUpdated = matches?.reduce((latest: string | null, m: any) => {
     if (!latest || (m.last_updated && m.last_updated > latest)) return m.last_updated;
     return latest;
@@ -70,7 +70,7 @@ export default function Matches() {
             onClick={() => setFilter(f.key)}
             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
               filter === f.key
-                ? "gradient-primary text-primary-foreground shadow-md"
+                ? "bg-primary text-primary-foreground shadow-md"
                 : "bg-muted text-muted-foreground"
             }`}
           >
@@ -96,51 +96,59 @@ export default function Matches() {
               transition={{ delay: i * 0.03 }}
             >
               <Link to={`/matches/${match.id}`}>
-                <Card className="border-0 shadow-md hover:shadow-lg transition-all">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-muted-foreground">
-                        {match.stage === "group" ? `Groep ${match.group}` : match.stage}
-                      </span>
+                <Card className="border-0 shadow-md hover:shadow-lg transition-all overflow-hidden">
+                  {/* Match header bar */}
+                  <div className="bg-primary px-4 py-1.5 flex items-center justify-between">
+                    <span className="text-[10px] font-medium text-primary-foreground/80">
+                      {match.stage === "group" ? `Groep ${match.group}` : match.stage}
+                    </span>
+                    <div className="flex items-center gap-2">
                       {match.status === "live" && (
-                        <Badge variant="destructive" className="text-[10px] live-pulse">
+                        <Badge variant="destructive" className="text-[10px] live-pulse h-5">
                           🔴 LIVE
                         </Badge>
                       )}
                       {match.status === "finished" && (
-                        <Badge variant="secondary" className="text-[10px]">Gespeeld</Badge>
+                        <Badge className="text-[10px] bg-white/20 text-primary-foreground h-5 hover:bg-white/20">Gespeeld</Badge>
                       )}
                     </div>
+                  </div>
+
+                  <CardContent className="p-4">
                     <div className="flex items-center justify-between">
-                      <div className="flex-1 space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{match.home_team?.flag_url || "🏳️"}</span>
-                          <span className="font-medium text-sm">{match.home_team?.name || "TBD"}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{match.away_team?.flag_url || "🏳️"}</span>
-                          <span className="font-medium text-sm">{match.away_team?.name || "TBD"}</span>
-                        </div>
+                      {/* Home team */}
+                      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                        <span className="text-2xl shrink-0">{match.home_team?.flag_url || "🏳️"}</span>
+                        <span className="font-semibold text-sm truncate">{match.home_team?.short_name || match.home_team?.name || "TBD"}</span>
                       </div>
-                      {match.home_score != null && match.away_score != null ? (
-                        <div className="text-right">
-                          <div className="text-2xl font-bold font-display">
-                            {match.home_score}
+
+                      {/* Score / Time */}
+                      <div className="px-3 text-center shrink-0">
+                        {match.home_score != null && match.away_score != null ? (
+                          <span className="text-2xl font-bold font-display">
+                            {match.home_score} - {match.away_score}
+                          </span>
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <Clock className="h-3.5 w-3.5 text-muted-foreground mb-0.5" />
+                            <span className="text-sm font-bold text-primary">{formatNLTime(match.kickoff_utc)}</span>
                           </div>
-                          <div className="text-2xl font-bold font-display">
-                            {match.away_score}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">{formatNLDate(match.kickoff_utc)}</p>
-                          <p className="text-lg font-bold text-primary">{formatNLTime(match.kickoff_utc)}</p>
-                        </div>
+                        )}
+                      </div>
+
+                      {/* Away team */}
+                      <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-end">
+                        <span className="font-semibold text-sm truncate text-right">{match.away_team?.short_name || match.away_team?.name || "TBD"}</span>
+                        <span className="text-2xl shrink-0">{match.away_team?.flag_url || "🏳️"}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-[10px] text-muted-foreground">{formatNLDate(match.kickoff_utc)}</span>
+                      {match.venue && (
+                        <span className="text-[10px] text-muted-foreground">📍 {match.venue}</span>
                       )}
                     </div>
-                    {match.venue && (
-                      <p className="text-[10px] text-muted-foreground mt-2">📍 {match.venue}</p>
-                    )}
                   </CardContent>
                 </Card>
               </Link>
