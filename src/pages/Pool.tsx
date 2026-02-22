@@ -10,6 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Plus, LogIn, Users, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
+import { trackPoolCreated, trackPoolJoined } from "@/lib/analytics";
 
 export default function Pool() {
   const { user } = useAuth();
@@ -55,6 +56,7 @@ export default function Pool() {
       return pool;
     },
     onSuccess: () => {
+      trackPoolCreated();
       toast({ title: "Poule aangemaakt! 🎉" });
       setPoolName(""); setPoolDesc(""); setPrizeText("");
       setShowCreate(false);
@@ -84,6 +86,7 @@ export default function Pool() {
       return pool;
     },
     onSuccess: (pool) => {
+      trackPoolJoined();
       toast({ title: "Je bent lid! 🎉" });
       setJoinCode("");
       setShowJoin(false);

@@ -6,39 +6,43 @@
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 220 20% 10%;
+    --background: 210 30% 98%;
+    --foreground: 220 25% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 10%;
+    --card-foreground: 220 25% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
+    --popover-foreground: 220 25% 12%;
 
-    --primary: 145 65% 42%;
+    --primary: 217 72% 45%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 38 92% 55%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 14% 92%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 210 20% 94%;
+    --muted-foreground: 220 10% 44%;
 
-    --accent: 262 83% 58%;
+    --accent: 8 80% 56%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 14% 90%;
-    --input: 220 14% 90%;
-    --ring: 145 65% 42%;
+    --border: 210 18% 90%;
+    --input: 210 18% 90%;
+    --ring: 217 72% 45%;
 
     --radius: 1rem;
 
     --success: 145 65% 42%;
     --warning: 38 92% 55%;
     --live: 0 84% 60%;
+    --goaltje-blue: 217 72% 45%;
+    --goaltje-yellow: 46 92% 55%;
+    --goaltje-orange: 28 90% 55%;
+    --goaltje-red: 8 80% 56%;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -60,16 +64,16 @@
     --popover: 225 25% 12%;
     --popover-foreground: 210 40% 96%;
 
-    --primary: 145 65% 50%;
-    --primary-foreground: 225 25% 8%;
+    --primary: 217 72% 55%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 38 92% 55%;
-    --secondary-foreground: 225 25% 8%;
+    --secondary-foreground: 0 0% 100%;
 
     --muted: 225 20% 18%;
     --muted-foreground: 220 14% 55%;
 
-    --accent: 262 83% 65%;
+    --accent: 8 80% 60%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 50%;
@@ -77,7 +81,7 @@
 
     --border: 225 20% 18%;
     --input: 225 20% 18%;
-    --ring: 145 65% 50%;
+    --ring: 217 72% 55%;
 
     --success: 145 65% 50%;
     --warning: 38 92% 55%;
@@ -121,7 +125,7 @@
   }
 
   .gradient-primary {
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
   }
 
   .gradient-warm {
