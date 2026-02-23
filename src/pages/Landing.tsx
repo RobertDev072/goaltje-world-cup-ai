@@ -3,8 +3,9 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Trophy, Target, BarChart3, QrCode, Building2, Tv, ChevronDown, Globe, Users, Smartphone, Shield, Star, CheckCircle2 } from "lucide-react";
+import { Trophy, Target, BarChart3, QrCode, Building2, Tv, ChevronDown, Globe, Users, Smartphone, Shield, Star, CheckCircle2, Mail, Monitor, Tablet } from "lucide-react";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
+import founderPhoto from "@/assets/founder-robert.png";
 import { type Lang, LANGS, t, getSavedLang, saveLang } from "@/lib/i18n";
 
 const features = [
@@ -316,6 +317,130 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Founder Section */}
+      <section className="py-16 md:py-24 bg-gradient-to-br from-[hsl(var(--goaltje-navy))] via-[hsl(var(--goaltje-darkblue))] to-[hsl(var(--primary))] text-white overflow-hidden">
+        <div className="max-w-5xl mx-auto px-4">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+            <h2 className="text-2xl md:text-3xl font-display font-bold text-center mb-12">{t(lang, "founder_title")}</h2>
+          </motion.div>
+          
+          <div className="grid md:grid-cols-2 gap-10 items-center">
+            {/* Founder Info */}
+            <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.1 }} className="space-y-5">
+              <div className="flex items-center gap-4">
+                <img 
+                  src={founderPhoto} 
+                  alt="Robert Cavalcante Rocha – Founder of Goaltje" 
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover ring-4 ring-secondary/40 shadow-xl"
+                />
+                <div>
+                  <h3 className="font-display font-bold text-xl">Robert Cavalcante Rocha</h3>
+                  <p className="text-white/60 text-sm">Founder & Developer</p>
+                </div>
+              </div>
+              <p className="text-white/80 text-sm leading-relaxed">{t(lang, "founder_bio")}</p>
+              <p className="text-white/70 text-sm leading-relaxed">{t(lang, "founder_bio2")}</p>
+              <blockquote className="border-l-4 border-secondary pl-4 py-2">
+                <p className="text-white/90 text-sm italic font-medium">"{t(lang, "founder_quote")}"</p>
+              </blockquote>
+              <a href="mailto:rb085@icloud.com" className="inline-flex items-center gap-2 text-secondary hover:text-secondary/80 text-sm font-semibold transition-colors">
+                <Mail className="h-4 w-4" /> rb085@icloud.com
+              </a>
+            </motion.div>
+
+            {/* Device Mockups */}
+            <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} className="relative flex justify-center items-end">
+              {/* Desktop mockup */}
+              <div className="relative">
+                <div className="w-56 md:w-72 bg-[hsl(var(--goaltje-navy))] rounded-xl border-2 border-white/10 shadow-2xl overflow-hidden">
+                  <div className="flex items-center gap-1 px-3 py-1.5 bg-white/5 border-b border-white/10">
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                    <span className="text-[8px] text-white/30 ml-2 font-mono">goaltje.app</span>
+                  </div>
+                  <div className="p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <img src={goaltjeLogo} alt="" className="w-5 h-5" />
+                      <span className="text-[10px] font-bold text-white/80">GOALTJE</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="h-2 bg-white/10 rounded-full w-full" />
+                      <div className="flex gap-1">
+                        <div className="h-8 flex-1 bg-secondary/20 rounded-lg border border-secondary/30 flex items-center justify-center">
+                          <span className="text-[8px] text-secondary">🇳🇱 2-1 🇧🇷</span>
+                        </div>
+                        <div className="h-8 flex-1 bg-primary/20 rounded-lg border border-primary/30 flex items-center justify-center">
+                          <span className="text-[8px] text-white/60">🏆 #1</span>
+                        </div>
+                      </div>
+                      <div className="h-2 bg-white/10 rounded-full w-3/4" />
+                      <div className="h-2 bg-white/10 rounded-full w-1/2" />
+                    </div>
+                  </div>
+                </div>
+                <Monitor className="absolute -bottom-3 left-1/2 -translate-x-1/2 h-6 w-6 text-white/20" />
+              </div>
+
+              {/* Phone mockup */}
+              <div className="relative -ml-8 mb-0 z-10">
+                <div className="w-28 md:w-36 bg-[hsl(var(--goaltje-navy))] rounded-2xl border-2 border-white/15 shadow-2xl overflow-hidden">
+                  <div className="flex justify-center pt-1.5 pb-1">
+                    <div className="w-10 h-1 bg-white/10 rounded-full" />
+                  </div>
+                  <div className="p-2 space-y-1.5">
+                    <div className="flex items-center justify-center gap-1">
+                      <img src={goaltjeLogo} alt="" className="w-4 h-4" />
+                      <span className="text-[8px] font-bold text-white/80">GOALTJE</span>
+                    </div>
+                    <div className="h-6 bg-secondary/20 rounded-lg border border-secondary/30 flex items-center justify-center">
+                      <span className="text-[7px] text-secondary font-semibold">⚽ Live</span>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="h-1.5 bg-white/10 rounded-full w-full" />
+                      <div className="h-1.5 bg-white/10 rounded-full w-3/4" />
+                      <div className="h-1.5 bg-white/10 rounded-full w-1/2" />
+                    </div>
+                  </div>
+                  <div className="flex justify-around px-2 py-1.5 border-t border-white/10">
+                    <div className="w-3 h-3 rounded bg-white/10" />
+                    <div className="w-3 h-3 rounded bg-secondary/30" />
+                    <div className="w-3 h-3 rounded bg-white/10" />
+                    <div className="w-3 h-3 rounded bg-white/10" />
+                  </div>
+                </div>
+                <Smartphone className="absolute -bottom-3 left-1/2 -translate-x-1/2 h-5 w-5 text-white/20" />
+              </div>
+
+              {/* Tablet mockup */}
+              <div className="hidden md:block relative -ml-6 mb-4">
+                <div className="w-32 bg-[hsl(var(--goaltje-navy))] rounded-xl border-2 border-white/10 shadow-2xl overflow-hidden">
+                  <div className="flex justify-center pt-1 pb-0.5">
+                    <div className="w-2 h-2 rounded-full bg-white/10" />
+                  </div>
+                  <div className="p-2 space-y-1">
+                    <div className="h-4 bg-primary/20 rounded flex items-center justify-center">
+                      <span className="text-[7px] text-white/60">🏆 Leaderboard</span>
+                    </div>
+                    <div className="h-1.5 bg-white/10 rounded-full w-full" />
+                    <div className="h-1.5 bg-white/10 rounded-full w-4/5" />
+                    <div className="h-1.5 bg-white/10 rounded-full w-3/5" />
+                  </div>
+                </div>
+                <Tablet className="absolute -bottom-3 left-1/2 -translate-x-1/2 h-5 w-5 text-white/20" />
+              </div>
+            </motion.div>
+          </div>
+
+          <p className="text-center text-white/40 text-xs mt-10 flex items-center justify-center gap-2">
+            <Monitor className="h-3.5 w-3.5" />
+            <Tablet className="h-3.5 w-3.5" />
+            <Smartphone className="h-3.5 w-3.5" />
+            {t(lang, "founder_available")}
+          </p>
+        </div>
+      </section>
+
       {/* Final CTA */}
       <section className="py-12 md:py-16 bg-muted/50">
         <div className="max-w-2xl mx-auto px-4 text-center space-y-4">
@@ -334,7 +459,7 @@ export default function Landing() {
         <div className="max-w-2xl mx-auto px-4 text-center">
           <h2 className="text-xl font-display font-bold mb-2">{t(lang, "contact")}</h2>
           <p className="text-muted-foreground text-sm">
-            {t(lang, "contact_text")} <a href="mailto:info@robertdev.nl" className="text-primary font-semibold hover:underline">info@robertdev.nl</a>
+            {t(lang, "contact_text")} <a href="mailto:rb085@icloud.com" className="text-primary font-semibold hover:underline">rb085@icloud.com</a>
           </p>
         </div>
       </section>
