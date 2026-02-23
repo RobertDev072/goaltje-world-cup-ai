@@ -169,6 +169,7 @@ export type Database = {
           id: string
           joined_at: string
           pool_id: string
+          rival_user_id: string | null
           role: string
           user_id: string
         }
@@ -176,6 +177,7 @@ export type Database = {
           id?: string
           joined_at?: string
           pool_id: string
+          rival_user_id?: string | null
           role?: string
           user_id: string
         }
@@ -183,6 +185,7 @@ export type Database = {
           id?: string
           joined_at?: string
           pool_id?: string
+          rival_user_id?: string | null
           role?: string
           user_id?: string
         }
