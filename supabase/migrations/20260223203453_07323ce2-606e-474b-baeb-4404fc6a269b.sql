@@ -1,0 +1,1 @@
+ALTER TABLE public.pool_members ADD COLUMN IF NOT EXISTS rival_user_id uuid DEFAULT NULL;
