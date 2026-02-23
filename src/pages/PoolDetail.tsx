@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -16,6 +16,9 @@ import { cn } from "@/lib/utils";
 import { RivalBanner } from "@/components/RivalBanner";
 import { BadgesGrid, calculateBadges } from "@/components/BadgesGrid";
 import { SmartInsights } from "@/components/SmartInsights";
+import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebration";
+import { LiveRankNotification } from "@/components/LiveRankNotification";
+import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
 
 interface LeaderboardEntry {
   userId: string;
@@ -30,7 +33,15 @@ export default function PoolDetail() {
   const { id } = useParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { showGoal, triggerGoal, hideGoal } = useGoalCelebration();
+  const [rankNotification, setRankNotification] = useState<{
+    visible: boolean; direction: "up" | "down"; newPosition: number; passedName?: string;
+  }>({ visible: false, direction: "up", newPosition: 0 });
+  const prevPositionRef = useRef<number | null>(null);
 
+  // Realtime subscriptions
+  useRealtimeMatches((_matchId, _team) => triggerGoal());
+  useRealtimePredictions();
   const { data: pool, isLoading } = useQuery({
     queryKey: ["pool", id],
     queryFn: async () => {
@@ -195,6 +206,26 @@ export default function PoolDetail() {
     return leaderboard.find((e) => e.userId === user.id) || null;
   }, [user, leaderboard]);
 
+  // Track rank changes for notifications
+  const myPosition = useMemo(() => {
+    if (!user || !leaderboard) return null;
+    const idx = leaderboard.findIndex((e) => e.userId === user.id);
+    return idx >= 0 ? idx + 1 : null;
+  }, [user, leaderboard]);
+
+  // Detect rank changes
+  useMemo(() => {
+    if (myPosition == null) return;
+    if (prevPositionRef.current != null && prevPositionRef.current !== myPosition) {
+      const direction = myPosition < prevPositionRef.current ? "up" : "down";
+      const passedIdx = direction === "up" ? myPosition : myPosition - 2;
+      const passedName = leaderboard && passedIdx >= 0 && passedIdx < leaderboard.length
+        ? leaderboard[passedIdx]?.name : undefined;
+      setRankNotification({ visible: true, direction, newPosition: myPosition, passedName });
+    }
+    prevPositionRef.current = myPosition;
+  }, [myPosition, leaderboard]);
+
   const [showRivalPicker, setShowRivalPicker] = useState(false);
 
   const appOrigin = import.meta.env.PROD ? "https://goaltje-world-cup-ai.lovable.app" : window.location.origin;
@@ -242,6 +273,16 @@ export default function PoolDetail() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-4">
+      {/* Live Mode Overlays */}
+      <GoalCelebration visible={showGoal} onComplete={hideGoal} />
+      <LiveRankNotification
+        visible={rankNotification.visible}
+        direction={rankNotification.direction}
+        newPosition={rankNotification.newPosition}
+        passedName={rankNotification.passedName}
+        onComplete={() => setRankNotification((s) => ({ ...s, visible: false }))}
+      />
+
       <Link to="/pool" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm">
         <ArrowLeft className="h-4 w-4" /> Terug
       </Link>

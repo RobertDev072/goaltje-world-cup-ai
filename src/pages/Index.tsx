@@ -10,11 +10,21 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PoolSelector } from "@/components/PoolSelector";
 import { MatchCard } from "@/components/MatchCard";
+import { LiveMatchBanner } from "@/components/LiveMatchBanner";
+import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebration";
+import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
 
 export default function Index() {
   const { user } = useAuth();
   const [selectedPoolId, setSelectedPoolId] = useState("");
+  const { showGoal, triggerGoal, hideGoal } = useGoalCelebration();
+
+  // Realtime subscriptions
+  useRealtimeMatches((_matchId, _team) => {
+    triggerGoal();
+  });
+  useRealtimePredictions();
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -83,11 +93,14 @@ export default function Index() {
   };
 
   // Split matches
+  const liveMatches = upcomingMatches?.filter((m: any) => m.status === "live") || [];
   const recentFinished = upcomingMatches?.filter((m: any) => m.status === "finished").slice(-3) || [];
-  const upcoming = upcomingMatches?.filter((m: any) => m.status !== "finished").slice(0, 5) || [];
+  const upcoming = upcomingMatches?.filter((m: any) => m.status !== "finished" && m.status !== "live").slice(0, 5) || [];
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-5">
+      {/* Goal Celebration Overlay */}
+      <GoalCelebration visible={showGoal} onComplete={hideGoal} />
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <img src={goaltjeLogo} alt="Goaltje" className="w-14 h-14" />
@@ -104,6 +117,11 @@ export default function Index() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
           <PoolSelector value={selectedPoolId} onChange={setSelectedPoolId} />
         </motion.div>
+      )}
+
+      {/* Live Match Banner */}
+      {liveMatches.length > 0 && (
+        <LiveMatchBanner matches={liveMatches} />
       )}
 
       {/* Quick Stats */}

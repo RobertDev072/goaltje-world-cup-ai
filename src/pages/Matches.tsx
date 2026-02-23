@@ -5,11 +5,17 @@ import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PoolSelector } from "@/components/PoolSelector";
 import { MatchSections } from "@/components/MatchSections";
+import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebration";
+import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
 import { motion } from "framer-motion";
 
 export default function Matches() {
   const { user } = useAuth();
   const [selectedPoolId, setSelectedPoolId] = useState("");
+  const { showGoal, triggerGoal, hideGoal } = useGoalCelebration();
+
+  useRealtimeMatches((_matchId, _team) => triggerGoal());
+  useRealtimePredictions();
 
   const { data: matches, isLoading } = useQuery({
     queryKey: ["matches"],
@@ -47,6 +53,7 @@ export default function Matches() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-4">
+      <GoalCelebration visible={showGoal} onComplete={hideGoal} />
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold font-display">Wedstrijden</h1>
