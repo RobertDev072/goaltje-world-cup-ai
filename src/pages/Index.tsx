@@ -1,17 +1,20 @@
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { formatNLDate, formatNLTime } from "@/lib/timezone";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Users, Calendar, TrendingUp, ChevronRight, Clock, Check } from "lucide-react";
+import { Trophy, Users, ChevronRight, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { PoolSelector } from "@/components/PoolSelector";
+import { MatchCard } from "@/components/MatchCard";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
 
 export default function Index() {
   const { user } = useAuth();
+  const [selectedPoolId, setSelectedPoolId] = useState("");
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -23,20 +26,20 @@ export default function Index() {
     enabled: !!user,
   });
 
+  // Fetch both upcoming AND recent finished matches
   const { data: upcomingMatches, isLoading: matchesLoading } = useQuery({
     queryKey: ["upcoming-matches"],
     queryFn: async () => {
       const { data } = await supabase
         .from("matches")
         .select("*, home_team:teams!matches_home_team_id_fkey(*), away_team:teams!matches_away_team_id_fkey(*)")
-        .gte("kickoff_utc", new Date().toISOString())
+        .gte("kickoff_utc", new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString())
         .order("kickoff_utc", { ascending: true })
-        .limit(5);
+        .limit(8);
       return data || [];
     },
   });
 
-  // Fetch user's predictions for upcoming matches
   const matchIds = upcomingMatches?.map((m: any) => m.id) || [];
   const { data: myPredictions } = useQuery({
     queryKey: ["home-predictions", user?.id, matchIds],
@@ -44,7 +47,7 @@ export default function Index() {
       if (!user || matchIds.length === 0) return [];
       const { data } = await supabase
         .from("predictions")
-        .select("match_id, home_pred, away_pred")
+        .select("match_id, home_pred, away_pred, points_awarded, pool_id")
         .eq("user_id", user.id)
         .in("match_id", matchIds);
       return data || [];
@@ -52,8 +55,11 @@ export default function Index() {
     enabled: !!user && matchIds.length > 0,
   });
 
+  // Build prediction map filtered by selected pool
   const predictionMap = new Map(
-    myPredictions?.map((p: any) => [p.match_id, p]) || []
+    myPredictions
+      ?.filter((p: any) => !selectedPoolId || p.pool_id === selectedPoolId)
+      .map((p: any) => [p.match_id, p]) || []
   );
 
   const { data: pools } = useQuery({
@@ -76,12 +82,16 @@ export default function Index() {
     return "Goedenavond";
   };
 
+  // Split matches
+  const recentFinished = upcomingMatches?.filter((m: any) => m.status === "finished").slice(-3) || [];
+  const upcoming = upcomingMatches?.filter((m: any) => m.status !== "finished").slice(0, 5) || [];
+
   return (
     <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-5">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3">
         <img src={goaltjeLogo} alt="Goaltje" className="w-14 h-14" />
-        <div>
+        <div className="flex-1">
           <p className="text-muted-foreground text-sm">{greeting()}</p>
           <h1 className="text-2xl font-bold font-display">
             {profile?.name || "Voetbalfan"} ⚽
@@ -89,41 +99,68 @@ export default function Index() {
         </div>
       </motion.div>
 
+      {/* Pool Selector */}
+      {user && pools && pools.length > 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+          <PoolSelector value={selectedPoolId} onChange={setSelectedPoolId} />
+        </motion.div>
+      )}
+
       {/* Quick Stats */}
       <div className="grid grid-cols-2 gap-3">
         <Link to="/pool">
-          <Card className="border-0 shadow-md hover:shadow-lg transition-shadow bg-primary text-primary-foreground">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+          <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all gradient-navy text-white overflow-hidden group">
+            <CardContent className="p-4 flex items-center gap-3 relative">
+              <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center group-hover:bg-white/20 transition-colors">
                 <Users className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-2xl font-bold font-display">{pools?.length || 0}</p>
-                <p className="text-xs opacity-80">Poules</p>
+                <p className="text-xs opacity-70">Poules</p>
               </div>
             </CardContent>
           </Card>
         </Link>
         <Link to="/matches">
-          <Card className="border-0 shadow-md hover:shadow-lg transition-shadow bg-secondary text-secondary-foreground">
+          <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all bg-secondary text-secondary-foreground overflow-hidden group">
             <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-black/10 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-xl bg-black/10 flex items-center justify-center group-hover:bg-black/15 transition-colors">
                 <Trophy className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-2xl font-bold font-display">WK '26</p>
-                <p className="text-xs opacity-80">Toernooi</p>
+                <p className="text-xs opacity-70">Toernooi</p>
               </div>
             </CardContent>
           </Card>
         </Link>
       </div>
 
+      {/* Recent results */}
+      {recentFinished.length > 0 && (
+        <div>
+          <h2 className="font-display font-semibold text-lg flex items-center gap-2 mb-3">
+            <TrendingUp className="h-5 w-5 text-success" /> Laatste uitslagen
+          </h2>
+          <div className="space-y-3">
+            {recentFinished.map((match: any, i: number) => (
+              <MatchCard
+                key={match.id}
+                match={match}
+                prediction={predictionMap.get(match.id)}
+                index={i}
+                compact
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Upcoming Matches */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-display font-semibold text-lg flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary" /> Voorspellingen
+            🟡 Voorspellingen
           </h2>
           <Link to="/matches" className="text-sm text-primary font-medium flex items-center gap-1">
             Alles <ChevronRight className="h-4 w-4" />
@@ -134,74 +171,19 @@ export default function Index() {
           <div className="space-y-3">
             {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
           </div>
-        ) : upcomingMatches && upcomingMatches.length > 0 ? (
+        ) : upcoming.length > 0 ? (
           <div className="space-y-3">
-            {upcomingMatches.map((match: any, i: number) => {
-              const pred = predictionMap.get(match.id);
-              return (
-                <motion.div key={match.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                  <Link to={`/matches/${match.id}`}>
-                    <Card className="border-0 shadow-md hover:shadow-lg transition-all overflow-hidden">
-                      {/* Match header bar */}
-                      <div className="bg-primary px-4 py-1.5 flex items-center justify-between">
-                        <span className="text-[10px] font-medium text-primary-foreground/80">
-                          {match.stage === "group" ? `Groep ${match.group}` : match.stage}
-                        </span>
-                        <span className="text-[10px] text-primary-foreground/80 flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> {formatNLTime(match.kickoff_utc)}
-                        </span>
-                      </div>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          {/* Home team */}
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <span className="text-2xl shrink-0">{match.home_team?.flag_url || "🏳️"}</span>
-                            <span className="font-semibold text-sm truncate">{match.home_team?.short_name || match.home_team?.name || "TBD"}</span>
-                          </div>
-
-                          {/* Score / Time */}
-                          <div className="px-3 text-center shrink-0">
-                            {match.home_score != null && match.away_score != null ? (
-                              <span className="text-2xl font-bold font-display">
-                                {match.home_score} - {match.away_score}
-                              </span>
-                            ) : (
-                              <span className="text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
-                                {formatNLDate(match.kickoff_utc)}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Away team */}
-                          <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                            <span className="font-semibold text-sm truncate text-right">{match.away_team?.short_name || match.away_team?.name || "TBD"}</span>
-                            <span className="text-2xl shrink-0">{match.away_team?.flag_url || "🏳️"}</span>
-                          </div>
-                        </div>
-
-                        {/* User prediction row */}
-                        {pred ? (
-                          <div className="mt-2 flex items-center justify-center gap-2 text-xs">
-                            <Check className="h-3.5 w-3.5 text-primary" />
-                            <span className="text-muted-foreground">Jouw voorspelling:</span>
-                            <span className="font-bold text-primary">{pred.home_pred} - {pred.away_pred}</span>
-                          </div>
-                        ) : user ? (
-                          <p className="text-[10px] text-muted-foreground text-center mt-2">Nog geen voorspelling →</p>
-                        ) : null}
-
-                        {match.venue && (
-                          <p className="text-[10px] text-muted-foreground text-center mt-1">📍 {match.venue}</p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Link>
-                </motion.div>
-              );
-            })}
+            {upcoming.map((match: any, i: number) => (
+              <MatchCard
+                key={match.id}
+                match={match}
+                prediction={predictionMap.get(match.id)}
+                index={i}
+              />
+            ))}
           </div>
         ) : (
-          <Card className="border-0 shadow-md">
+          <Card className="border-0 shadow-elevation-2">
             <CardContent className="p-6 text-center">
               <Trophy className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
               <p className="text-muted-foreground text-sm">Nog geen wedstrijden gepland.</p>
@@ -219,13 +201,13 @@ export default function Index() {
           <div className="space-y-3">
             {pools.map((pool: any) => (
               <Link key={pool.id} to={`/pool/${pool.id}`}>
-                <Card className="border-0 shadow-md hover:shadow-lg transition-all mb-3">
+                <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all mb-3 group">
                   <CardContent className="p-4 flex items-center justify-between">
                     <div>
                       <p className="font-semibold">{pool.name}</p>
                       <p className="text-xs text-muted-foreground">Code: {pool.invite_code}</p>
                     </div>
-                    <ChevronRight className="h-5 w-5 text-primary" />
+                    <ChevronRight className="h-5 w-5 text-primary group-hover:translate-x-1 transition-transform" />
                   </CardContent>
                 </Card>
               </Link>
@@ -235,12 +217,12 @@ export default function Index() {
       )}
 
       {!user && (
-        <Card className="border-0 shadow-lg bg-primary text-primary-foreground">
+        <Card className="border-0 shadow-elevation-3 gradient-navy text-white">
           <CardContent className="p-6 text-center space-y-3">
             <p className="font-display font-semibold text-lg">Klaar om mee te doen?</p>
             <p className="text-sm opacity-80">Maak een account aan en doe mee met poules!</p>
             <Link to="/auth">
-              <Button className="bg-white text-primary hover:bg-white/90 mt-2 font-semibold">Aan de slag</Button>
+              <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90 mt-2 font-semibold">Aan de slag</Button>
             </Link>
           </CardContent>
         </Card>
