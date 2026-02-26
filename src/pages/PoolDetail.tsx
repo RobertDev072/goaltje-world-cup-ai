@@ -13,7 +13,7 @@ import {
   ArrowLeft, Trophy, Users, TrendingUp, TrendingDown, Minus, Crown,
   Swords, X, Share2, ChevronRight,
 } from "lucide-react";
-import { motion, LayoutGroup, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { RivalBanner } from "@/components/RivalBanner";
 import { BadgesGrid, calculateBadges } from "@/components/BadgesGrid";
@@ -25,6 +25,8 @@ import { CatchUpCalculator } from "@/components/CatchUpCalculator";
 import { SocialShareSheet } from "@/components/SocialShareSheet";
 import { PoolChat } from "@/components/PoolChat";
 import { ShareCard } from "@/components/ShareCard";
+import { VirtualizedLeaderboard } from "@/components/VirtualizedLeaderboard";
+import { TiebreakerInfo } from "@/components/TiebreakerInfo";
 
 interface LeaderboardEntry {
   userId: string;
@@ -461,92 +463,16 @@ export default function PoolDetail() {
         </TabsList>
 
         <TabsContent value="leaderboard" className="mt-4 space-y-2">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-muted-foreground">{leaderboard?.length || 0} deelnemers</span>
+            <TiebreakerInfo />
+          </div>
           {leaderboard && leaderboard.length > 0 ? (
-            <LayoutGroup>
-              {leaderboard.map((entry, i) => {
-                const isMe = entry.userId === user?.id;
-                const isRival = entry.userId === myMembership?.rival_user_id;
-                const pointsAbove = i > 0 ? leaderboard[i - 1].points - entry.points : 0;
-                const pointsBelow = i < leaderboard.length - 1 ? entry.points - leaderboard[i + 1].points : 0;
-
-                return (
-                  <motion.div
-                    key={entry.userId} layout layoutId={entry.userId}
-                    initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.04, layout: { type: "spring", stiffness: 300, damping: 30 } }}
-                  >
-                    <Card className={cn(
-                      "border-0 transition-all duration-300 overflow-hidden",
-                      isMe ? "shadow-glow-primary ring-1 ring-primary/20" : "shadow-elevation-1",
-                      isRival && "ring-1 ring-destructive/20",
-                      i === 0 && "shadow-glow-gold ring-1 ring-secondary/30",
-                      i === 1 && "ring-1 ring-muted-foreground/20",
-                      i === 2 && "ring-1 ring-warning/20",
-                    )}>
-                      {i === 0 && <div className="bg-gradient-to-r from-secondary/20 to-transparent h-0.5" />}
-                      <CardContent className="p-3">
-                        <div className="flex items-center gap-3">
-                          <span className={cn(
-                            "text-lg font-bold font-display w-8 text-center shrink-0",
-                            i === 0 && "text-secondary", i === 1 && "text-muted-foreground",
-                            i === 2 && "text-warning", i > 2 && "text-muted-foreground",
-                          )}>
-                            {getRankBadge(i)}
-                          </span>
-
-                          <div className={cn(
-                            "h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden shrink-0",
-                            i === 0 ? "ring-2 ring-secondary/40 bg-secondary text-secondary-foreground" : "bg-primary text-primary-foreground",
-                          )}>
-                            {entry.avatar_url
-                              ? <img src={entry.avatar_url} alt="" className="h-full w-full object-cover" />
-                              : entry.name[0]?.toUpperCase() || "?"}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">
-                              {entry.name}
-                              {isMe && <span className="text-primary ml-1 text-xs">(jij)</span>}
-                              {isRival && <span className="text-destructive ml-1">⚔️</span>}
-                              {entry.role === "admin" && <span className="ml-1">👑</span>}
-                            </p>
-                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                              {i > 0 && pointsAbove > 0 && (
-                                <span className="flex items-center gap-0.5"><TrendingUp className="h-2.5 w-2.5" />{pointsAbove} achter #{i}</span>
-                              )}
-                              {i < leaderboard.length - 1 && pointsBelow > 0 && (
-                                <span className="flex items-center gap-0.5">+{pointsBelow} voor #{i + 2}</span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="text-right shrink-0">
-                            <span className={cn("font-bold text-lg font-display", i === 0 ? "text-secondary" : "text-primary")}>
-                              {entry.points}
-                            </span>
-                            <span className="text-xs text-muted-foreground ml-0.5">pt</span>
-                            {entry.todayPoints > 0 && (
-                              <motion.div
-                                className="flex items-center justify-end gap-0.5 text-xs font-semibold text-success"
-                                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.3 + i * 0.05 }}
-                              >
-                                <TrendingUp className="h-3 w-3" />+{entry.todayPoints}
-                              </motion.div>
-                            )}
-                            {entry.todayPoints === 0 && (
-                              <div className="flex items-center justify-end gap-0.5 text-[10px] text-muted-foreground/50">
-                                <Minus className="h-2.5 w-2.5" />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-            </LayoutGroup>
+            <VirtualizedLeaderboard
+              leaderboard={leaderboard}
+              currentUserId={user?.id}
+              rivalUserId={myMembership?.rival_user_id}
+            />
           ) : (
             <Card className="border-0 shadow-elevation-1">
               <CardContent className="p-6 text-center text-muted-foreground text-sm">
