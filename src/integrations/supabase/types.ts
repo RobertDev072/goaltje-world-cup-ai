@@ -582,6 +582,7 @@ export type Database = {
         Args: { _pool_id: string; _user_id: string }
         Returns: boolean
       }
+      lookup_pool_by_invite_code: { Args: { _code: string }; Returns: Json }
       toggle_message_reaction: {
         Args: { _emoji: string; _message_id: string }
         Returns: undefined
