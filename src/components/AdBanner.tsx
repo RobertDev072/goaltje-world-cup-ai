@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { getConsent, type ConsentStatus } from "@/lib/consent";
-import { getAdConfig } from "@/lib/adConfig";
+const ADSENSE_PUB_ID = "ca-pub-1329101419131535";
 
 type AdFormat = "horizontal" | "rectangle" | "vertical";
 
@@ -48,13 +48,12 @@ export function AdBanner({ slot, format = "horizontal", className }: AdBannerPro
   useEffect(() => {
     if (consent !== "granted") return;
 
-    const adConfig = getAdConfig();
-    if (!adConfig.publisherId) return;
-
     const isDev = window.location.hostname.includes("lovable") || window.location.hostname === "localhost";
     if (isDev) return;
 
-    loadAdSenseScript(adConfig.publisherId);
+    // Script is already in index.html, just mark as loaded
+    scriptLoaded = true;
+
     const timer = setTimeout(() => {
       if (pushed.current) return;
       try {
@@ -88,15 +87,12 @@ export function AdBanner({ slot, format = "horizontal", className }: AdBannerPro
   // No consent yet → render nothing (no tracking before consent)
   if (consent !== "granted") return null;
 
-  const adConfig = getAdConfig();
-  if (!adConfig.publisherId) return null;
-
   return (
     <div ref={adRef} className={cn("overflow-hidden", FORMAT_STYLES[format], className)}>
       <ins
         className="adsbygoogle"
         style={{ display: "block" }}
-        data-ad-client={adConfig.publisherId}
+        data-ad-client={ADSENSE_PUB_ID}
         data-ad-slot={slot}
         data-ad-format="auto"
         data-full-width-responsive="true"
