@@ -27,7 +27,7 @@ import { PoolChat } from "@/components/PoolChat";
 import { ShareCard } from "@/components/ShareCard";
 import { VirtualizedLeaderboard } from "@/components/VirtualizedLeaderboard";
 import { TiebreakerInfo } from "@/components/TiebreakerInfo";
-import { AdBanner } from "@/components/AdBanner";
+
 
 interface LeaderboardEntry {
   userId: string;
@@ -249,7 +249,7 @@ export default function PoolDetail() {
   const resultPts = scoringRules?.result ?? 3;
   const goalDiffPts = scoringRules?.goal_diff ?? 4;
 
-  const appOrigin = import.meta.env.PROD ? "https://goaltje-world-cup-ai.lovable.app" : window.location.origin;
+  const appOrigin = import.meta.env.PROD ? "https://goaltje.nl" : window.location.origin;
   const poolLink = pool ? `${appOrigin}/join/${pool.invite_code}` : "";
   const shareText = pool ? `Doe mee met mijn WK 2026 poule "${pool.name}" op Goaltje! 🏆⚽\n\nCode: ${pool.invite_code}\n${poolLink}` : "";
 
@@ -454,8 +454,6 @@ export default function PoolDetail() {
         </motion.div>
       )}
 
-      {/* Ad before tabs */}
-      <AdBanner slot="2222222222" format="horizontal" />
 
       {/* Tabs */}
       <Tabs defaultValue="leaderboard" className="w-full">
@@ -507,8 +505,6 @@ export default function PoolDetail() {
           )}
         </TabsContent>
 
-        {/* Ad between tabs */}
-        <AdBanner slot="3333333333" format="horizontal" className="mt-4" />
 
         {/* Chat Tab */}
         <TabsContent value="chat" className="mt-4">

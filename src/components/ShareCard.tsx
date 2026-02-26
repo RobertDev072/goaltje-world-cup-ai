@@ -136,7 +136,7 @@ export function ShareCard({ type, poolName, playerName, rank, totalPlayers, poin
     ctx.textAlign = "center";
     ctx.fillStyle = "rgba(255,255,255,0.25)";
     ctx.font = "11px system-ui, -apple-system, sans-serif";
-    ctx.fillText("goaltje-world-cup-ai.lovable.app", w / 2, h - 20);
+    ctx.fillText("goaltje.nl", w / 2, h - 20);
 
     return canvas;
   }, [type, poolName, playerName, rank, totalPlayers, points, todayPoints, prediction]);
@@ -185,7 +185,7 @@ export function ShareCard({ type, poolName, playerName, rank, totalPlayers, poin
     const canvas = generateCard();
     if (!canvas) return;
     downloadCard();
-    window.open(`https://wa.me/?text=${encodeURIComponent(getShareText() + "\n\nhttps://goaltje-world-cup-ai.lovable.app")}`, "_blank");
+    window.open(`https://wa.me/?text=${encodeURIComponent(getShareText() + "\n\nhttps://goaltje.nl")}`, "_blank");
   };
 
   return (
@@ -220,14 +220,20 @@ export function ShareCard({ type, poolName, playerName, rank, totalPlayers, poin
           size="sm"
           className="h-9 gap-1.5 rounded-xl text-white text-xs"
           style={{ background: "linear-gradient(135deg, hsl(37,97%,54%), hsl(340,82%,52%), hsl(281,73%,52%))" }}
-          onClick={() => { downloadCard(); toast({ title: "Afbeelding opgeslagen! 📸", description: "Deel hem via je Instagram Story" }); }}
+          onClick={() => { 
+            navigator.clipboard.writeText(getShareText() + "\n\nhttps://goaltje.nl");
+            toast({ title: "Link gekopieerd! 📋", description: "Plak in je Instagram Story" }); 
+          }}
         >
           <Instagram className="h-3.5 w-3.5" /> Insta
         </Button>
         <Button
           size="sm"
           className="h-9 gap-1.5 rounded-xl bg-foreground hover:bg-foreground/90 text-background text-xs"
-          onClick={() => { downloadCard(); toast({ title: "Afbeelding opgeslagen! 📸", description: "Deel op X of TikTok" }); }}
+          onClick={() => {
+            navigator.clipboard.writeText(getShareText() + "\n\nhttps://goaltje.nl");
+            toast({ title: "Link gekopieerd! 📋", description: "Plak op X of TikTok" });
+          }}
         >
           <Share2 className="h-3.5 w-3.5" /> X/TikTok
         </Button>
