@@ -280,6 +280,51 @@ export type Database = {
           },
         ]
       }
+      pool_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          pool_id: string
+          reactions_json: Json | null
+          reply_to_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          pool_id: string
+          reactions_json?: Json | null
+          reply_to_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          pool_id?: string
+          reactions_json?: Json | null
+          reply_to_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pool_messages_pool_id_fkey"
+            columns: ["pool_id"]
+            isOneToOne: false
+            referencedRelation: "pools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pool_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "pool_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pools: {
         Row: {
           created_at: string
@@ -536,6 +581,10 @@ export type Database = {
       is_pool_member: {
         Args: { _pool_id: string; _user_id: string }
         Returns: boolean
+      }
+      toggle_message_reaction: {
+        Args: { _emoji: string; _message_id: string }
+        Returns: undefined
       }
     }
     Enums: {

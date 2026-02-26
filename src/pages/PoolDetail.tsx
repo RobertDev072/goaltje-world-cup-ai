@@ -23,6 +23,8 @@ import { LiveRankNotification } from "@/components/LiveRankNotification";
 import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
 import { CatchUpCalculator } from "@/components/CatchUpCalculator";
 import { SocialShareSheet } from "@/components/SocialShareSheet";
+import { PoolChat } from "@/components/PoolChat";
+import { ShareCard } from "@/components/ShareCard";
 
 interface LeaderboardEntry {
   userId: string;
@@ -353,10 +355,21 @@ export default function PoolDetail() {
         )}
       </AnimatePresence>
 
-      {/* Rival Banner */}
+      {/* Rival Banner with duel data */}
       {myEntry && rivalEntry && (
         <div className="relative">
-          <RivalBanner myName={myEntry.name} myPoints={myEntry.points} rivalName={rivalEntry.name} rivalPoints={rivalEntry.points} />
+          <RivalBanner
+            myName={myEntry.name}
+            myPoints={myEntry.points}
+            rivalName={rivalEntry.name}
+            rivalPoints={rivalEntry.points}
+            duelMatches={(() => {
+              if (!myPredictions || !myMembership?.rival_user_id) return undefined;
+              // Build duel match data from predictions
+              // This is a simplified version - in production you'd fetch rival's predictions too
+              return undefined; // Will be enhanced when rival predictions are fetched
+            })()}
+          />
           <button
             onClick={() => setRival.mutate(null)}
             className="absolute top-2 right-2 h-6 w-6 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
@@ -439,10 +452,11 @@ export default function PoolDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="leaderboard" className="w-full">
-        <TabsList className="w-full grid grid-cols-4 h-11 rounded-xl">
+        <TabsList className="w-full grid grid-cols-5 h-11 rounded-xl">
           <TabsTrigger value="leaderboard" className="text-xs rounded-lg data-[state=active]:shadow-elevation-1">🏆 Rang</TabsTrigger>
+          <TabsTrigger value="chat" className="text-xs rounded-lg data-[state=active]:shadow-elevation-1">💬 Chat</TabsTrigger>
           <TabsTrigger value="badges" className="text-xs rounded-lg data-[state=active]:shadow-elevation-1">🎖️ Badges</TabsTrigger>
-          <TabsTrigger value="insights" className="text-xs rounded-lg data-[state=active]:shadow-elevation-1">🧠 Insights</TabsTrigger>
+          <TabsTrigger value="insights" className="text-xs rounded-lg data-[state=active]:shadow-elevation-1">🧠 Stats</TabsTrigger>
           <TabsTrigger value="members" className="text-xs rounded-lg data-[state=active]:shadow-elevation-1">👥 Leden</TabsTrigger>
         </TabsList>
 
@@ -542,9 +556,36 @@ export default function PoolDetail() {
           )}
         </TabsContent>
 
+        {/* Chat Tab */}
+        <TabsContent value="chat" className="mt-4">
+          <PoolChat poolId={id!} />
+        </TabsContent>
+
         <TabsContent value="badges" className="mt-4">
           <BadgesGrid badges={badges} />
         </TabsContent>
+
+        {/* Share Card in leaderboard */}
+        {myEntry && myPosition && (
+          <TabsContent value="leaderboard" className="mt-0">
+            <div className="mt-4">
+              <Card className="border-0 shadow-elevation-1 overflow-hidden">
+                <CardContent className="p-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">📸 Deel je score</p>
+                  <ShareCard
+                    type="rank"
+                    poolName={pool.name}
+                    playerName={myEntry.name}
+                    rank={myPosition}
+                    totalPlayers={leaderboard?.length}
+                    points={myEntry.points}
+                    todayPoints={myEntry.todayPoints}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        )}
 
         <TabsContent value="insights" className="mt-4">
           <SmartInsights predictions={myPredictions || []} />
