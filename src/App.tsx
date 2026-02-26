@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthGate } from "@/components/AuthGate";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { CookieConsent } from "@/components/CookieConsent";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const VALID_LANGS = ["nl", "en", "es", "pt"];
@@ -59,6 +60,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <InstallPrompt />
+        <CookieConsent />
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>

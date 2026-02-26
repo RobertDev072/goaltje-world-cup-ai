@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { getConsent, type ConsentStatus } from "@/lib/consent";
 
 // Replace with your actual AdSense Publisher ID
 const ADSENSE_PUB_ID = "ca-pub-XXXXXXXXXXXXXXXX";
@@ -7,7 +8,7 @@ const ADSENSE_PUB_ID = "ca-pub-XXXXXXXXXXXXXXXX";
 type AdFormat = "horizontal" | "rectangle" | "vertical";
 
 interface AdBannerProps {
-  slot: string; // Your ad unit slot ID from AdSense
+  slot: string;
   format?: AdFormat;
   className?: string;
 }
@@ -18,7 +19,6 @@ const FORMAT_STYLES: Record<AdFormat, string> = {
   vertical: "min-h-[600px]",
 };
 
-// Track if the script has been loaded globally
 let scriptLoaded = false;
 
 function loadAdSenseScript() {
@@ -27,7 +27,6 @@ function loadAdSenseScript() {
     scriptLoaded = true;
     return;
   }
-
   const script = document.createElement("script");
   script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUB_ID}`;
   script.async = true;
@@ -39,11 +38,22 @@ function loadAdSenseScript() {
 export function AdBanner({ slot, format = "horizontal", className }: AdBannerProps) {
   const adRef = useRef<HTMLDivElement>(null);
   const pushed = useRef(false);
+  const [consent, setConsentState] = useState<ConsentStatus>(getConsent);
+
+  // Listen for consent changes
+  useEffect(() => {
+    const handler = (e: Event) => setConsentState((e as CustomEvent).detail);
+    window.addEventListener("consent-change", handler);
+    return () => window.removeEventListener("consent-change", handler);
+  }, []);
 
   useEffect(() => {
-    loadAdSenseScript();
+    if (consent !== "granted") return;
 
-    // Push ad after a short delay to ensure script is loaded
+    const isDev = window.location.hostname.includes("lovable") || window.location.hostname === "localhost";
+    if (isDev) return;
+
+    loadAdSenseScript();
     const timer = setTimeout(() => {
       if (pushed.current) return;
       try {
@@ -51,17 +61,15 @@ export function AdBanner({ slot, format = "horizontal", className }: AdBannerPro
         (window.adsbygoogle = window.adsbygoogle || []).push({});
         pushed.current = true;
       } catch {
-        // AdSense not ready yet or blocked by ad blocker
+        // AdSense not ready or ad blocker
       }
     }, 500);
-
     return () => clearTimeout(timer);
-  }, []);
+  }, [consent]);
 
-  // Don't render in development/preview mode (ads won't work anyway)
-  const isDev = window.location.hostname.includes("lovable") || 
-                window.location.hostname === "localhost";
+  const isDev = window.location.hostname.includes("lovable") || window.location.hostname === "localhost";
 
+  // In dev mode, always show placeholder
   if (isDev) {
     return (
       <div
@@ -75,6 +83,9 @@ export function AdBanner({ slot, format = "horizontal", className }: AdBannerPro
       </div>
     );
   }
+
+  // No consent yet → render nothing (no tracking before consent)
+  if (consent !== "granted") return null;
 
   return (
     <div ref={adRef} className={cn("overflow-hidden", FORMAT_STYLES[format], className)}>
