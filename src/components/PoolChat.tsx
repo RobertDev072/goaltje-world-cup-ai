@@ -184,11 +184,11 @@ export function PoolChat({ poolId }: PoolChatProps) {
                 const sameUser = prevMsg?.user_id === msg.user_id;
 
                 return (
-                  <motion.div
+                    <motion.div
                     key={msg.id}
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={cn("flex gap-2", isMe ? "flex-row-reverse" : "")}
+                    className={cn("group flex gap-2", isMe ? "flex-row-reverse" : "")}
                   >
                     {/* Avatar */}
                     {!sameUser && !isMe && (

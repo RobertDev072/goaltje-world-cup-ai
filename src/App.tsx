@@ -3,12 +3,19 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthGate } from "@/components/AuthGate";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { Skeleton } from "@/components/ui/skeleton";
+
+const VALID_LANGS = ["nl", "en", "es", "pt"];
+function LangGuard({ children }: { children: React.ReactNode }) {
+  const { lang } = useParams<{ lang: string }>();
+  if (!lang || !VALID_LANGS.includes(lang)) return <Navigate to="/landing" replace />;
+  return <>{children}</>;
+}
 
 // Lazy load all pages for lighter initial bundle
 const Auth = lazy(() => import("./pages/Auth"));
@@ -57,10 +64,7 @@ const App = () => (
             <Routes>
               {/* Public landing pages */}
               <Route path="/landing" element={<Landing />} />
-              <Route path="/nl" element={<Landing />} />
-              <Route path="/en" element={<Landing />} />
-              <Route path="/es" element={<Landing />} />
-              <Route path="/pt" element={<Landing />} />
+              <Route path="/:lang" element={<LangGuard><Landing /></LangGuard>} />
               
               {/* Auth */}
               <Route path="/auth" element={<Auth />} />
