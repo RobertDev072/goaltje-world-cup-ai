@@ -1,9 +1,13 @@
 import { useMemo, useState } from "react";
 import { MatchCard } from "./MatchCard";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+
+const UPCOMING_PAGE_SIZE = 10;
+const PAST_PAGE_SIZE = 10;
 
 interface MatchSectionsProps {
   matches: any[];
@@ -18,6 +22,8 @@ function isSameDay(d1: Date, d2: Date) {
 
 export function MatchSections({ matches, predictions, showPredictions = true }: MatchSectionsProps) {
   const [pastOpen, setPastOpen] = useState(false);
+  const [upcomingVisible, setUpcomingVisible] = useState(UPCOMING_PAGE_SIZE);
+  const [pastVisible, setPastVisible] = useState(PAST_PAGE_SIZE);
   const now = new Date();
 
   const { today, upcoming, past } = useMemo(() => {
@@ -38,11 +44,15 @@ export function MatchSections({ matches, predictions, showPredictions = true }: 
       }
     });
 
-    // Sort past newest first
     past.sort((a, b) => new Date(b.kickoff_utc).getTime() - new Date(a.kickoff_utc).getTime());
     
-    return { today, upcoming: upcoming.slice(0, 10), past };
+    return { today, upcoming, past };
   }, [matches]);
+
+  const visibleUpcoming = upcoming.slice(0, upcomingVisible);
+  const visiblePast = past.slice(0, pastVisible);
+  const hasMoreUpcoming = upcomingVisible < upcoming.length;
+  const hasMorePast = pastVisible < past.length;
 
   const renderSection = (title: string, icon: string, items: any[], color: string, startIndex = 0) => {
     if (items.length === 0) return null;
@@ -72,10 +82,24 @@ export function MatchSections({ matches, predictions, showPredictions = true }: 
       {/* Live / Today */}
       {renderSection("Vandaag", "🔵", today, "bg-primary")}
 
-      {/* Upcoming */}
-      {renderSection("Eerstvolgende", "🟡", upcoming, "bg-secondary", today.length)}
+      {/* Upcoming — paginated */}
+      {upcoming.length > 0 && (
+        <div className="space-y-3">
+          {renderSection("Eerstvolgende", "🟡", visibleUpcoming, "bg-secondary", today.length)}
+          {hasMoreUpcoming && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full rounded-xl text-xs h-9 border-dashed"
+              onClick={() => setUpcomingVisible((v) => v + UPCOMING_PAGE_SIZE)}
+            >
+              Meer laden ({upcoming.length - upcomingVisible} over)
+            </Button>
+          )}
+        </div>
+      )}
 
-      {/* Past - Collapsible */}
+      {/* Past - Collapsible + paginated */}
       {past.length > 0 && (
         <Collapsible open={pastOpen} onOpenChange={setPastOpen}>
           <CollapsibleTrigger className="flex items-center gap-2 w-full group">
@@ -97,7 +121,7 @@ export function MatchSections({ matches, predictions, showPredictions = true }: 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
-              {past.map((match, i) => (
+              {visiblePast.map((match, i) => (
                 <MatchCard
                   key={match.id}
                   match={match}
@@ -105,6 +129,16 @@ export function MatchSections({ matches, predictions, showPredictions = true }: 
                   index={i}
                 />
               ))}
+              {hasMorePast && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full rounded-xl text-xs h-9 border-dashed"
+                  onClick={() => setPastVisible((v) => v + PAST_PAGE_SIZE)}
+                >
+                  Meer laden ({past.length - pastVisible} over)
+                </Button>
+              )}
             </motion.div>
           </CollapsibleContent>
         </Collapsible>
