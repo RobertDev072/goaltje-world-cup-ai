@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, Fragment } from "react";
 import { MatchCard } from "./MatchCard";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { AdBanner } from "@/components/AdBanner";
 
 const UPCOMING_PAGE_SIZE = 10;
 const PAST_PAGE_SIZE = 10;
@@ -54,6 +55,8 @@ export function MatchSections({ matches, predictions, showPredictions = true }: 
   const hasMoreUpcoming = upcomingVisible < upcoming.length;
   const hasMorePast = pastVisible < past.length;
 
+  const AD_INTERVAL = 5; // Show ad every 5 matches
+
   const renderSection = (title: string, icon: string, items: any[], color: string, startIndex = 0) => {
     if (items.length === 0) return null;
     return (
@@ -66,12 +69,16 @@ export function MatchSections({ matches, predictions, showPredictions = true }: 
           <span className="text-xs text-muted-foreground/60">({items.length})</span>
         </div>
         {items.map((match, i) => (
-          <MatchCard
-            key={match.id}
-            match={match}
-            prediction={showPredictions ? predictions?.get(match.id) : undefined}
-            index={startIndex + i}
-          />
+          <Fragment key={match.id}>
+            <MatchCard
+              match={match}
+              prediction={showPredictions ? predictions?.get(match.id) : undefined}
+              index={startIndex + i}
+            />
+            {(i + 1) % AD_INTERVAL === 0 && i < items.length - 1 && (
+              <AdBanner slot="5555555555" format="horizontal" />
+            )}
+          </Fragment>
         ))}
       </div>
     );
