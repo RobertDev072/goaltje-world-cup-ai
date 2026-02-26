@@ -56,6 +56,87 @@ export type Database = {
         }
         Relationships: []
       }
+      bonus_predictions: {
+        Row: {
+          answer: string
+          created_at: string
+          id: string
+          points_awarded: number | null
+          pool_id: string
+          question_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          id?: string
+          points_awarded?: number | null
+          pool_id: string
+          question_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          id?: string
+          points_awarded?: number | null
+          pool_id?: string
+          question_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_predictions_pool_id_fkey"
+            columns: ["pool_id"]
+            isOneToOne: false
+            referencedRelation: "pools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bonus_predictions_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_questions: {
+        Row: {
+          closes_at: string
+          correct_answer: string | null
+          created_at: string
+          id: string
+          options_json: Json | null
+          points: number
+          question: string
+          type: string
+        }
+        Insert: {
+          closes_at: string
+          correct_answer?: string | null
+          created_at?: string
+          id?: string
+          options_json?: Json | null
+          points?: number
+          question: string
+          type?: string
+        }
+        Update: {
+          closes_at?: string
+          correct_answer?: string | null
+          created_at?: string
+          id?: string
+          options_json?: Json | null
+          points?: number
+          question?: string
+          type?: string
+        }
+        Relationships: []
+      }
       match_events: {
         Row: {
           created_at: string
