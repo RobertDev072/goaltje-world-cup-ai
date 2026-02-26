@@ -68,6 +68,21 @@ function AdminMatchEditor() {
     },
   });
 
+  const invalidateAll = () => {
+    // Invalidate every query key used across the entire app
+    queryClient.invalidateQueries({ queryKey: ["admin-matches"] });
+    queryClient.invalidateQueries({ queryKey: ["matches"] });
+    queryClient.invalidateQueries({ queryKey: ["upcoming-matches"] });
+    queryClient.invalidateQueries({ queryKey: ["my-predictions"] });
+    queryClient.invalidateQueries({ queryKey: ["home-predictions"] });
+    queryClient.invalidateQueries({ queryKey: ["my-pool-predictions"] });
+    queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+    queryClient.invalidateQueries({ queryKey: ["remaining-matches"] });
+    queryClient.invalidateQueries({ queryKey: ["pool"] });
+    queryClient.invalidateQueries({ queryKey: ["pool-members"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+  };
+
   const updateMatch = useMutation({
     mutationFn: async (matchId: string) => {
       let finalStatus = matchStatus;
@@ -83,11 +98,25 @@ function AdminMatchEditor() {
     onSuccess: () => {
       toast({ title: "✅ Opgeslagen", description: "Score opgeslagen & punten herberekend!" });
       setEditingMatch(null);
-      queryClient.invalidateQueries({ queryKey: ["admin-matches"] });
-      queryClient.invalidateQueries({ queryKey: ["matches"] });
-      queryClient.invalidateQueries({ queryKey: ["upcoming-matches"] });
-      queryClient.invalidateQueries({ queryKey: ["my-predictions"] });
-      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+      invalidateAll();
+    },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+  });
+
+  const resetMatch = useMutation({
+    mutationFn: async (matchId: string) => {
+      const { error } = await supabase.from("matches").update({
+        home_score: null,
+        away_score: null,
+        status: "scheduled",
+        last_updated: new Date().toISOString(),
+      }).eq("id", matchId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "🔄 Gereset", description: "Wedstrijd teruggezet naar gepland. Alle punten voor deze wedstrijd zijn op 0 gezet." });
+      setEditingMatch(null);
+      invalidateAll();
     },
     onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
   });
@@ -256,14 +285,31 @@ function AdminMatchEditor() {
                       <SelectItem value="cancelled">❌ Afgelast</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button
-                    size="sm"
-                    className="w-full gradient-primary text-primary-foreground h-10"
-                    onClick={() => updateMatch.mutate(m.id)}
-                    disabled={updateMatch.isPending}
-                  >
-                    {updateMatch.isPending ? "Opslaan..." : "💾 Opslaan & Punten Herberekenen"}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1 gradient-primary text-primary-foreground h-10"
+                      onClick={() => updateMatch.mutate(m.id)}
+                      disabled={updateMatch.isPending || resetMatch.isPending}
+                    >
+                      {updateMatch.isPending ? "Opslaan..." : "💾 Opslaan & Herberekenen"}
+                    </Button>
+                    {(m.home_score != null || m.status !== "scheduled") && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-10 border-destructive/30 text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          if (confirm("Weet je zeker dat je deze wedstrijd wilt resetten? Alle punten worden op 0 gezet.")) {
+                            resetMatch.mutate(m.id);
+                          }
+                        }}
+                        disabled={resetMatch.isPending || updateMatch.isPending}
+                      >
+                        {resetMatch.isPending ? "..." : "🔄 Reset"}
+                      </Button>
+                    )}
+                  </div>
                 </motion.div>
               )}
             </CardContent>
