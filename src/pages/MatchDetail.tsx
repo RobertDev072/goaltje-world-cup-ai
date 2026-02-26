@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatNLDateTime } from "@/lib/timezone";
-import { calculatePoints, DEFAULT_RULES } from "@/lib/scoring";
+import { calculatePoints, explainPoints, DEFAULT_RULES, STATUS_CONFIG, type MatchStatus, isPredictionAllowed, isMatchCounted } from "@/lib/scoring";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,6 +86,7 @@ export default function MatchDetail() {
 
   const isLocked = useMemo(() => {
     if (!match) return true;
+    if (!isPredictionAllowed(match.status)) return true;
     return new Date() >= new Date(match.kickoff_utc);
   }, [match]);
 
@@ -177,9 +178,15 @@ export default function MatchDetail() {
               <span className="text-xs text-muted-foreground">
                 {match.stage === "group" ? `Groep ${match.group}` : match.stage}
               </span>
-              {match.status === "live" && <Badge variant="destructive" className="live-pulse">🔴 LIVE</Badge>}
-              {match.status === "finished" && <Badge variant="secondary">Gespeeld</Badge>}
-              {match.status === "scheduled" && <Badge variant="outline">Gepland</Badge>}
+              {(() => {
+                const si = STATUS_CONFIG[(match.status as MatchStatus) || 'scheduled'];
+                const variant = match.status === 'live' ? 'destructive' as const : match.status === 'finished' ? 'secondary' as const : 'outline' as const;
+                return (
+                  <Badge variant={variant} className={match.status === 'live' ? 'live-pulse' : ''}>
+                    {si.emoji} {si.label}
+                  </Badge>
+                );
+              })()}
             </div>
 
             <div className="flex items-center justify-between">
@@ -282,22 +289,36 @@ export default function MatchDetail() {
                 </Button>
               )}
 
-              {/* Points result */}
-              {match.status === "finished" && existingPred && (
-                <div className={`rounded-xl p-3 text-center ${
-                  (pointsAwarded ?? 0) > 0 ? "bg-primary/10" : "bg-muted"
-                }`}>
-                  <p className="text-xs text-muted-foreground">Jouw voorspelling: {existingPred.home_pred} - {existingPred.away_pred}</p>
-                  <p className="text-lg font-bold font-display mt-1">
-                    {(pointsAwarded ?? 0) > 0 ? (
-                      <span className="text-primary flex items-center justify-center gap-1">
-                        <Check className="h-5 w-5" /> +{pointsAwarded} punten
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground flex items-center justify-center gap-1">
-                        <X className="h-5 w-5" /> 0 punten
-                      </span>
-                    )}
+              {/* Points result with explanation */}
+              {isMatchCounted(match.status) && existingPred && (() => {
+                const explanation = explainPoints(
+                  existingPred.home_pred, existingPred.away_pred,
+                  match.home_score, match.away_score
+                );
+                return (
+                  <div className={`rounded-xl p-3 text-center ${explanation.points > 0 ? "bg-primary/10" : "bg-muted"}`}>
+                    <p className="text-xs text-muted-foreground">Jouw voorspelling: {existingPred.home_pred} - {existingPred.away_pred}</p>
+                    <p className="text-lg font-bold font-display mt-1">
+                      {explanation.points > 0 ? (
+                        <span className="text-primary flex items-center justify-center gap-1">
+                          <Check className="h-5 w-5" /> +{explanation.points} punten
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground flex items-center justify-center gap-1">
+                          <X className="h-5 w-5" /> 0 punten
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-1">{explanation.reason}</p>
+                  </div>
+                );
+              })()}
+
+              {/* Cancelled/void notice */}
+              {(match.status === 'cancelled' || match.status === 'void') && (
+                <div className="rounded-xl p-3 text-center bg-destructive/10">
+                  <p className="text-xs text-destructive font-medium">
+                    {STATUS_CONFIG[(match.status as MatchStatus)].emoji} Deze wedstrijd is {STATUS_CONFIG[(match.status as MatchStatus)].label.toLowerCase()} en telt niet mee voor het klassement.
                   </p>
                 </div>
               )}

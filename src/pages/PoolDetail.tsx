@@ -31,6 +31,10 @@ interface LeaderboardEntry {
   points: number;
   todayPoints: number;
   role: string;
+  exactCount: number;
+  correctResults: number;
+  totalCorrectGoals: number;
+  lastCorrectAt: string | null;
 }
 
 export default function PoolDetail() {
@@ -104,16 +108,45 @@ export default function PoolDetail() {
       if (!memberRows || memberRows.length === 0) return [];
       const userIds = memberRows.map((m) => m.user_id);
       const { data: preds } = await supabase
-        .from("predictions").select("user_id, points_awarded, match_id, matches(kickoff_utc)").eq("pool_id", id!);
+        .from("predictions").select("user_id, points_awarded, home_pred, away_pred, match_id, updated_at, matches(kickoff_utc, home_score, away_score, status)").eq("pool_id", id!);
       const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
       const userPoints: Record<string, number> = {};
       const userTodayPoints: Record<string, number> = {};
-      userIds.forEach((uid) => { userPoints[uid] = 0; userTodayPoints[uid] = 0; });
+      const userExactCount: Record<string, number> = {};
+      const userCorrectResults: Record<string, number> = {};
+      const userTotalCorrectGoals: Record<string, number> = {};
+      const userLastCorrectAt: Record<string, string | null> = {};
+      userIds.forEach((uid) => {
+        userPoints[uid] = 0; userTodayPoints[uid] = 0;
+        userExactCount[uid] = 0; userCorrectResults[uid] = 0;
+        userTotalCorrectGoals[uid] = 0; userLastCorrectAt[uid] = null;
+      });
       preds?.forEach((p: any) => {
         const pts = p.points_awarded || 0;
+        const m = p.matches;
         userPoints[p.user_id] = (userPoints[p.user_id] || 0) + pts;
-        const kickoff = p.matches?.kickoff_utc ? new Date(p.matches.kickoff_utc) : null;
+        const kickoff = m?.kickoff_utc ? new Date(m.kickoff_utc) : null;
         if (kickoff && kickoff >= todayStart) { userTodayPoints[p.user_id] = (userTodayPoints[p.user_id] || 0) + pts; }
+
+        // Tiebreaker stats (only for finished matches)
+        if (m?.status === 'finished' && m.home_score != null && m.away_score != null && p.home_pred != null && p.away_pred != null) {
+          // Exact score
+          if (p.home_pred === m.home_score && p.away_pred === m.away_score) {
+            userExactCount[p.user_id] = (userExactCount[p.user_id] || 0) + 1;
+          }
+          // Correct result
+          if (pts > 0) {
+            userCorrectResults[p.user_id] = (userCorrectResults[p.user_id] || 0) + 1;
+            // Total correct predicted goals
+            const homeCorrect = p.home_pred === m.home_score ? 1 : 0;
+            const awayCorrect = p.away_pred === m.away_score ? 1 : 0;
+            userTotalCorrectGoals[p.user_id] = (userTotalCorrectGoals[p.user_id] || 0) + homeCorrect + awayCorrect;
+            // Last correct prediction timestamp
+            if (!userLastCorrectAt[p.user_id] || p.updated_at > userLastCorrectAt[p.user_id]!) {
+              userLastCorrectAt[p.user_id] = p.updated_at;
+            }
+          }
+        }
       });
       const { data: profiles } = await supabase.from("profiles").select("user_id, name, avatar_url").in("user_id", userIds);
       const profileMap: Record<string, any> = {};
@@ -124,8 +157,24 @@ export default function PoolDetail() {
         .map(([userId, points]) => ({
           userId, name: profileMap[userId]?.name || "Onbekend", avatar_url: profileMap[userId]?.avatar_url || null,
           points, todayPoints: userTodayPoints[userId] || 0, role: roleMap[userId] || "member",
+          exactCount: userExactCount[userId] || 0,
+          correctResults: userCorrectResults[userId] || 0,
+          totalCorrectGoals: userTotalCorrectGoals[userId] || 0,
+          lastCorrectAt: userLastCorrectAt[userId] || null,
         }))
-        .sort((a, b) => b.points - a.points) as LeaderboardEntry[];
+        .sort((a, b) => {
+          // 1. Points
+          if (b.points !== a.points) return b.points - a.points;
+          // 2. Most exact scores
+          if (b.exactCount !== a.exactCount) return b.exactCount - a.exactCount;
+          // 3. Most correct results
+          if (b.correctResults !== a.correctResults) return b.correctResults - a.correctResults;
+          // 4. Total correct goals predicted
+          if (b.totalCorrectGoals !== a.totalCorrectGoals) return b.totalCorrectGoals - a.totalCorrectGoals;
+          // 5. Last correct prediction (earlier = higher)
+          if (a.lastCorrectAt && b.lastCorrectAt) return a.lastCorrectAt < b.lastCorrectAt ? -1 : 1;
+          return 0;
+        }) as LeaderboardEntry[];
     },
     enabled: !!id,
   });
@@ -190,8 +239,9 @@ export default function PoolDetail() {
   }, [myPosition, leaderboard]);
 
   const scoringRules = pool?.scoring_rules_json as any;
-  const exactPts = scoringRules?.exact ?? 5;
+  const exactPts = scoringRules?.exact ?? 6;
   const resultPts = scoringRules?.result ?? 3;
+  const goalDiffPts = scoringRules?.goal_diff ?? 4;
 
   const appOrigin = import.meta.env.PROD ? "https://goaltje-world-cup-ai.lovable.app" : window.location.origin;
   const poolLink = pool ? `${appOrigin}/join/${pool.invite_code}` : "";

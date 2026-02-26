@@ -46,7 +46,7 @@ function StatCard({ label, value, icon: Icon, sub, trend }: {
   );
 }
 
-type MatchFilter = "today" | "live" | "scheduled" | "finished" | "all";
+type MatchFilter = "today" | "live" | "scheduled" | "finished" | "postponed" | "cancelled" | "all";
 
 function AdminMatchEditor() {
   const queryClient = useQueryClient();
@@ -140,6 +140,8 @@ function AdminMatchEditor() {
       case "live": return m.status === "live";
       case "scheduled": return m.status === "scheduled";
       case "finished": return m.status === "finished";
+      case "postponed": return m.status === "postponed";
+      case "cancelled": return ["cancelled", "void"].includes(m.status);
       case "all": return true;
       default: return true;
     }
@@ -150,6 +152,8 @@ function AdminMatchEditor() {
     { key: "scheduled", label: "🕐 Gepland", count: matches?.filter((m: any) => m.status === "scheduled").length },
     { key: "live", label: "🔴 Live", count: matches?.filter((m: any) => m.status === "live").length },
     { key: "finished", label: "✅ Gespeeld", count: matches?.filter((m: any) => m.status === "finished").length },
+    { key: "postponed", label: "⏸️ Uitgesteld", count: matches?.filter((m: any) => m.status === "postponed").length },
+    { key: "cancelled", label: "❌ Afgelast", count: matches?.filter((m: any) => ["cancelled", "void"].includes(m.status)).length },
     { key: "all", label: "Alles", count: matches?.length },
   ];
 
@@ -215,10 +219,10 @@ function AdminMatchEditor() {
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[10px] text-muted-foreground">{formatNLDate(m.kickoff_utc)}</span>
                     <Badge
-                      variant={m.status === "live" ? "destructive" : m.status === "finished" ? "secondary" : "outline"}
+                      variant={["live","cancelled","void"].includes(m.status) ? "destructive" : m.status === "finished" ? "secondary" : "outline"}
                       className="text-[9px] px-1.5 py-0"
                     >
-                      {m.status === "scheduled" ? "Gepland" : m.status === "live" ? "Live" : m.status === "finished" ? "Gespeeld" : m.status}
+                      {m.status === "scheduled" ? "Gepland" : m.status === "live" ? "Live" : m.status === "finished" ? "Gespeeld" : m.status === "postponed" ? "Uitgesteld" : m.status === "cancelled" ? "Afgelast" : m.status === "void" ? "Ongeldig" : m.status}
                     </Badge>
                     {m.status === "finished" && <CheckCircle2 className="h-3 w-3 text-primary" />}
                   </div>
@@ -282,7 +286,9 @@ function AdminMatchEditor() {
                       <SelectItem value="scheduled">🕐 Gepland</SelectItem>
                       <SelectItem value="live">🔴 Live</SelectItem>
                       <SelectItem value="finished">✅ Gespeeld</SelectItem>
+                      <SelectItem value="postponed">⏸️ Uitgesteld</SelectItem>
                       <SelectItem value="cancelled">❌ Afgelast</SelectItem>
+                      <SelectItem value="void">🚫 Ongeldig</SelectItem>
                     </SelectContent>
                   </Select>
                   <div className="flex gap-2">
@@ -408,9 +414,10 @@ export default function AdminDashboard() {
         <div className="space-y-3">
           <Card className="border-0 shadow-sm bg-muted/50">
             <CardContent className="p-3 text-xs text-muted-foreground space-y-1">
+              <p>⚽ <strong>Scoring:</strong> Exact = 6 pt | Doelverschil = 4 pt | Resultaat = 3 pt</p>
               <p>📋 <strong>Workflow:</strong> Zoek de wedstrijd → vul de score in → klik opslaan.</p>
               <p>🔄 Punten worden <strong>automatisch</strong> herberekend voor alle gebruikers.</p>
-              <p>💡 Tip: Google "WK 2026 uitslagen" voor de scores.</p>
+              <p>⏸️ Statussen: Gepland, Live, Gespeeld, Uitgesteld, Afgelast, Ongeldig</p>
             </CardContent>
           </Card>
           <AdminMatchEditor />
