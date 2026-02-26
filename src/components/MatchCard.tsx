@@ -50,7 +50,14 @@ export function MatchCard({ match, prediction, index = 0, rankingImpact, streak,
             isLive ? "gradient-warm" : "gradient-navy"
           )}>
             <span className="text-[10px] font-medium text-white/80">
-              {match.stage === "group" ? `Groep ${match.group}` : match.stage}
+              {match.stage === "group" ? `Groep ${match.group}` : 
+               match.stage === "round_of_32" ? "Laatste 32" :
+               match.stage === "round_of_16" ? "Laatste 16" :
+               match.stage === "quarter_final" ? "Kwartfinale" :
+               match.stage === "semi_final" ? "Halve finale" :
+               match.stage === "third_place" ? "3e/4e plaats" :
+               match.stage === "final" ? "🏆 Finale" : match.stage}
+              {match.external_id ? ` (${match.external_id})` : ""}
             </span>
             <div className="flex items-center gap-2">
               {isLive && (
