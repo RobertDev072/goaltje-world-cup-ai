@@ -21,13 +21,11 @@ export default function JoinPool() {
 
     const join = async () => {
       try {
-        const { data: pool, error: findError } = await supabase
-          .from("pools")
-          .select("id, name")
-          .eq("invite_code", code!.toUpperCase())
-          .single();
+        const { data, error: findError } = await supabase
+          .rpc("lookup_pool_by_invite_code", { _code: code! });
 
-        if (findError || !pool) {
+        const pool = data as { id: string; name: string } | null;
+        if (findError || !pool || !pool.id) {
           toast({ title: "Poule niet gevonden", variant: "destructive" });
           navigate("/pool");
           return;
