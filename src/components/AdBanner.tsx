@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { getConsent, type ConsentStatus } from "@/lib/consent";
-
-// Replace with your actual AdSense Publisher ID
-const ADSENSE_PUB_ID = "ca-pub-XXXXXXXXXXXXXXXX";
+import { getAdConfig } from "@/lib/adConfig";
 
 type AdFormat = "horizontal" | "rectangle" | "vertical";
 
@@ -21,14 +19,14 @@ const FORMAT_STYLES: Record<AdFormat, string> = {
 
 let scriptLoaded = false;
 
-function loadAdSenseScript() {
+function loadAdSenseScript(pubId: string) {
   if (scriptLoaded) return;
   if (document.querySelector(`script[src*="adsbygoogle"]`)) {
     scriptLoaded = true;
     return;
   }
   const script = document.createElement("script");
-  script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUB_ID}`;
+  script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${pubId}`;
   script.async = true;
   script.crossOrigin = "anonymous";
   document.head.appendChild(script);
@@ -50,10 +48,13 @@ export function AdBanner({ slot, format = "horizontal", className }: AdBannerPro
   useEffect(() => {
     if (consent !== "granted") return;
 
+    const adConfig = getAdConfig();
+    if (!adConfig.publisherId) return;
+
     const isDev = window.location.hostname.includes("lovable") || window.location.hostname === "localhost";
     if (isDev) return;
 
-    loadAdSenseScript();
+    loadAdSenseScript(adConfig.publisherId);
     const timer = setTimeout(() => {
       if (pushed.current) return;
       try {
@@ -87,12 +88,15 @@ export function AdBanner({ slot, format = "horizontal", className }: AdBannerPro
   // No consent yet → render nothing (no tracking before consent)
   if (consent !== "granted") return null;
 
+  const adConfig = getAdConfig();
+  if (!adConfig.publisherId) return null;
+
   return (
     <div ref={adRef} className={cn("overflow-hidden", FORMAT_STYLES[format], className)}>
       <ins
         className="adsbygoogle"
         style={{ display: "block" }}
-        data-ad-client={ADSENSE_PUB_ID}
+        data-ad-client={adConfig.publisherId}
         data-ad-slot={slot}
         data-ad-format="auto"
         data-full-width-responsive="true"
