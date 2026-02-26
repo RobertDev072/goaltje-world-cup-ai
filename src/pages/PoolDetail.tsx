@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -230,7 +230,8 @@ export default function PoolDetail() {
     return idx >= 0 ? idx + 1 : null;
   }, [user, leaderboard]);
 
-  useMemo(() => {
+  // Track rank changes via useEffect (not useMemo — side effects belong in useEffect)
+  useEffect(() => {
     if (myPosition == null) return;
     if (prevPositionRef.current != null && prevPositionRef.current !== myPosition) {
       const direction = myPosition < prevPositionRef.current ? "up" : "down";
@@ -480,20 +481,9 @@ export default function PoolDetail() {
               </CardContent>
             </Card>
           )}
-        </TabsContent>
 
-        {/* Chat Tab */}
-        <TabsContent value="chat" className="mt-4">
-          <PoolChat poolId={id!} />
-        </TabsContent>
-
-        <TabsContent value="badges" className="mt-4">
-          <BadgesGrid badges={badges} />
-        </TabsContent>
-
-        {/* Share Card in leaderboard */}
-        {myEntry && myPosition && (
-          <TabsContent value="leaderboard" className="mt-0">
+          {/* Share Card */}
+          {myEntry && myPosition && (
             <div className="mt-4">
               <Card className="border-0 shadow-elevation-1 overflow-hidden">
                 <CardContent className="p-3">
@@ -510,8 +500,18 @@ export default function PoolDetail() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-        )}
+          )}
+        </TabsContent>
+
+        {/* Chat Tab */}
+        <TabsContent value="chat" className="mt-4">
+          <PoolChat poolId={id!} />
+        </TabsContent>
+
+        <TabsContent value="badges" className="mt-4">
+          <BadgesGrid badges={badges} />
+        </TabsContent>
+
 
         <TabsContent value="insights" className="mt-4">
           <SmartInsights predictions={myPredictions || []} />

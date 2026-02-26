@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -27,13 +28,14 @@ export function PoolSelector({ value, onChange, className }: PoolSelectorProps) 
     enabled: !!user,
   });
 
-  if (!pools || pools.length === 0) return null;
+  // Auto-select first pool
+  useEffect(() => {
+    if (!value && pools && pools.length > 0) {
+      onChange(pools[0].id);
+    }
+  }, [value, pools, onChange]);
 
-  // Auto-select first pool if no value
-  if (!value && pools.length > 0) {
-    // Use setTimeout to avoid setState during render
-    setTimeout(() => onChange(pools[0].id), 0);
-  }
+  if (!pools || pools.length === 0) return null;
 
   if (pools.length === 1) {
     return (
