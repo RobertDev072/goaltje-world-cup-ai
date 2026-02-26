@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Check, X, TrendingUp, TrendingDown, Flame, MapPin } from "lucide-react";
+import { Clock, Check, X, TrendingUp, TrendingDown, Flame, MapPin, Pause, Ban } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatNLDate, formatNLTime } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
+import { STATUS_CONFIG, type MatchStatus, isPredictionAllowed, explainPoints } from "@/lib/scoring";
 
 interface MatchCardProps {
   match: any;
@@ -16,12 +17,17 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ match, prediction, index = 0, rankingImpact, streak, compact = false }: MatchCardProps) {
-  const isFinished = match.status === "finished";
-  const isLive = match.status === "live";
+  const status = (match.status || 'scheduled') as MatchStatus;
+  const statusInfo = STATUS_CONFIG[status] || STATUS_CONFIG.scheduled;
+  const isFinished = status === "finished";
+  const isLive = status === "live";
+  const isCancelled = status === "cancelled" || status === "void";
+  const isPostponed = status === "postponed";
   const hasScore = match.home_score != null && match.away_score != null;
   const points = prediction?.points_awarded ?? null;
   const hasPrediction = prediction && prediction.home_pred != null;
   const gotPoints = points != null && points > 0;
+  const canPredict = isPredictionAllowed(status);
 
   return (
     <motion.div
@@ -54,7 +60,12 @@ export function MatchCard({ match, prediction, index = 0, rankingImpact, streak,
               {isFinished && (
                 <span className="text-[10px] text-white/60">Gespeeld</span>
               )}
-              {!isFinished && !isLive && (
+              {(isCancelled || isPostponed) && (
+                <Badge variant="outline" className="text-[10px] h-5 bg-white/10 hover:bg-white/10 border-white/20 text-white/80">
+                  {statusInfo.emoji} {statusInfo.label}
+                </Badge>
+              )}
+              {canPredict && (
                 <span className="text-[10px] text-white/80 flex items-center gap-1">
                   <Clock className="h-3 w-3" /> {formatNLTime(match.kickoff_utc)}
                 </span>
@@ -164,7 +175,7 @@ export function MatchCard({ match, prediction, index = 0, rankingImpact, streak,
             )}
 
             {/* Upcoming prediction status */}
-            {!isFinished && hasPrediction && (
+            {!isFinished && !isCancelled && hasPrediction && (
               <div className="mt-2 flex items-center justify-center gap-2 text-xs">
                 <Check className="h-3.5 w-3.5 text-primary" />
                 <span className="text-muted-foreground">Jouw voorspelling:</span>
@@ -172,9 +183,21 @@ export function MatchCard({ match, prediction, index = 0, rankingImpact, streak,
               </div>
             )}
 
-            {!isFinished && !hasPrediction && (
+            {canPredict && !hasPrediction && (
               <p className="text-[10px] text-muted-foreground text-center mt-2 group-hover:text-primary transition-colors">
                 Voorspelling invullen →
+              </p>
+            )}
+
+            {isCancelled && (
+              <p className="text-[10px] text-destructive/60 text-center mt-2">
+                {statusInfo.emoji} {statusInfo.label} — telt niet mee
+              </p>
+            )}
+
+            {isPostponed && canPredict && (
+              <p className="text-[10px] text-warning text-center mt-2">
+                ⏸️ Uitgesteld — voorspellingen weer open
               </p>
             )}
 

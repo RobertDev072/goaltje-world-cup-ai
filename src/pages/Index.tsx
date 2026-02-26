@@ -95,7 +95,7 @@ export default function Index() {
   // Split matches
   const liveMatches = upcomingMatches?.filter((m: any) => m.status === "live") || [];
   const recentFinished = upcomingMatches?.filter((m: any) => m.status === "finished").slice(-3) || [];
-  const upcoming = upcomingMatches?.filter((m: any) => m.status !== "finished" && m.status !== "live").slice(0, 5) || [];
+  const upcoming = upcomingMatches?.filter((m: any) => m.status === "scheduled").slice(0, 5) || [];
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-5">
