@@ -3,21 +3,10 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Trophy, Target, BarChart3, QrCode, Building2, Tv, ChevronDown, Globe, Users, Smartphone, Shield, Star, CheckCircle2, Mail, Monitor, Tablet } from "lucide-react";
+import { Trophy, Target, BarChart3, QrCode, Building2, Tv, ChevronDown, Globe, Users, Smartphone, Shield, CheckCircle2, Mail, Monitor, Tablet, Zap, Lock, MessageCircle, Award } from "lucide-react";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
 import founderPhoto from "@/assets/founder-robert.png";
 import { type Lang, LANGS, t, getSavedLang, saveLang } from "@/lib/i18n";
-
-const features = [
-  { icon: Tv, key: "live" },
-  { icon: Target, key: "predict" },
-  { icon: BarChart3, key: "ranking" },
-  { icon: QrCode, key: "qr" },
-  { icon: Building2, key: "business" },
-  { icon: Smartphone, key: "mobile" },
-];
-
-const faqKeys = ["1", "2", "3", "4", "5", "6"];
 
 const steps = [
   { icon: "1️⃣", key: "step1" },
@@ -25,6 +14,17 @@ const steps = [
   { icon: "3️⃣", key: "step3" },
   { icon: "4️⃣", key: "step4" },
 ];
+
+const showcaseItems = [
+  { key: "live", icon: Tv, color: "from-red-500 to-orange-500", emoji: "📺" },
+  { key: "predict", icon: Target, color: "from-primary to-blue-600", emoji: "🎯" },
+  { key: "leaderboard", icon: BarChart3, color: "from-secondary to-yellow-500", emoji: "🏆" },
+  { key: "bracket", icon: Award, color: "from-emerald-500 to-teal-500", emoji: "🌳" },
+  { key: "social", icon: MessageCircle, color: "from-violet-500 to-purple-500", emoji: "💬" },
+  { key: "business", icon: Building2, color: "from-slate-600 to-slate-800", emoji: "🏢" },
+];
+
+const faqKeys = ["1", "2", "3", "4", "5", "6"];
 
 export default function Landing() {
   const { lang: paramLang } = useParams<{ lang: string }>();
@@ -125,18 +125,10 @@ export default function Landing() {
           backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Ccircle cx='30' cy='30' r='28' fill='none' stroke='%23fff' stroke-width='1'/%3E%3Cpath d='M30 2 L30 58 M2 30 L58 30 M8 8 L52 52 M52 8 L8 52' fill='none' stroke='%23fff' stroke-width='0.5'/%3E%3C/svg%3E")`,
           backgroundSize: "60px 60px",
         }} />
-        {/* Rolling football */}
         <motion.div
           className="absolute bottom-6 text-4xl md:text-6xl opacity-20 pointer-events-none select-none"
           animate={{ x: ["0vw", "100vw"], rotate: [0, 720] }}
           transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-        >
-          ⚽
-        </motion.div>
-        <motion.div
-          className="absolute top-10 text-2xl md:text-4xl opacity-10 pointer-events-none select-none"
-          animate={{ x: ["100vw", "0vw"], rotate: [0, -540] }}
-          transition={{ duration: 12, repeat: Infinity, ease: "linear", delay: 3 }}
         >
           ⚽
         </motion.div>
@@ -183,6 +175,33 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Numbers Bar */}
+      <section className="py-10 md:py-14 bg-gradient-to-r from-primary/5 via-secondary/5 to-primary/5">
+        <div className="max-w-5xl mx-auto px-4">
+          <h2 className="text-xl md:text-2xl font-display font-bold text-center mb-6">{t(lang, "numbers_title")}</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { emoji: "⚽", key: "numbers_matches" },
+              { emoji: "🌍", key: "numbers_teams" },
+              { emoji: "🏟️", key: "numbers_groups" },
+              { emoji: "🎉", key: "numbers_free" },
+            ].map((item, i) => (
+              <motion.div
+                key={item.key}
+                initial={{ opacity: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="text-center"
+              >
+                <div className="text-3xl mb-1">{item.emoji}</div>
+                <p className="font-display font-bold text-base md:text-lg">{t(lang, item.key)}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* How It Works */}
       <section className="py-12 md:py-20">
         <div className="max-w-5xl mx-auto px-4">
@@ -210,28 +229,86 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-12 md:py-20 bg-muted/50">
+      {/* ========== APP SHOWCASE – Main new section ========== */}
+      <section className="py-16 md:py-24 bg-gradient-to-b from-muted/30 to-background">
         <div className="max-w-5xl mx-auto px-4">
-          <h2 className="text-2xl md:text-3xl font-display font-bold text-center mb-10">{t(lang, "features_title")}</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {features.map((feat, i) => (
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <h2 className="text-2xl md:text-4xl font-display font-bold text-center mb-2">{t(lang, "showcase_title")}</h2>
+            <p className="text-muted-foreground text-center text-sm md:text-base max-w-2xl mx-auto mb-12">{t(lang, "showcase_subtitle")}</p>
+          </motion.div>
+
+          <div className="space-y-8 md:space-y-12">
+            {showcaseItems.map((item, i) => {
+              const bullets = t(lang, `showcase_${item.key}_bullets`).split("|");
+              const isEven = i % 2 === 0;
+
+              return (
+                <motion.div
+                  key={item.key}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                >
+                  <Card className="border-0 shadow-lg overflow-hidden">
+                    <div className={`flex flex-col ${isEven ? "md:flex-row" : "md:flex-row-reverse"}`}>
+                      {/* Visual side */}
+                      <div className={`w-full md:w-2/5 bg-gradient-to-br ${item.color} p-8 md:p-10 flex items-center justify-center min-h-[200px]`}>
+                        <div className="text-center">
+                          <div className="text-6xl md:text-7xl mb-3">{item.emoji}</div>
+                          <item.icon className="h-8 w-8 text-white/60 mx-auto" />
+                        </div>
+                      </div>
+                      {/* Content side */}
+                      <div className="w-full md:w-3/5 p-6 md:p-8 flex flex-col justify-center">
+                        <h3 className="font-display font-bold text-lg md:text-xl mb-2">
+                          {t(lang, `showcase_${item.key}_title`)}
+                        </h3>
+                        <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
+                          {t(lang, `showcase_${item.key}_desc`)}
+                        </p>
+                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {bullets.map((bullet, bi) => (
+                            <li key={bi} className="flex items-center gap-2 text-sm">
+                              <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                              <span>{bullet}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Why Goaltje */}
+      <section className="py-14 md:py-20 bg-primary text-primary-foreground">
+        <div className="max-w-5xl mx-auto px-4">
+          <h2 className="text-2xl md:text-3xl font-display font-bold text-center mb-2">{t(lang, "why_title")}</h2>
+          <p className="text-center opacity-70 text-sm mb-10">{t(lang, "why_subtitle")}</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { icon: Zap, key: "1" },
+              { icon: Lock, key: "2" },
+              { icon: Smartphone, key: "3" },
+              { icon: Trophy, key: "4" },
+            ].map((item, i) => (
               <motion.div
-                key={feat.key}
+                key={item.key}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
+                transition={{ delay: i * 0.1 }}
               >
-                <Card className="border-0 shadow-md hover:shadow-lg transition-shadow h-full">
-                  <CardContent className="p-5">
-                    <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center mb-3">
-                      <feat.icon className="h-5 w-5 text-primary-foreground" />
-                    </div>
-                    <h3 className="font-display font-semibold text-base mb-1">{t(lang, `feature_${feat.key}`)}</h3>
-                    <p className="text-muted-foreground text-sm">{t(lang, `feature_${feat.key}_desc`)}</p>
-                  </CardContent>
-                </Card>
+                <div className="bg-primary-foreground/10 rounded-2xl p-5 h-full text-center hover:bg-primary-foreground/15 transition-colors">
+                  <item.icon className="h-7 w-7 mx-auto mb-3 text-secondary" />
+                  <h3 className="font-display font-semibold text-sm mb-1">{t(lang, `why_${item.key}_title`)}</h3>
+                  <p className="text-xs opacity-70 leading-relaxed">{t(lang, `why_${item.key}_desc`)}</p>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -268,30 +345,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Social Proof */}
-      <section className="py-12 bg-primary text-primary-foreground">
-        <div className="max-w-5xl mx-auto px-4 text-center">
-          <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">{t(lang, "social_title")}</h2>
-          <p className="opacity-80 text-sm md:text-base max-w-xl mx-auto mb-8">{t(lang, "social_subtitle")}</p>
-          <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
-            <div>
-              <p className="text-2xl md:text-3xl font-bold font-display">🏆</p>
-              <p className="text-xs opacity-70 mt-1">{t(lang, "social_pools")}</p>
-            </div>
-            <div>
-              <p className="text-2xl md:text-3xl font-bold font-display">⚽</p>
-              <p className="text-xs opacity-70 mt-1">{t(lang, "social_matches")}</p>
-            </div>
-            <div>
-              <p className="text-2xl md:text-3xl font-bold font-display">🎯</p>
-              <p className="text-xs opacity-70 mt-1">{t(lang, "social_predictions")}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* FAQ */}
-      <section className="py-12 md:py-20">
+      <section className="py-12 md:py-20 bg-muted/50">
         <div className="max-w-2xl mx-auto px-4">
           <h2 className="text-2xl md:text-3xl font-display font-bold text-center mb-8">{t(lang, "faq_title")}</h2>
           <div className="space-y-2">
@@ -325,7 +380,6 @@ export default function Landing() {
           </motion.div>
           
           <div className="grid md:grid-cols-2 gap-10 items-center">
-            {/* Founder Info */}
             <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.1 }} className="space-y-5">
               <div className="flex items-center gap-4">
                 <img 
@@ -348,7 +402,6 @@ export default function Landing() {
               </a>
             </motion.div>
 
-            {/* Device Mockups */}
             <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} className="relative flex justify-center items-end">
               {/* Desktop mockup */}
               <div className="relative">
