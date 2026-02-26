@@ -14,7 +14,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { formatNLDateTime, formatNLDate } from "@/lib/timezone";
 import { toast } from "@/hooks/use-toast";
-import { getAdConfig, saveAdConfig, type AdConfig } from "@/lib/adConfig";
+
 function StatCard({ label, value, icon: Icon, sub, trend }: {
   label: string;
   value: string | number;
@@ -329,7 +329,7 @@ function AdminMatchEditor() {
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"stats" | "matches" | "ads">("matches");
+  const [tab, setTab] = useState<"stats" | "matches">("matches");
 
   const { data: isAdmin, isLoading: roleLoading } = useQuery({
     queryKey: ["is-admin", user?.id],
@@ -375,7 +375,6 @@ export default function AdminDashboard() {
   const tabs = [
     { key: "matches" as const, label: "⚽ Scores" },
     { key: "stats" as const, label: "📊 Stats" },
-    { key: "ads" as const, label: "📢 Ads" },
   ];
 
   return (
@@ -488,108 +487,6 @@ export default function AdminDashboard() {
         </>
       )}
 
-      {/* Ads Tab */}
-      {tab === "ads" && <AdminAdSettings />}
-    </div>
-  );
-}
-
-function AdminAdSettings() {
-  const [config, setConfig] = useState<AdConfig>(getAdConfig);
-  const [newSlotLabel, setNewSlotLabel] = useState("");
-  const [newSlotId, setNewSlotId] = useState("");
-
-  const handleSave = () => {
-    saveAdConfig(config);
-    toast({ title: "✅ Opgeslagen", description: "Advertentie-instellingen bijgewerkt." });
-  };
-
-  const addSlot = () => {
-    if (!newSlotLabel.trim() || !newSlotId.trim()) return;
-    setConfig(prev => ({
-      ...prev,
-      slots: { ...prev.slots, [newSlotLabel.trim()]: newSlotId.trim() },
-    }));
-    setNewSlotLabel("");
-    setNewSlotId("");
-  };
-
-  const removeSlot = (label: string) => {
-    setConfig(prev => {
-      const { [label]: _, ...rest } = prev.slots;
-      return { ...prev, slots: rest };
-    });
-  };
-
-  return (
-    <div className="space-y-4">
-      <Card className="border-0 shadow-sm bg-muted/50">
-        <CardContent className="p-3 text-xs text-muted-foreground space-y-1">
-          <p>📢 Configureer hier je Google AdSense instellingen.</p>
-          <p>De <strong>Publisher ID</strong> vind je in je AdSense account (ca-pub-XXXX).</p>
-          <p>Ads worden pas geladen als een gebruiker cookies accepteert.</p>
-        </CardContent>
-      </Card>
-
-      {/* Publisher ID */}
-      <Card className="border-0 shadow-md">
-        <CardContent className="p-4 space-y-2">
-          <label className="text-xs font-medium text-muted-foreground">Publisher ID</label>
-          <Input
-            placeholder="ca-pub-1234567890123456"
-            value={config.publisherId}
-            onChange={(e) => setConfig(prev => ({ ...prev, publisherId: e.target.value }))}
-            className="font-mono text-sm"
-          />
-        </CardContent>
-      </Card>
-
-      {/* Slot IDs */}
-      <Card className="border-0 shadow-md">
-        <CardContent className="p-4 space-y-3">
-          <label className="text-xs font-medium text-muted-foreground">Ad Slots</label>
-          
-          {Object.entries(config.slots).length > 0 ? (
-            <div className="space-y-2">
-              {Object.entries(config.slots).map(([label, slotId]) => (
-                <div key={label} className="flex items-center gap-2">
-                  <div className="flex-1 bg-muted rounded-lg px-3 py-2">
-                    <p className="text-xs font-medium">{label}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{String(slotId)}</p>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => removeSlot(label)} className="text-destructive h-8 w-8 p-0">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">Nog geen slots toegevoegd.</p>
-          )}
-
-          <div className="flex gap-2 pt-1">
-            <Input
-              placeholder="Label (bijv. Home banner)"
-              value={newSlotLabel}
-              onChange={(e) => setNewSlotLabel(e.target.value)}
-              className="text-sm flex-1"
-            />
-            <Input
-              placeholder="Slot ID"
-              value={newSlotId}
-              onChange={(e) => setNewSlotId(e.target.value)}
-              className="text-sm font-mono flex-1"
-            />
-            <Button variant="outline" size="sm" onClick={addSlot} className="h-9 px-3" disabled={!newSlotLabel.trim() || !newSlotId.trim()}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Button onClick={handleSave} className="w-full gradient-primary text-primary-foreground h-11">
-        💾 Instellingen opslaan
-      </Button>
     </div>
   );
 }
