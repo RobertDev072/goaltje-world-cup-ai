@@ -38,14 +38,22 @@ export function useRealtimeMatches(onGoal?: (matchId: string, team: "home" | "aw
       away: newRow.away_score,
     };
 
-    // Invalidate queries
-    queryClient.invalidateQueries({ queryKey: ["matches"] });
-    queryClient.invalidateQueries({ queryKey: ["upcoming-matches"] });
+    // Scoped invalidation — only invalidate what's needed
     queryClient.invalidateQueries({ queryKey: ["match", newRow.id] });
-    queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
-    queryClient.invalidateQueries({ queryKey: ["my-predictions"] });
-    queryClient.invalidateQueries({ queryKey: ["home-predictions"] });
-    queryClient.invalidateQueries({ queryKey: ["match-predictions"] });
+    queryClient.invalidateQueries({ queryKey: ["upcoming-matches"] });
+
+    // Only invalidate heavy queries when score/status actually changed
+    const scoreChanged =
+      oldRow?.home_score !== newRow.home_score || oldRow?.away_score !== newRow.away_score;
+    const statusChanged = oldRow?.status !== newRow.status;
+
+    if (scoreChanged || statusChanged) {
+      queryClient.invalidateQueries({ queryKey: ["matches"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["my-predictions"] });
+      queryClient.invalidateQueries({ queryKey: ["home-predictions"] });
+      queryClient.invalidateQueries({ queryKey: ["match-predictions"] });
+    }
   }, [queryClient, onGoal]);
 
   useEffect(() => {

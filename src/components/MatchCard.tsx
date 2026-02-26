@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { formatNLDate, formatNLTime } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 import { STATUS_CONFIG, type MatchStatus, isPredictionAllowed, explainPoints } from "@/lib/scoring";
+import { CountdownTimer } from "@/components/CountdownTimer";
 
 interface MatchCardProps {
   match: any;
@@ -183,8 +184,15 @@ export function MatchCard({ match, prediction, index = 0, rankingImpact, streak,
               </div>
             )}
 
+            {/* Countdown timer for upcoming matches */}
+            {canPredict && (
+              <div className="mt-2 flex justify-center">
+                <CountdownTimer kickoffUtc={match.kickoff_utc} compact />
+              </div>
+            )}
+
             {canPredict && !hasPrediction && (
-              <p className="text-[10px] text-muted-foreground text-center mt-2 group-hover:text-primary transition-colors">
+              <p className="text-[10px] text-muted-foreground text-center mt-1 group-hover:text-primary transition-colors">
                 Voorspelling invullen →
               </p>
             )}
