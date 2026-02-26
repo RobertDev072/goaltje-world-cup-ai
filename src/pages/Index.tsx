@@ -14,7 +14,7 @@ import { LiveMatchBanner } from "@/components/LiveMatchBanner";
 import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebration";
 import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
-import { AdBanner } from "@/components/AdBanner";
+
 
 export default function Index() {
   const { user } = useAuth();
@@ -155,8 +155,6 @@ export default function Index() {
         </Link>
       </div>
 
-      {/* Ad after stats */}
-      <AdBanner slot="1234567890" format="horizontal" />
 
       {/* Recent results */}
       {recentFinished.length > 0 && (
@@ -214,8 +212,6 @@ export default function Index() {
         )}
       </div>
 
-      {/* Ad between sections */}
-      <AdBanner slot="0987654321" format="horizontal" />
 
       {/* Pool Standings Preview */}
       {pools && pools.length > 0 && (
