@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { ThirdPlaceSimulator } from "@/components/ThirdPlaceSimulator";
 import { RouteToFinal } from "@/components/RouteToFinal";
 import { BonusQuestions } from "@/components/BonusQuestions";
+import { AdBanner } from "@/components/AdBanner";
 
 const KNOCKOUT_STAGES = [
   { key: "round_of_32", label: "Ronde van 32" },
@@ -63,8 +64,9 @@ export default function Bracket() {
         ) : (
           <>
             {/* Group Standings + 3rd Place Simulator */}
-            <TabsContent value="standings" className="mt-4">
+            <TabsContent value="standings" className="mt-4 space-y-4">
               <ThirdPlaceSimulator matches={allMatches || []} teams={teams || []} />
+              <AdBanner slot="4444444444" format="horizontal" />
             </TabsContent>
 
             {/* Route to Final */}
@@ -130,6 +132,7 @@ export default function Bracket() {
                   </CardContent>
                 </Card>
               )}
+              <AdBanner slot="6666666666" format="rectangle" />
             </TabsContent>
 
             {/* Bonus Questions */}

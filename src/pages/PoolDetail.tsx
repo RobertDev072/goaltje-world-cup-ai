@@ -27,6 +27,7 @@ import { PoolChat } from "@/components/PoolChat";
 import { ShareCard } from "@/components/ShareCard";
 import { VirtualizedLeaderboard } from "@/components/VirtualizedLeaderboard";
 import { TiebreakerInfo } from "@/components/TiebreakerInfo";
+import { AdBanner } from "@/components/AdBanner";
 
 interface LeaderboardEntry {
   userId: string;
@@ -453,6 +454,9 @@ export default function PoolDetail() {
         </motion.div>
       )}
 
+      {/* Ad before tabs */}
+      <AdBanner slot="2222222222" format="horizontal" />
+
       {/* Tabs */}
       <Tabs defaultValue="leaderboard" className="w-full">
         <TabsList className="w-full grid grid-cols-5 h-11 rounded-xl">
@@ -502,6 +506,9 @@ export default function PoolDetail() {
             </div>
           )}
         </TabsContent>
+
+        {/* Ad between tabs */}
+        <AdBanner slot="3333333333" format="horizontal" className="mt-4" />
 
         {/* Chat Tab */}
         <TabsContent value="chat" className="mt-4">
