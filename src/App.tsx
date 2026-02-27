@@ -34,6 +34,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const Landing = lazy(() => import("./pages/Landing"));
 const BlogArticle = lazy(() => import("./pages/BlogArticle"));
+const Privacy = lazy(() => import("./pages/Privacy"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const PageLoader = () => (
@@ -71,6 +72,7 @@ const App = () => (
               <Route path="/landing" element={<Landing />} />
               <Route path="/:lang" element={<LangGuard><Landing /></LangGuard>} />
               <Route path="/blog/:slug" element={<BlogArticle />} />
+              <Route path="/privacy" element={<Privacy />} />
               
               {/* Auth */}
               <Route path="/auth" element={<Auth />} />
