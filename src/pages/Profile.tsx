@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, Moon, Sun, Shield, Camera, Loader2, Trophy, Target, Zap, Users, ChevronRight, Cookie } from "lucide-react";
+import { LogOut, Moon, Sun, Shield, Camera, Loader2, Trophy, Target, Zap, Users, ChevronRight, Cookie, Check } from "lucide-react";
 import { motion } from "framer-motion";
 import { getConsent, getConsentCategories, setConsent } from "@/lib/consent";
 import { Switch } from "@/components/ui/switch";
@@ -21,6 +22,7 @@ export default function Profile() {
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
   const [uploading, setUploading] = useState(false);
   const [showCookieSettings, setShowCookieSettings] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [cookieAnalytics, setCookieAnalytics] = useState(() => getConsentCategories().analytics);
   const [cookieFunctional, setCookieFunctional] = useState(() => getConsentCategories().functional);
 
@@ -92,8 +94,10 @@ export default function Profile() {
     },
     onSuccess: () => {
       setName("");
+      setSaved(true);
       toast({ title: "Profiel bijgewerkt! ✅" });
       queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
+      setTimeout(() => setSaved(false), 2000);
     },
     onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
   });
@@ -225,8 +229,26 @@ export default function Profile() {
         <CardContent className="pt-4 space-y-3">
           <Label>Naam</Label>
           <Input value={nameValue} onChange={(e) => setName(e.target.value)} placeholder="Jouw naam" className="h-12" />
-          <Button className="w-full h-12 bg-primary text-primary-foreground" onClick={() => updateProfile.mutate()} disabled={updateProfile.isPending}>
-            {updateProfile.isPending ? "Opslaan..." : "Naam opslaan"}
+          <Button
+            className={`w-full h-12 transition-all duration-300 ${saved ? "bg-green-500 hover:bg-green-500 text-white" : "bg-primary text-primary-foreground"}`}
+            onClick={() => updateProfile.mutate()}
+            disabled={updateProfile.isPending || saved}
+          >
+            <AnimatePresence mode="wait">
+              {saved ? (
+                <motion.span key="saved" initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex items-center gap-2">
+                  <Check className="h-5 w-5" /> Opgeslagen!
+                </motion.span>
+              ) : updateProfile.isPending ? (
+                <motion.span key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  Opslaan...
+                </motion.span>
+              ) : (
+                <motion.span key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                  Naam opslaan
+                </motion.span>
+              )}
+            </AnimatePresence>
           </Button>
         </CardContent>
       </Card>
