@@ -59,4 +59,24 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    target: "es2020",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom", "react-router-dom"],
+          query: ["@tanstack/react-query"],
+          motion: ["framer-motion"],
+          supabase: ["@supabase/supabase-js"],
+          ui: [
+            "@radix-ui/react-tabs",
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-popover",
+            "@radix-ui/react-tooltip",
+            "@radix-ui/react-collapsible",
+          ],
+        },
+      },
+    },
+  },
 }));
