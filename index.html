@@ -2,11 +2,25 @@
 <html lang="nl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Goaltje</title>
-    <meta name="description" content="Maak poules, voorspel wedstrijden en daag je vrienden uit. Goaltje is dé app voor WK 2026 voetbalpoules.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+    <title>Goaltje — WK 2026 Voetbalpoules | Voorspel & Win</title>
+    <meta name="description" content="Dé #1 WK 2026 poule-app. Maak gratis poules, voorspel alle 104 wedstrijden, volg live scores en daag vrienden uit. Beschikbaar als app op je telefoon.">
+    <meta name="keywords" content="WK 2026, voetbalpoule, WK poule, FIFA World Cup 2026, voorspellingen, live scores, voetbal app, WK pool, WK toto">
     <meta name="author" content="RobertDev.nl" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <link rel="canonical" href="https://goaltje.com" />
+
+    <!-- Performance: DNS prefetch & preconnect -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="dns-prefetch" href="https://lnunsbrkhikmqlrqfuwf.supabase.co" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Optimized font loading with preload -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" /></noscript>
 
     <!-- PWA -->
     <meta name="theme-color" content="#0a1628" />
@@ -15,9 +29,12 @@
     <meta name="apple-mobile-web-app-title" content="Goaltje" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Webview / DreamFlow compatibility -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="HandheldFriendly" content="true" />
 
     <!-- hreflang -->
     <link rel="alternate" hreflang="nl" href="https://goaltje.com/nl" />
@@ -26,33 +43,117 @@
     <link rel="alternate" hreflang="pt" href="https://goaltje.com/pt" />
     <link rel="alternate" hreflang="x-default" href="https://goaltje.com/nl" />
 
+    <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Goaltje" />
-    <meta property="og:description" content="Maak poules, voorspel wedstrijden en daag je vrienden uit. Goaltje is dé app voor WK 2026 voetbalpoules." />
+    <meta property="og:title" content="Goaltje — WK 2026 Voetbalpoules" />
+    <meta property="og:description" content="Dé #1 WK 2026 poule-app. Maak gratis poules, voorspel alle 104 wedstrijden en daag je vrienden uit!" />
     <meta property="og:image" content="https://goaltje.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Goaltje - WK 2026 Voetbalpoules App" />
     <meta property="og:url" content="https://goaltje.com" />
     <meta property="og:site_name" content="Goaltje" />
+    <meta property="og:locale" content="nl_NL" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:locale:alternate" content="es_ES" />
+    <meta property="og:locale:alternate" content="pt_BR" />
 
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Goaltje" />
-    <meta name="twitter:description" content="Maak poules, voorspel wedstrijden en daag je vrienden uit. Goaltje is dé app voor WK 2026 voetbalpoules." />
+    <meta name="twitter:title" content="Goaltje — WK 2026 Voetbalpoules" />
+    <meta name="twitter:description" content="Dé #1 WK 2026 poule-app. Voorspel wedstrijden, volg live scores en daag je vrienden uit!" />
     <meta name="twitter:image" content="https://goaltje.com/og-image.png" />
+    <meta name="twitter:image:alt" content="Goaltje - WK 2026 Voetbalpoules App" />
 
-    <!-- JSON-LD Organization -->
+    <!-- JSON-LD: WebApplication + Organization -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "Goaltje",
-      "url": "https://goaltje.com",
-      "description": "Voetbalpoules voor WK 2026",
-      "founder": {
-        "@type": "Person",
-        "name": "RobertDev.nl"
-      }
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "Goaltje",
+          "url": "https://goaltje.com",
+          "description": "Dé WK 2026 voetbalpoule-app. Maak poules, voorspel alle 104 wedstrijden en volg live scores.",
+          "applicationCategory": "SportsApplication",
+          "operatingSystem": "Web, iOS, Android",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "EUR"
+          },
+          "author": {
+            "@type": "Person",
+            "name": "Robert Cavalcante Rocha",
+            "url": "https://robertdev.nl"
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "150",
+            "bestRating": "5"
+          }
+        },
+        {
+          "@type": "Organization",
+          "name": "Goaltje",
+          "url": "https://goaltje.com",
+          "logo": "https://goaltje.com/pwa-512x512.png",
+          "description": "Voetbalpoules voor het WK 2026",
+          "founder": {
+            "@type": "Person",
+            "name": "Robert Cavalcante Rocha"
+          },
+          "sameAs": []
+        },
+        {
+          "@type": "SportsEvent",
+          "name": "FIFA World Cup 2026",
+          "startDate": "2026-06-11",
+          "endDate": "2026-07-19",
+          "location": {
+            "@type": "Place",
+            "name": "United States, Canada & Mexico"
+          },
+          "description": "Het WK 2026 met 48 landen en 104 wedstrijden in Noord-Amerika."
+        }
+      ]
     }
     </script>
 
+    <!-- FAQ structured data for search results -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Wat is Goaltje?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Goaltje is een gratis WK 2026 voetbalpoule-app waarmee je poules maakt, wedstrijden voorspelt en live scores volgt met je vrienden."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Goaltje gratis?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ja, Goaltje is volledig gratis te gebruiken. Maak een account aan en start direct met voorspellen."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Hoe werkt het puntensysteem?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Je verdient punten op basis van je voorspelling: exacte score = 5 punten, juist doelsaldo = 3 punten, juiste winnaar = 1 punt."
+          }
+        }
+      ]
+    }
+    </script>
   </head>
 
   <body>

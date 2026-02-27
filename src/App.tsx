@@ -10,6 +10,8 @@ import { AuthGate } from "@/components/AuthGate";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { CookieConsent } from "@/components/CookieConsent";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 const VALID_LANGS = ["nl", "en", "es", "pt"];
 function LangGuard({ children }: { children: React.ReactNode }) {
@@ -44,8 +46,8 @@ const PageLoader = () => (
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 2, // 2 minutes
-      gcTime: 1000 * 60 * 10,   // 10 minutes cache
+      staleTime: 1000 * 60 * 2,
+      gcTime: 1000 * 60 * 10,
       refetchOnWindowFocus: true,
       refetchOnMount: "always",
       retry: 1,
@@ -89,6 +91,8 @@ const App = () => (
             </Routes>
           </Suspense>
         </BrowserRouter>
+        <Analytics />
+        <SpeedInsights />
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>

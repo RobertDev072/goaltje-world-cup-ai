@@ -261,4 +261,32 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Webview / DreamFlow compatibility */
+  .webview body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .webview .safe-top {
+    padding-top: max(env(safe-area-inset-top, 0px), 20px);
+  }
+
+  .webview .safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
+  }
+
+  /* GPU-accelerated scrolling */
+  .gpu-scroll {
+    transform: translateZ(0);
+    will-change: transform;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Optimized image rendering */
+  img {
+    content-visibility: auto;
+  }
 }
