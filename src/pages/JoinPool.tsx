@@ -154,7 +154,7 @@ export default function JoinPool() {
 
         {/* Footer */}
         <p className="text-center text-[10px] text-muted-foreground mt-4">
-          goaltje.nl · Gratis WK 2026 Poules
+          © 2026 RobertDev.nl – GOALTJE
         </p>
       </motion.div>
     </div>

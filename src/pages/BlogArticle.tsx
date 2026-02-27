@@ -386,7 +386,7 @@ export default function BlogArticle() {
         <div className="max-w-4xl mx-auto px-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img src={goaltjeLogo} alt="Goaltje" className="w-5 h-5" />
-            <span className="text-xs text-muted-foreground">© RobertDev.nl – GOALTJE</span>
+            <span className="text-xs text-muted-foreground">© 2026 RobertDev.nl – GOALTJE</span>
           </div>
           <Link to="/landing" className="text-xs text-muted-foreground hover:text-foreground">Home</Link>
         </div>
