@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ArrowLeft, Users, Trophy, Target, Activity, TrendingUp, TrendingDown, Clock, CheckCircle2, Search, Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -50,7 +51,7 @@ type MatchFilter = "today" | "live" | "scheduled" | "finished" | "postponed" | "
 
 function AdminMatchEditor() {
   const queryClient = useQueryClient();
-  const [editingMatch, setEditingMatch] = useState<string | null>(null);
+  const [editingMatch, setEditingMatch] = useState<any | null>(null);
   const [homeScore, setHomeScore] = useState("");
   const [awayScore, setAwayScore] = useState("");
   const [matchStatus, setMatchStatus] = useState("scheduled");
@@ -69,7 +70,6 @@ function AdminMatchEditor() {
   });
 
   const invalidateAll = () => {
-    // Invalidate every query key used across the entire app
     queryClient.invalidateQueries({ queryKey: ["admin-matches"] });
     queryClient.invalidateQueries({ queryKey: ["matches"] });
     queryClient.invalidateQueries({ queryKey: ["upcoming-matches"] });
@@ -83,17 +83,22 @@ function AdminMatchEditor() {
     queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
   };
 
+  const openEditor = (m: any) => {
+    setEditingMatch(m);
+    setHomeScore(m.home_score != null ? String(m.home_score) : "");
+    setAwayScore(m.away_score != null ? String(m.away_score) : "");
+    setMatchStatus(m.status);
+  };
+
   const updateMatch = useMutation({
     mutationFn: async (matchId: string) => {
-      const hasHome = homeScore !== "" && homeScore !== null && homeScore !== undefined;
-      const hasAway = awayScore !== "" && awayScore !== null && awayScore !== undefined;
+      const hasHome = homeScore !== "";
+      const hasAway = awayScore !== "";
       
-      // Validate: if status is finished, both scores are required
       if (matchStatus === "finished" && (!hasHome || !hasAway)) {
         throw new Error("Vul beide scores in als de status 'Gespeeld' is.");
       }
       
-      // Auto-set finished if both scores provided and still scheduled
       let finalStatus = matchStatus;
       if (hasHome && hasAway && matchStatus === "scheduled") {
         finalStatus = "finished";
@@ -105,7 +110,6 @@ function AdminMatchEditor() {
         needs_recalc: true,
       };
       
-      // Always explicitly set both scores (number or null)
       updateData.home_score = hasHome ? parseInt(homeScore) : null;
       updateData.away_score = hasAway ? parseInt(awayScore) : null;
       
@@ -127,11 +131,12 @@ function AdminMatchEditor() {
         away_score: null,
         status: "scheduled",
         last_updated: new Date().toISOString(),
+        needs_recalc: true,
       }).eq("id", matchId);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "🔄 Gereset", description: "Wedstrijd teruggezet naar gepland. Alle punten voor deze wedstrijd zijn op 0 gezet." });
+      toast({ title: "🔄 Gereset", description: "Wedstrijd teruggezet naar gepland. Punten op 0 gezet." });
       setEditingMatch(null);
       invalidateAll();
     },
@@ -139,19 +144,15 @@ function AdminMatchEditor() {
   });
 
   const filteredMatches = matches?.filter((m: any) => {
-    // Search filter
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const homeMatch = m.home_team?.name?.toLowerCase().includes(q) || m.home_team?.short_name?.toLowerCase().includes(q);
       const awayMatch = m.away_team?.name?.toLowerCase().includes(q) || m.away_team?.short_name?.toLowerCase().includes(q);
       if (!homeMatch && !awayMatch) return false;
     }
-
-    // Status filter
     const kickoff = new Date(m.kickoff_utc);
     const today = new Date();
     const isToday = kickoff.toDateString() === today.toDateString();
-
     switch (filter) {
       case "today": return isToday;
       case "live": return m.status === "live";
@@ -169,10 +170,12 @@ function AdminMatchEditor() {
     { key: "scheduled", label: "🕐 Gepland", count: matches?.filter((m: any) => m.status === "scheduled").length },
     { key: "live", label: "🔴 Live", count: matches?.filter((m: any) => m.status === "live").length },
     { key: "finished", label: "✅ Gespeeld", count: matches?.filter((m: any) => m.status === "finished").length },
-    { key: "postponed", label: "⏸️ Uitgesteld", count: matches?.filter((m: any) => m.status === "postponed").length },
-    { key: "cancelled", label: "❌ Afgelast", count: matches?.filter((m: any) => ["cancelled", "void"].includes(m.status)).length },
     { key: "all", label: "Alles", count: matches?.length },
   ];
+
+  const statusLabel = (s: string) => 
+    s === "scheduled" ? "Gepland" : s === "live" ? "Live" : s === "finished" ? "Gespeeld" : 
+    s === "postponed" ? "Uitgesteld" : s === "cancelled" ? "Afgelast" : s === "void" ? "Ongeldig" : s;
 
   if (isLoading) return <Skeleton className="h-40 rounded-xl" />;
 
@@ -181,12 +184,7 @@ function AdminMatchEditor() {
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Zoek team..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 h-9"
-        />
+        <Input placeholder="Zoek team..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-9" />
       </div>
 
       {/* Filter pills */}
@@ -196,9 +194,7 @@ function AdminMatchEditor() {
             key={f.key}
             onClick={() => setFilter(f.key)}
             className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-all flex-shrink-0 ${
-              filter === f.key
-                ? "gradient-primary text-primary-foreground shadow-sm"
-                : "bg-muted text-muted-foreground"
+              filter === f.key ? "gradient-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground"
             }`}
           >
             {f.label} {f.count != null && f.count > 0 ? `(${f.count})` : ""}
@@ -206,21 +202,24 @@ function AdminMatchEditor() {
         ))}
       </div>
 
-      {/* Match count */}
       <p className="text-xs text-muted-foreground">
         {filteredMatches.length} wedstrijd{filteredMatches.length !== 1 ? "en" : ""} gevonden
       </p>
 
-      {/* Match list */}
+      {/* Match list — clean, no inline editing */}
       {filteredMatches.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
-            Geen wedstrijden gevonden voor dit filter.
+            Geen wedstrijden gevonden.
           </CardContent>
         </Card>
       ) : (
         filteredMatches.map((m: any) => (
-          <Card key={m.id} className={`border-0 shadow-sm ${m.status === "live" ? "ring-2 ring-destructive/30" : ""}`}>
+          <Card
+            key={m.id}
+            className={`border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow ${m.status === "live" ? "ring-2 ring-destructive/30" : ""}`}
+            onClick={() => openEditor(m)}
+          >
             <CardContent className="p-3">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex-1 min-w-0">
@@ -239,106 +238,117 @@ function AdminMatchEditor() {
                       variant={["live","cancelled","void"].includes(m.status) ? "destructive" : m.status === "finished" ? "secondary" : "outline"}
                       className="text-[9px] px-1.5 py-0"
                     >
-                      {m.status === "scheduled" ? "Gepland" : m.status === "live" ? "Live" : m.status === "finished" ? "Gespeeld" : m.status === "postponed" ? "Uitgesteld" : m.status === "cancelled" ? "Afgelast" : m.status === "void" ? "Ongeldig" : m.status}
+                      {statusLabel(m.status)}
                     </Badge>
                     {m.status === "finished" && <CheckCircle2 className="h-3 w-3 text-primary" />}
                   </div>
                 </div>
-                <Button
-                  variant={editingMatch === m.id ? "default" : "ghost"}
-                  size="sm"
-                  className="text-xs flex-shrink-0"
-                  onClick={() => {
-                    setEditingMatch(editingMatch === m.id ? null : m.id);
-                    setHomeScore(m.home_score?.toString() || "");
-                    setAwayScore(m.away_score?.toString() || "");
-                    setMatchStatus(m.status);
-                  }}
-                >
-                  ✏️ Score
-                </Button>
+                <span className="text-xs text-muted-foreground">✏️</span>
               </div>
-
-              {editingMatch === m.id && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  className="mt-3 space-y-3 border-t pt-3"
-                >
-                  <div className="text-xs text-muted-foreground text-center">
-                    {m.home_team?.name || "Thuis"} vs {m.away_team?.name || "Uit"}
-                  </div>
-                  <div className="flex gap-2 items-center justify-center">
-                    <div className="text-center">
-                      <span className="text-[10px] text-muted-foreground block mb-1">{m.home_team?.short_name || "Home"}</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={20}
-                        placeholder="0"
-                        value={homeScore}
-                        onChange={(e) => setHomeScore(e.target.value)}
-                        className="h-12 w-16 text-center text-lg font-bold"
-                      />
-                    </div>
-                    <span className="text-xl font-bold text-muted-foreground mt-4">-</span>
-                    <div className="text-center">
-                      <span className="text-[10px] text-muted-foreground block mb-1">{m.away_team?.short_name || "Away"}</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={20}
-                        placeholder="0"
-                        value={awayScore}
-                        onChange={(e) => setAwayScore(e.target.value)}
-                        className="h-12 w-16 text-center text-lg font-bold"
-                      />
-                    </div>
-                  </div>
-                  <Select value={matchStatus} onValueChange={setMatchStatus}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="scheduled">🕐 Gepland</SelectItem>
-                      <SelectItem value="live">🔴 Live</SelectItem>
-                      <SelectItem value="finished">✅ Gespeeld</SelectItem>
-                      <SelectItem value="postponed">⏸️ Uitgesteld</SelectItem>
-                      <SelectItem value="cancelled">❌ Afgelast</SelectItem>
-                      <SelectItem value="void">🚫 Ongeldig</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1 gradient-primary text-primary-foreground h-10"
-                      onClick={() => updateMatch.mutate(m.id)}
-                      disabled={updateMatch.isPending || resetMatch.isPending}
-                    >
-                      {updateMatch.isPending ? "Opslaan..." : "💾 Opslaan & Herberekenen"}
-                    </Button>
-                    {(m.home_score != null || m.status !== "scheduled") && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-10 border-destructive/30 text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          if (confirm("Weet je zeker dat je deze wedstrijd wilt resetten? Alle punten worden op 0 gezet.")) {
-                            resetMatch.mutate(m.id);
-                          }
-                        }}
-                        disabled={resetMatch.isPending || updateMatch.isPending}
-                      >
-                        {resetMatch.isPending ? "..." : "🔄 Reset"}
-                      </Button>
-                    )}
-                  </div>
-                </motion.div>
-              )}
             </CardContent>
           </Card>
         ))
       )}
+
+      {/* Score Editor Dialog */}
+      <Dialog open={!!editingMatch} onOpenChange={(open) => !open && setEditingMatch(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center font-display">
+              Score invoeren
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {editingMatch?.home_team?.name || "Thuis"} vs {editingMatch?.away_team?.name || "Uit"}
+              <br />
+              <span className="text-[10px]">{editingMatch && formatNLDateTime(editingMatch.kickoff_utc)}</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            {/* Score inputs */}
+            <div className="flex gap-3 items-center justify-center">
+              <div className="text-center">
+                <span className="text-xs text-muted-foreground block mb-1 font-medium">
+                  {editingMatch?.home_team?.flag_url} {editingMatch?.home_team?.short_name || "Home"}
+                </span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={20}
+                  placeholder="-"
+                  value={homeScore}
+                  onChange={(e) => setHomeScore(e.target.value)}
+                  className="h-16 w-20 text-center text-2xl font-bold font-display"
+                />
+              </div>
+              <span className="text-2xl font-bold text-muted-foreground mt-5">-</span>
+              <div className="text-center">
+                <span className="text-xs text-muted-foreground block mb-1 font-medium">
+                  {editingMatch?.away_team?.flag_url} {editingMatch?.away_team?.short_name || "Away"}
+                </span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={20}
+                  placeholder="-"
+                  value={awayScore}
+                  onChange={(e) => setAwayScore(e.target.value)}
+                  className="h-16 w-20 text-center text-2xl font-bold font-display"
+                />
+              </div>
+            </div>
+
+            {/* Status selector */}
+            <Select value={matchStatus} onValueChange={setMatchStatus}>
+              <SelectTrigger className="h-10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="scheduled">🕐 Gepland</SelectItem>
+                <SelectItem value="live">🔴 Live</SelectItem>
+                <SelectItem value="finished">✅ Gespeeld</SelectItem>
+                <SelectItem value="postponed">⏸️ Uitgesteld</SelectItem>
+                <SelectItem value="cancelled">❌ Afgelast</SelectItem>
+                <SelectItem value="void">🚫 Ongeldig</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Auto-finish hint */}
+            {homeScore !== "" && awayScore !== "" && matchStatus === "scheduled" && (
+              <p className="text-[10px] text-primary text-center">
+                💡 Status wordt automatisch op "Gespeeld" gezet bij opslaan
+              </p>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 gradient-primary text-primary-foreground h-11 font-semibold"
+                onClick={() => editingMatch && updateMatch.mutate(editingMatch.id)}
+                disabled={updateMatch.isPending || resetMatch.isPending}
+              >
+                {updateMatch.isPending ? "Opslaan..." : "💾 Opslaan"}
+              </Button>
+            </div>
+
+            {editingMatch && (editingMatch.home_score != null || editingMatch.status !== "scheduled") && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-9 border-destructive/30 text-destructive hover:bg-destructive/10 text-xs"
+                onClick={() => {
+                  if (confirm("Weet je zeker dat je wilt resetten? Punten worden op 0 gezet.")) {
+                    resetMatch.mutate(editingMatch.id);
+                  }
+                }}
+                disabled={resetMatch.isPending || updateMatch.isPending}
+              >
+                {resetMatch.isPending ? "Resetten..." : "🔄 Reset naar gepland"}
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
