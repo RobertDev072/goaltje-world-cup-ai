@@ -41,10 +41,9 @@ export function CookieConsent() {
                 <Cookie className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-display font-bold text-sm">Cookies & Advertenties</p>
+                <p className="font-display font-bold text-sm">Cookies</p>
                 <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  Wij gebruiken cookies voor advertenties (Google AdSense). 
-                  Door te accepteren help je Goaltje gratis te houden. 
+                  Wij gebruiken cookies om je ervaring te verbeteren en de app goed te laten werken.
                   Je kunt dit later wijzigen in je profiel.
                 </p>
               </div>

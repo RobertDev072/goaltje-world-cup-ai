@@ -8,7 +8,7 @@ import { MatchSections } from "@/components/MatchSections";
 import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebration";
 import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
 import { motion } from "framer-motion";
-import { AdBanner } from "@/components/AdBanner";
+
 
 export default function Matches() {
   const { user } = useAuth();
@@ -81,8 +81,6 @@ export default function Matches() {
         />
       ) : null}
 
-      {/* Bottom ad */}
-      <AdBanner slot="1111111111" format="rectangle" />
     </div>
   );
 }
