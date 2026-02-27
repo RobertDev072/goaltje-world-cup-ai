@@ -1,5 +1,5 @@
-// Google Ads / Analytics event tracking utility
-// Configure GOOGLE_ADS_ID via gtag in index.html
+// Analytics event tracking utility — respects cookie consent
+import { hasAnalyticsConsent } from "@/lib/consent";
 
 declare global {
   interface Window {
@@ -9,6 +9,7 @@ declare global {
 }
 
 export function trackEvent(eventName: string, params?: Record<string, any>) {
+  if (!hasAnalyticsConsent()) return;
   if (window.gtag) {
     window.gtag("event", eventName, params);
   }
