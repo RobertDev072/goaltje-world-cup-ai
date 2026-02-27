@@ -196,6 +196,9 @@ export type Database = {
           id: string
           kickoff_utc: string
           last_updated: string | null
+          needs_recalc: boolean
+          points_calculated_at: string | null
+          prediction_deadline_utc: string
           stage: string
           status: string
           venue: string | null
@@ -210,6 +213,9 @@ export type Database = {
           id?: string
           kickoff_utc: string
           last_updated?: string | null
+          needs_recalc?: boolean
+          points_calculated_at?: string | null
+          prediction_deadline_utc?: string
           stage?: string
           status?: string
           venue?: string | null
@@ -224,6 +230,9 @@ export type Database = {
           id?: string
           kickoff_utc?: string
           last_updated?: string | null
+          needs_recalc?: boolean
+          points_calculated_at?: string | null
+          prediction_deadline_utc?: string
           stage?: string
           status?: string
           venue?: string | null

@@ -23,7 +23,14 @@ export const STATUS_CONFIG: Record<MatchStatus, { label: string; emoji: string; 
   void: { label: 'Ongeldig', emoji: '🚫', color: 'destructive' },
 };
 
-export function isPredictionAllowed(status: string): boolean {
+export function isPredictionAllowed(status: string, deadlineUtc?: string | null): boolean {
+  // Block cancelled/void matches
+  if (status === 'cancelled' || status === 'void') return false;
+  // If deadline is provided, use it as the source of truth
+  if (deadlineUtc) {
+    return new Date() < new Date(deadlineUtc);
+  }
+  // Fallback: only allow if scheduled
   return status === 'scheduled';
 }
 

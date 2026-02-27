@@ -89,14 +89,20 @@ function AdminMatchEditor() {
       if (homeScore !== "" && awayScore !== "" && matchStatus === "scheduled") {
         finalStatus = "finished";
       }
-      const updateData: any = { status: finalStatus, last_updated: new Date().toISOString() };
+      const updateData: any = { 
+        status: finalStatus, 
+        last_updated: new Date().toISOString(),
+        needs_recalc: true,
+      };
       if (homeScore !== "") updateData.home_score = parseInt(homeScore);
+      else updateData.home_score = null;
       if (awayScore !== "") updateData.away_score = parseInt(awayScore);
+      else updateData.away_score = null;
       const { error } = await supabase.from("matches").update(updateData).eq("id", matchId);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "✅ Opgeslagen", description: "Score opgeslagen & punten herberekend!" });
+      toast({ title: "✅ Opgeslagen", description: "Score opgeslagen & punten automatisch herberekend!" });
       setEditingMatch(null);
       invalidateAll();
     },
@@ -417,6 +423,7 @@ export default function AdminDashboard() {
               <p>⚽ <strong>Scoring:</strong> Exact = 6 pt | Doelverschil = 4 pt | Resultaat = 3 pt</p>
               <p>📋 <strong>Workflow:</strong> Zoek de wedstrijd → vul de score in → klik opslaan.</p>
               <p>🔄 Punten worden <strong>automatisch</strong> herberekend voor alle gebruikers.</p>
+              <p>✏️ <strong>Correctie:</strong> Pas score aan en klik opnieuw op opslaan. Voorspellingen blijven intact.</p>
               <p>⏸️ Statussen: Gepland, Live, Gespeeld, Uitgesteld, Afgelast, Ongeldig</p>
             </CardContent>
           </Card>
