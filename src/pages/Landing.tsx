@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { Trophy, Target, BarChart3, QrCode, Building2, Tv, ChevronDown, Globe, U
 import goaltjeLogo from "@/assets/goaltje-logo.png";
 import founderPhoto from "@/assets/founder-robert.png";
 import { type Lang, LANGS, t, getSavedLang, saveLang } from "@/lib/i18n";
+import { supabase } from "@/integrations/supabase/client";
 
 const steps = [
   { icon: "1️⃣", key: "step1" },
@@ -41,6 +42,13 @@ export default function Landing() {
   const [lang, setLang] = useState<Lang>(getSavedLang());
   const [openFaq, setOpenFaq] = useState<string | null>(null);
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const [liveStats, setLiveStats] = useState({ total_users: 0, total_pools: 0, total_predictions: 0 });
+
+  useEffect(() => {
+    supabase.rpc('get_public_stats').then(({ data }) => {
+      if (data) setLiveStats(data as any);
+    });
+  }, []);
 
   useEffect(() => {
     if (paramLang && ["nl", "en", "es", "pt"].includes(paramLang)) {
@@ -202,6 +210,44 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* Social Proof Counter */}
+      {(liveStats.total_users > 0 || liveStats.total_pools > 0) && (
+        <section className="py-8 md:py-10 bg-gradient-to-r from-primary via-[hsl(var(--goaltje-darkblue))] to-primary">
+          <div className="max-w-4xl mx-auto px-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="grid grid-cols-3 gap-4 text-center"
+            >
+              {[
+                { value: liveStats.total_users, label: t(lang, "social_users"), emoji: "👥" },
+                { value: liveStats.total_pools, label: t(lang, "social_pools"), emoji: "🏆" },
+                { value: liveStats.total_predictions, label: t(lang, "social_predictions"), emoji: "🎯" },
+              ].map((stat, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.15 }}
+                  className="flex flex-col items-center"
+                >
+                  <span className="text-2xl mb-1">{stat.emoji}</span>
+                  <span className="text-2xl md:text-4xl font-display font-bold text-white">
+                    {stat.value.toLocaleString()}
+                  </span>
+                  <span className="text-white/60 text-xs md:text-sm mt-1">{stat.label}</span>
+                </motion.div>
+              ))}
+            </motion.div>
+            <p className="text-center text-white/40 text-[10px] md:text-xs mt-4">
+              {t(lang, "social_live")}
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* Numbers Bar */}
       <section className="py-10 md:py-14 bg-gradient-to-r from-primary/5 via-secondary/5 to-primary/5">
