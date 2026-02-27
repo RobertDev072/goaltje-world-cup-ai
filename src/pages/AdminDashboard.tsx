@@ -85,19 +85,30 @@ function AdminMatchEditor() {
 
   const updateMatch = useMutation({
     mutationFn: async (matchId: string) => {
+      const hasHome = homeScore !== "" && homeScore !== null && homeScore !== undefined;
+      const hasAway = awayScore !== "" && awayScore !== null && awayScore !== undefined;
+      
+      // Validate: if status is finished, both scores are required
+      if (matchStatus === "finished" && (!hasHome || !hasAway)) {
+        throw new Error("Vul beide scores in als de status 'Gespeeld' is.");
+      }
+      
+      // Auto-set finished if both scores provided and still scheduled
       let finalStatus = matchStatus;
-      if (homeScore !== "" && awayScore !== "" && matchStatus === "scheduled") {
+      if (hasHome && hasAway && matchStatus === "scheduled") {
         finalStatus = "finished";
       }
-      const updateData: any = { 
+
+      const updateData: Record<string, any> = { 
         status: finalStatus, 
         last_updated: new Date().toISOString(),
         needs_recalc: true,
       };
-      if (homeScore !== "") updateData.home_score = parseInt(homeScore);
-      else updateData.home_score = null;
-      if (awayScore !== "") updateData.away_score = parseInt(awayScore);
-      else updateData.away_score = null;
+      
+      // Always explicitly set both scores (number or null)
+      updateData.home_score = hasHome ? parseInt(homeScore) : null;
+      updateData.away_score = hasAway ? parseInt(awayScore) : null;
+      
       const { error } = await supabase.from("matches").update(updateData).eq("id", matchId);
       if (error) throw error;
     },
@@ -217,7 +228,7 @@ function AdminMatchEditor() {
                     <span className="flex-shrink-0">{m.home_team?.flag_url || "🏳️"}</span>
                     <span className="font-medium truncate">{m.home_team?.short_name || m.home_team?.name || "TBD"}</span>
                     <span className="text-muted-foreground mx-1 font-bold flex-shrink-0">
-                      {m.home_score != null ? `${m.home_score} - ${m.away_score}` : "vs"}
+                      {m.home_score != null && m.away_score != null ? `${m.home_score} - ${m.away_score}` : "vs"}
                     </span>
                     <span className="flex-shrink-0">{m.away_team?.flag_url || "🏳️"}</span>
                     <span className="font-medium truncate">{m.away_team?.short_name || m.away_team?.name || "TBD"}</span>
