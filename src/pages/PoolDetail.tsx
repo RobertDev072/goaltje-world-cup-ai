@@ -412,6 +412,7 @@ export default function PoolDetail() {
                   inviteCode={pool.invite_code}
                   poolLink={poolLink}
                   shareText={shareText}
+                  tenant={tenant}
                 />
               </CardContent>
             </Card>
@@ -558,6 +559,7 @@ export default function PoolDetail() {
                     totalPlayers={leaderboard?.length}
                     points={myEntry.points}
                     todayPoints={myEntry.todayPoints}
+                    tenant={tenant}
                   />
                 </CardContent>
               </Card>

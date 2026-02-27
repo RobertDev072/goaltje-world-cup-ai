@@ -7,17 +7,27 @@ import { toast } from "@/hooks/use-toast";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
 import { cn } from "@/lib/utils";
 
+interface TenantBranding {
+  name?: string | null;
+  logo_url?: string | null;
+  primary_color?: string | null;
+  secondary_color?: string | null;
+}
+
 interface SocialShareSheetProps {
   poolName: string;
   inviteCode: string;
   poolLink: string;
   shareText: string;
+  tenant?: TenantBranding | null;
   onClose?: () => void;
 }
 
-export function SocialShareSheet({ poolName, inviteCode, poolLink, shareText, onClose }: SocialShareSheetProps) {
+export function SocialShareSheet({ poolName, inviteCode, poolLink, shareText, tenant, onClose }: SocialShareSheetProps) {
   const [codeCopied, setCodeCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+
+  const qrLogo = tenant?.logo_url || goaltjeLogo;
 
   const copyCode = () => {
     navigator.clipboard.writeText(inviteCode);
@@ -63,12 +73,25 @@ export function SocialShareSheet({ poolName, inviteCode, poolLink, shareText, on
 
   return (
     <div className="space-y-5">
-      {/* Pool name badge */}
-      <div className="text-center">
-        <span className="inline-flex items-center gap-1.5 text-xs font-display font-bold px-3 py-1 rounded-full bg-primary/10 text-primary">
-          <Users className="h-3 w-3" />
-          {poolName}
-        </span>
+      {/* Pool name badge + tenant */}
+      <div className="text-center space-y-1">
+        {tenant?.name && (
+          <span
+            className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
+            style={{ color: tenant.primary_color || undefined }}
+          >
+            {tenant.logo_url && (
+              <img src={tenant.logo_url} alt="" className="h-4 w-4 object-contain" />
+            )}
+            {tenant.name}
+          </span>
+        )}
+        <div>
+          <span className="inline-flex items-center gap-1.5 text-xs font-display font-bold px-3 py-1 rounded-full bg-primary/10 text-primary">
+            <Users className="h-3 w-3" />
+            {poolName}
+          </span>
+        </div>
       </div>
 
       {/* Hero: QR Code + Invite Code combined */}
@@ -82,8 +105,9 @@ export function SocialShareSheet({ poolName, inviteCode, poolLink, shareText, on
             value={poolLink}
             size={200}
             level="H"
+            fgColor={tenant?.primary_color || "#000000"}
             imageSettings={{
-              src: goaltjeLogo,
+              src: qrLogo,
               height: 44,
               width: 44,
               excavate: true,
@@ -101,6 +125,9 @@ export function SocialShareSheet({ poolName, inviteCode, poolLink, shareText, on
                 ? "bg-success text-white"
                 : "gradient-navy text-white hover:shadow-glow-primary"
             )}
+            style={!codeCopied && tenant?.primary_color ? {
+              background: `linear-gradient(135deg, ${tenant.primary_color}, ${tenant.secondary_color || tenant.primary_color})`
+            } : undefined}
           >
             {codeCopied ? (
               <Check className="h-4 w-4" />

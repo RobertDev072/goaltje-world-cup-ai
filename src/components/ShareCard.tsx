@@ -1,9 +1,15 @@
 import { useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Download, Share2, MessageCircle, Instagram, Facebook } from "lucide-react";
+import { Download, Share2, MessageCircle, Instagram } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+
+interface TenantBranding {
+  name?: string | null;
+  logo_url?: string | null;
+  primary_color?: string | null;
+  secondary_color?: string | null;
+}
 
 interface ShareCardProps {
   type: "rank" | "points" | "prediction";
@@ -13,11 +19,24 @@ interface ShareCardProps {
   totalPlayers?: number;
   points?: number;
   todayPoints?: number;
+  tenant?: TenantBranding | null;
   prediction?: { home: string; away: string; homePred: number; awayPred: number; homeScore?: number; awayScore?: number; pointsAwarded?: number };
 }
 
-export function ShareCard({ type, poolName, playerName, rank, totalPlayers, points, todayPoints, prediction }: ShareCardProps) {
+export function ShareCard({ type, poolName, playerName, rank, totalPlayers, points, todayPoints, prediction, tenant }: ShareCardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const logoImgRef = useRef<HTMLImageElement | null>(null);
+
+  // Pre-load tenant logo
+  if (tenant?.logo_url && !logoImgRef.current) {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = tenant.logo_url;
+    logoImgRef.current = img;
+  }
+
+  const primaryHex = tenant?.primary_color || "#10B981";
+  const secondaryHex = tenant?.secondary_color || "#F59E0B";
 
   const generateCard = useCallback(() => {
     const canvas = canvasRef.current;
@@ -39,31 +58,48 @@ export function ShareCard({ type, poolName, playerName, rank, totalPlayers, poin
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    // Decorative circles
-    ctx.fillStyle = "rgba(16, 185, 129, 0.08)";
+    // Decorative circles using tenant colors
+    ctx.fillStyle = hexToRgba(primaryHex, 0.08);
     ctx.beginPath();
     ctx.arc(w - 80, 80, 120, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "rgba(245, 158, 11, 0.06)";
+    ctx.fillStyle = hexToRgba(secondaryHex, 0.06);
     ctx.beginPath();
     ctx.arc(80, h - 60, 100, 0, Math.PI * 2);
     ctx.fill();
 
-    // Top accent line
+    // Top accent line with tenant colors
     const accentGrad = ctx.createLinearGradient(0, 0, w, 0);
-    accentGrad.addColorStop(0, "#10B981");
-    accentGrad.addColorStop(0.5, "#F59E0B");
-    accentGrad.addColorStop(1, "#10B981");
+    accentGrad.addColorStop(0, primaryHex);
+    accentGrad.addColorStop(0.5, secondaryHex);
+    accentGrad.addColorStop(1, primaryHex);
     ctx.fillStyle = accentGrad;
     ctx.fillRect(0, 0, w, 5);
 
-    // Goaltje branding
-    ctx.fillStyle = "#F59E0B";
-    ctx.font = "bold 16px system-ui, -apple-system, sans-serif";
-    ctx.fillText("GOALTJE", 30, 42);
-    ctx.fillStyle = "rgba(255,255,255,0.3)";
-    ctx.font = "12px system-ui, -apple-system, sans-serif";
-    ctx.fillText(" · WK 2026", 110, 42);
+    // Branding area - tenant logo or GOALTJE text
+    ctx.textAlign = "left";
+    const logoImg = logoImgRef.current;
+    if (tenant?.name && logoImg?.complete && logoImg.naturalWidth > 0) {
+      // Draw tenant logo
+      const logoH = 28;
+      const logoW = (logoImg.naturalWidth / logoImg.naturalHeight) * logoH;
+      ctx.drawImage(logoImg, 30, 22, logoW, logoH);
+      // Tenant name next to logo
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
+      ctx.fillText(tenant.name, 30 + logoW + 8, 42);
+    } else if (tenant?.name) {
+      ctx.fillStyle = primaryHex;
+      ctx.font = "bold 16px system-ui, -apple-system, sans-serif";
+      ctx.fillText(tenant.name.toUpperCase(), 30, 42);
+    } else {
+      ctx.fillStyle = secondaryHex;
+      ctx.font = "bold 16px system-ui, -apple-system, sans-serif";
+      ctx.fillText("GOALTJE", 30, 42);
+      ctx.fillStyle = "rgba(255,255,255,0.3)";
+      ctx.font = "12px system-ui, -apple-system, sans-serif";
+      ctx.fillText(" · WK 2026", 110, 42);
+    }
 
     // Pool name
     ctx.fillStyle = "rgba(255,255,255,0.7)";
@@ -71,8 +107,7 @@ export function ShareCard({ type, poolName, playerName, rank, totalPlayers, poin
     ctx.fillText(`🏆 ${poolName}`, 30, 66);
 
     if (type === "rank" && rank != null) {
-      // Rank card
-      ctx.fillStyle = "#F59E0B";
+      ctx.fillStyle = secondaryHex;
       ctx.font = "bold 120px system-ui, -apple-system, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(`#${rank}`, w / 2, 200);
@@ -86,13 +121,12 @@ export function ShareCard({ type, poolName, playerName, rank, totalPlayers, poin
       ctx.fillText(`van ${totalPlayers || "?"} spelers`, w / 2, 280);
 
       if (points != null) {
-        ctx.fillStyle = "#10B981";
+        ctx.fillStyle = primaryHex;
         ctx.font = "bold 32px system-ui, -apple-system, sans-serif";
         ctx.fillText(`${points} punten`, w / 2, 330);
       }
     } else if (type === "points" && todayPoints != null) {
-      // Today's points card
-      ctx.fillStyle = "#10B981";
+      ctx.fillStyle = primaryHex;
       ctx.font = "bold 80px system-ui, -apple-system, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(`+${todayPoints}`, w / 2, 190);
@@ -109,7 +143,6 @@ export function ShareCard({ type, poolName, playerName, rank, totalPlayers, poin
       ctx.font = "14px system-ui, -apple-system, sans-serif";
       ctx.fillText(`Totaal: ${points || 0} punten`, w / 2, 310);
     } else if (type === "prediction" && prediction) {
-      // Prediction card
       ctx.textAlign = "center";
       ctx.fillStyle = "rgba(255,255,255,0.5)";
       ctx.font = "14px system-ui, -apple-system, sans-serif";
@@ -119,7 +152,7 @@ export function ShareCard({ type, poolName, playerName, rank, totalPlayers, poin
       ctx.font = "bold 18px system-ui, -apple-system, sans-serif";
       ctx.fillText(`${prediction.home} vs ${prediction.away}`, w / 2, 150);
 
-      ctx.fillStyle = "#F59E0B";
+      ctx.fillStyle = secondaryHex;
       ctx.font = "bold 64px system-ui, -apple-system, sans-serif";
       ctx.fillText(`${prediction.homePred} - ${prediction.awayPred}`, w / 2, 230);
 
@@ -129,21 +162,21 @@ export function ShareCard({ type, poolName, playerName, rank, totalPlayers, poin
         ctx.fillText(`Uitslag: ${prediction.homeScore} - ${prediction.awayScore}`, w / 2, 280);
 
         if (prediction.pointsAwarded != null && prediction.pointsAwarded > 0) {
-          ctx.fillStyle = "#10B981";
+          ctx.fillStyle = primaryHex;
           ctx.font = "bold 28px system-ui, -apple-system, sans-serif";
           ctx.fillText(`+${prediction.pointsAwarded} punten!`, w / 2, 330);
         }
       }
     }
 
-    // Footer with branding
+    // Footer
     ctx.textAlign = "center";
     ctx.fillStyle = "rgba(255,255,255,0.35)";
     ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
-    ctx.fillText("goaltje.nl · Gratis WK 2026 Poules", w / 2, h - 20);
+    ctx.fillText(tenant?.name ? `${tenant.name} · via goaltje.nl` : "goaltje.nl · Gratis WK 2026 Poules", w / 2, h - 20);
 
     return canvas;
-  }, [type, poolName, playerName, rank, totalPlayers, points, todayPoints, prediction]);
+  }, [type, poolName, playerName, rank, totalPlayers, points, todayPoints, prediction, tenant, primaryHex, secondaryHex]);
 
   const downloadCard = () => {
     const canvas = generateCard();
@@ -171,7 +204,6 @@ export function ShareCard({ type, poolName, playerName, rank, totalPlayers, poin
           return;
         }
       }
-      // Fallback: download
       downloadCard();
     } catch {
       downloadCard();
@@ -186,8 +218,6 @@ export function ShareCard({ type, poolName, playerName, rank, totalPlayers, poin
   };
 
   const shareWhatsApp = () => {
-    const canvas = generateCard();
-    if (!canvas) return;
     downloadCard();
     window.open(`https://wa.me/?text=${encodeURIComponent(getShareText() + "\n\nhttps://goaltje.nl")}`, "_blank");
   };
@@ -244,4 +274,11 @@ export function ShareCard({ type, poolName, playerName, rank, totalPlayers, poin
       </div>
     </div>
   );
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
 }
