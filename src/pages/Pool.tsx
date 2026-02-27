@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Plus, LogIn, Users, Trophy } from "lucide-react";
+import { Plus, LogIn, Users, Trophy, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { trackPoolCreated, trackPoolJoined } from "@/lib/analytics";
 
@@ -169,20 +169,29 @@ export default function Pool() {
           {pools.map((membership: any, i: number) => (
             <motion.div key={membership.pool_id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Link to={`/pool/${membership.pool_id}`}>
-                <Card className="border-0 shadow-md hover:shadow-lg transition-all">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl gradient-primary flex items-center justify-center">
-                        <Trophy className="h-5 w-5 text-primary-foreground" />
+                <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all group overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className="flex items-center gap-4 p-4">
+                      <div className="h-12 w-12 rounded-2xl gradient-navy flex items-center justify-center shrink-0 shadow-elevation-1">
+                        <Trophy className="h-6 w-6 text-secondary" />
                       </div>
-                      <div>
-                        <p className="font-semibold">{membership.pools?.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {membership.role === "admin" ? "👑 Owner" : "Lid"} · Code: {membership.pools?.invite_code}
-                        </p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-display font-bold text-base truncate">{membership.pools?.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {membership.role === "admin" && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary/15 text-secondary-foreground">
+                              👑 Owner
+                            </span>
+                          )}
+                          {membership.pools?.invite_code && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold tracking-wider">
+                              {membership.pools.invite_code}
+                            </span>
+                          )}
+                        </div>
                       </div>
+                      <ChevronRight className="h-5 w-5 text-primary shrink-0 group-hover:translate-x-1 transition-transform" />
                     </div>
-                    <span className="text-muted-foreground">→</span>
                   </CardContent>
                 </Card>
               </Link>
