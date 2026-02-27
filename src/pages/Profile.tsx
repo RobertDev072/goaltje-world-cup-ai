@@ -91,8 +91,9 @@ export default function Profile() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: "Profiel bijgewerkt!" });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      setName("");
+      toast({ title: "Profiel bijgewerkt! ✅" });
+      queryClient.invalidateQueries({ queryKey: ["profile", user?.id] });
     },
     onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
   });
