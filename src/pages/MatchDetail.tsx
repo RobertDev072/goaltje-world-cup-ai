@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Lock, Check, X, TrendingUp, Swords, Newspaper, Zap, Users, History, ShieldCheck } from "lucide-react";
+import { CountdownTimer } from "@/components/CountdownTimer";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { trackFirstPrediction } from "@/lib/analytics";
@@ -278,6 +279,10 @@ export default function MatchDetail() {
                 )}
               </div>
 
+              {/* Deadline countdown */}
+              {showPredictionForm && !isLocked && (match as any).prediction_deadline_utc && (
+                <CountdownTimer kickoffUtc={(match as any).prediction_deadline_utc} />
+              )}
               {/* Pool selector */}
               {myPools.length > 1 && (
                 <Select value={activePool} onValueChange={(v) => { setSelectedPoolId(v); setHomePred(null); setAwayPred(null); }}>

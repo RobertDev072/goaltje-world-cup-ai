@@ -55,7 +55,7 @@ export function CountdownTimer({ kickoffUtc, compact = false, className }: Count
       >
         {isUrgent ? <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> : <Clock className="h-3.5 w-3.5 shrink-0" />}
         <span>
-          {isUrgent ? "⏰ Deadline: " : "Nog "}
+          {isVerySoon ? "🚨 Sluit over " : isUrgent ? "⏰ Sluit over " : "🔓 Deadline over "}
           {formatFull(timeLeft)}
         </span>
       </motion.div>
