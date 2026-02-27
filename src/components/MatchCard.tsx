@@ -191,10 +191,10 @@ export function MatchCard({ match, prediction, index = 0, rankingImpact, streak,
               </div>
             )}
 
-            {/* Countdown timer for upcoming matches */}
+            {/* Countdown to prediction deadline */}
             {canPredict && (
               <div className="mt-2 flex justify-center">
-                <CountdownTimer kickoffUtc={match.kickoff_utc} compact />
+                <CountdownTimer kickoffUtc={match.prediction_deadline_utc || match.kickoff_utc} compact />
               </div>
             )}
 
