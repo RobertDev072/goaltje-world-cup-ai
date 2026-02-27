@@ -174,7 +174,7 @@ function LeaderboardRow({
               i === 0 ? "ring-2 ring-secondary/40 bg-secondary text-secondary-foreground" : "bg-primary text-primary-foreground",
             )}>
               {entry.avatar_url
-                ? <img src={entry.avatar_url} alt="" className="h-full w-full object-cover" />
+                ? <img src={entry.avatar_url} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
                 : entry.name[0]?.toUpperCase() || "?"}
             </div>
 

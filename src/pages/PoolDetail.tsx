@@ -406,7 +406,7 @@ export default function PoolDetail() {
                   className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors text-left"
                 >
                   <div className="h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold overflow-hidden">
-                    {entry.avatar_url ? <img src={entry.avatar_url} alt="" className="h-full w-full object-cover" /> : entry.name[0]?.toUpperCase() || "?"}
+                    {entry.avatar_url ? <img src={entry.avatar_url} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : entry.name[0]?.toUpperCase() || "?"}
                   </div>
                   <span className="text-sm font-medium flex-1">{entry.name}</span>
                   <span className="text-xs text-muted-foreground">{entry.points} pt</span>
@@ -527,7 +527,7 @@ export default function PoolDetail() {
                 <CardContent className="p-3 flex items-center gap-3">
                   <div className="h-8 w-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-sm font-bold overflow-hidden">
                     {member.profile?.avatar_url
-                      ? <img src={member.profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                      ? <img src={member.profile.avatar_url} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
                       : (member.profile?.name || "?")[0].toUpperCase()}
                   </div>
                   <div className="flex-1">
