@@ -33,6 +33,7 @@ const Bracket = lazy(() => import("./pages/Bracket"));
 const Profile = lazy(() => import("./pages/Profile"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const Landing = lazy(() => import("./pages/Landing"));
+const BlogArticle = lazy(() => import("./pages/BlogArticle"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const PageLoader = () => (
@@ -69,6 +70,7 @@ const App = () => (
               {/* Public landing pages */}
               <Route path="/landing" element={<Landing />} />
               <Route path="/:lang" element={<LangGuard><Landing /></LangGuard>} />
+              <Route path="/blog/:slug" element={<BlogArticle />} />
               
               {/* Auth */}
               <Route path="/auth" element={<Auth />} />
