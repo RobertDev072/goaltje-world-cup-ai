@@ -52,19 +52,23 @@ export function ShareCard({ type, poolName, playerName, rank, totalPlayers, poin
     // Top accent line
     const accentGrad = ctx.createLinearGradient(0, 0, w, 0);
     accentGrad.addColorStop(0, "#10B981");
-    accentGrad.addColorStop(1, "#F59E0B");
+    accentGrad.addColorStop(0.5, "#F59E0B");
+    accentGrad.addColorStop(1, "#10B981");
     ctx.fillStyle = accentGrad;
-    ctx.fillRect(0, 0, w, 4);
+    ctx.fillRect(0, 0, w, 5);
 
     // Goaltje branding
-    ctx.fillStyle = "rgba(255,255,255,0.4)";
-    ctx.font = "bold 14px system-ui, -apple-system, sans-serif";
-    ctx.fillText("GOALTJE · WK 2026", 30, 40);
+    ctx.fillStyle = "#F59E0B";
+    ctx.font = "bold 16px system-ui, -apple-system, sans-serif";
+    ctx.fillText("GOALTJE", 30, 42);
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.font = "12px system-ui, -apple-system, sans-serif";
+    ctx.fillText(" · WK 2026", 110, 42);
 
     // Pool name
-    ctx.fillStyle = "rgba(255,255,255,0.6)";
-    ctx.font = "13px system-ui, -apple-system, sans-serif";
-    ctx.fillText(poolName, 30, 62);
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.font = "bold 14px system-ui, -apple-system, sans-serif";
+    ctx.fillText(`🏆 ${poolName}`, 30, 66);
 
     if (type === "rank" && rank != null) {
       // Rank card
@@ -132,11 +136,11 @@ export function ShareCard({ type, poolName, playerName, rank, totalPlayers, poin
       }
     }
 
-    // Footer
+    // Footer with branding
     ctx.textAlign = "center";
-    ctx.fillStyle = "rgba(255,255,255,0.25)";
-    ctx.font = "11px system-ui, -apple-system, sans-serif";
-    ctx.fillText("goaltje.nl", w / 2, h - 20);
+    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
+    ctx.fillText("goaltje.nl · Gratis WK 2026 Poules", w / 2, h - 20);
 
     return canvas;
   }, [type, poolName, playerName, rank, totalPlayers, points, todayPoints, prediction]);

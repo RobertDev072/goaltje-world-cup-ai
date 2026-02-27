@@ -251,7 +251,9 @@ export default function PoolDetail() {
 
   const appOrigin = import.meta.env.PROD ? "https://goaltje.nl" : window.location.origin;
   const poolLink = pool ? `${appOrigin}/join/${pool.invite_code}` : "";
-  const shareText = pool ? `Doe mee met mijn WK 2026 poule "${pool.name}" op Goaltje! 🏆⚽\n\nCode: ${pool.invite_code}\n${poolLink}` : "";
+  const shareText = pool
+    ? `🏆 Doe mee met "${pool.name}" op Goaltje!\n\n⚽ Voorspel alle 104 WK 2026 wedstrijden\n📊 Live ranglijst & puntentelling\n🎯 Gratis meedoen!\n\n🔗 Code: ${pool.invite_code}\n${poolLink}`
+    : "";
 
   if (isLoading) {
     return (
@@ -308,23 +310,50 @@ export default function PoolDetail() {
           <div className="gradient-primary h-1.5" />
           <CardContent className="p-5 space-y-3">
             <div className="flex items-start gap-3">
-              <div className="h-12 w-12 rounded-2xl gradient-navy flex items-center justify-center shrink-0 shadow-elevation-2">
-                <Trophy className="h-6 w-6 text-secondary" />
+              <div className="h-14 w-14 rounded-2xl gradient-navy flex items-center justify-center shrink-0 shadow-elevation-2">
+                <Trophy className="h-7 w-7 text-secondary" />
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-xl font-bold font-display truncate">{pool.name}</h1>
-                {pool.description && <p className="text-xs text-muted-foreground mt-0.5">{pool.description}</p>}
-                <div className="flex items-center gap-3 mt-2">
-                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                {pool.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{pool.description}</p>}
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
                     <Users className="h-3 w-3" /> {members?.length || 0} leden
                   </span>
                   {pool.prize_text && (
-                    <span className="inline-flex items-center gap-1 text-xs text-secondary font-medium">
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-secondary/15 text-secondary">
                       🏆 {pool.prize_text}
                     </span>
                   )}
+                  <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold tracking-[0.2em] px-2.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                    {pool.invite_code}
+                  </span>
                 </div>
               </div>
+            </div>
+
+            {/* Scoring rules mini-bar */}
+            <div className="flex items-center gap-3 pt-2 border-t border-border/50">
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-bold text-primary">{exactPts}</span>
+                <span className="text-[10px] text-muted-foreground">exact</span>
+              </div>
+              <div className="w-px h-3 bg-border" />
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-bold text-secondary">{goalDiffPts}</span>
+                <span className="text-[10px] text-muted-foreground">doelsaldo</span>
+              </div>
+              <div className="w-px h-3 bg-border" />
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-bold text-accent">{resultPts}</span>
+                <span className="text-[10px] text-muted-foreground">uitslag</span>
+              </div>
+              <div className="flex-1" />
+              {myPosition && (
+                <span className="text-xs font-display font-bold text-primary">
+                  #{myPosition} van {leaderboard?.length}
+                </span>
+              )}
             </div>
           </CardContent>
         </Card>
