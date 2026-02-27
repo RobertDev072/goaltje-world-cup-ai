@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Users, ChevronRight, TrendingUp } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Trophy, Users, ChevronRight, TrendingUp, Newspaper, Zap, History, Users as UsersIcon, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -97,6 +98,34 @@ export default function Index() {
   const liveMatches = upcomingMatches?.filter((m: any) => m.status === "live") || [];
   const recentFinished = upcomingMatches?.filter((m: any) => m.status === "finished").slice(-3) || [];
   const upcoming = upcomingMatches?.filter((m: any) => m.status === "scheduled").slice(0, 5) || [];
+
+  // Pick the first 2 upcoming matches with real team names for news
+  const newsMatches = upcoming.filter(
+    (m: any) => m.home_team?.name && m.away_team?.name &&
+      !m.home_team.name.includes("Playoff") && !m.away_team.name.includes("Playoff")
+  ).slice(0, 2);
+
+  // Fetch news for first newsworthy match
+  const newsMatch = newsMatches[0];
+  const { data: homeNews, isLoading: newsLoading } = useQuery({
+    queryKey: ["home-news", newsMatch?.home_team?.name, newsMatch?.away_team?.name],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("match-news", {
+        body: {
+          homeTeam: newsMatch!.home_team!.name,
+          awayTeam: newsMatch!.away_team!.name,
+          matchDate: newsMatch!.kickoff_utc,
+          stage: newsMatch!.stage,
+          group: newsMatch!.group,
+        },
+      });
+      if (error) throw error;
+      return { ...data, match: newsMatch };
+    },
+    enabled: !!newsMatch?.home_team?.name && !!newsMatch?.away_team?.name,
+    staleTime: 1000 * 60 * 60 * 4,
+    retry: 1,
+  });
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-5">
@@ -234,6 +263,68 @@ export default function Index() {
               </Link>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* WK Nieuws Feed */}
+      {(newsLoading || (homeNews?.items && homeNews.items.length > 0)) && (
+        <div>
+          <h2 className="font-display font-semibold text-lg flex items-center gap-2 mb-3">
+            <Newspaper className="h-5 w-5 text-primary" /> WK Nieuws
+          </h2>
+
+          {newsLoading ? (
+            <div className="space-y-2">
+              {[1, 2].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {homeNews?.match && (
+                <p className="text-xs text-muted-foreground mb-2">
+                  {homeNews.match.home_team?.flag_url} {homeNews.match.home_team?.name} vs {homeNews.match.away_team?.name} {homeNews.match.away_team?.flag_url}
+                </p>
+              )}
+              {homeNews?.items?.slice(0, 3).map((item: any, i: number) => {
+                const categoryIcon: Record<string, React.ReactNode> = {
+                  vorm: <Zap className="h-3.5 w-3.5" />,
+                  historie: <History className="h-3.5 w-3.5" />,
+                  spelers: <UsersIcon className="h-3.5 w-3.5" />,
+                  tactiek: <ShieldCheck className="h-3.5 w-3.5" />,
+                };
+                const categoryColor: Record<string, string> = {
+                  vorm: 'bg-emerald-500/10 text-emerald-700',
+                  historie: 'bg-amber-500/10 text-amber-700',
+                  spelers: 'bg-blue-500/10 text-blue-700',
+                  tactiek: 'bg-purple-500/10 text-purple-700',
+                };
+
+                return (
+                  <Link key={i} to={`/match/${homeNews.match?.id}`}>
+                    <Card className="border-0 shadow-sm hover:shadow-md transition-all group">
+                      <CardContent className="p-3 flex items-start gap-3">
+                        <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${categoryColor[item.category] || 'bg-muted text-muted-foreground'}`}>
+                          {categoryIcon[item.category] || <Newspaper className="h-3.5 w-3.5" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <Badge variant="outline" className="text-[9px] capitalize px-1.5 py-0">{item.category}</Badge>
+                          </div>
+                          <p className="text-sm font-semibold leading-tight line-clamp-1">{item.title}</p>
+                          <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2 mt-0.5">{item.summary}</p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1 group-hover:text-primary transition-colors" />
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
+              {homeNews?.match && (
+                <Link to={`/match/${homeNews.match.id}`} className="text-xs text-primary font-medium flex items-center gap-1 justify-center pt-1">
+                  Meer lezen <ChevronRight className="h-3 w-3" />
+                </Link>
+              )}
+            </div>
+          )}
         </div>
       )}
 
