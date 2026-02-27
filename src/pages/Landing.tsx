@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Trophy, Target, BarChart3, QrCode, Building2, Tv, ChevronDown, Globe, Users, Smartphone, Shield, CheckCircle2, Mail, Monitor, Tablet, Zap, Lock, MessageCircle, Award } from "lucide-react";
+import { Trophy, Target, BarChart3, QrCode, Building2, Tv, ChevronDown, Globe, Users, Smartphone, Shield, CheckCircle2, Mail, Monitor, Tablet, Zap, Lock, MessageCircle, Award, Newspaper, Calendar, MapPin, TrendingUp, Lightbulb, Flag } from "lucide-react";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
 import founderPhoto from "@/assets/founder-robert.png";
 import { type Lang, LANGS, t, getSavedLang, saveLang } from "@/lib/i18n";
@@ -25,6 +25,15 @@ const showcaseItems = [
 ];
 
 const faqKeys = ["1", "2", "3", "4", "5", "6"];
+
+const blogArticles = [
+  { key: "1", icon: Calendar, color: "from-blue-500 to-cyan-500" },
+  { key: "2", icon: TrendingUp, color: "from-purple-500 to-pink-500" },
+  { key: "3", icon: MapPin, color: "from-green-500 to-emerald-500" },
+  { key: "4", icon: Target, color: "from-orange-500 to-red-500" },
+  { key: "5", icon: Lightbulb, color: "from-yellow-500 to-amber-500" },
+  { key: "6", icon: Flag, color: "from-primary to-blue-600" },
+];
 
 export default function Landing() {
   const { lang: paramLang } = useParams<{ lang: string }>();
@@ -62,7 +71,7 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* JSON-LD */}
+      {/* JSON-LD WebSite */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -73,6 +82,25 @@ export default function Landing() {
             url: window.location.origin,
             description: t(lang, "meta_description"),
             publisher: { "@type": "Organization", name: "RobertDev.nl", url: "https://robertdev.nl" },
+          }),
+        }}
+      />
+      {/* JSON-LD Blog */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Blog",
+            name: t(lang, "blog_title"),
+            url: `${window.location.origin}/${lang}#blog`,
+            publisher: { "@type": "Organization", name: "Goaltje", url: window.location.origin },
+            blogPost: blogArticles.map((a) => ({
+              "@type": "BlogPosting",
+              headline: t(lang, `blog_${a.key}_title`),
+              description: t(lang, `blog_${a.key}_summary`),
+              author: { "@type": "Person", name: "Robert Cavalcante Rocha" },
+            })),
           }),
         }}
       />
@@ -367,6 +395,55 @@ export default function Landing() {
                   )}
                 </CardContent>
               </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Blog / News Section */}
+      <section className="py-16 md:py-24" id="blog">
+        <div className="max-w-5xl mx-auto px-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Newspaper className="h-6 w-6 text-primary" />
+              <h2 className="text-2xl md:text-4xl font-display font-bold text-center">{t(lang, "blog_title")}</h2>
+            </div>
+            <p className="text-muted-foreground text-center text-sm md:text-base max-w-2xl mx-auto mb-12">{t(lang, "blog_subtitle")}</p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {blogArticles.map((article, i) => (
+              <motion.article
+                key={article.key}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
+                className="group"
+              >
+                <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden h-full flex flex-col group-hover:-translate-y-1">
+                  <div className={`bg-gradient-to-br ${article.color} p-6 flex items-center justify-center`}>
+                    <article.icon className="h-10 w-10 text-white" />
+                  </div>
+                  <CardContent className="p-5 flex flex-col flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] font-bold tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                        {t(lang, `blog_${article.key}_tag`)}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">{t(lang, `blog_${article.key}_date`)}</span>
+                    </div>
+                    <h3 className="font-display font-bold text-sm md:text-base mb-2 leading-snug group-hover:text-primary transition-colors">
+                      {t(lang, `blog_${article.key}_title`)}
+                    </h3>
+                    <p className="text-muted-foreground text-xs leading-relaxed flex-1">
+                      {t(lang, `blog_${article.key}_summary`)}
+                    </p>
+                    <Link to="/auth" className="mt-4 inline-flex items-center gap-1 text-primary text-xs font-semibold hover:underline">
+                      {t(lang, "blog_read_more")} →
+                    </Link>
+                  </CardContent>
+                </Card>
+              </motion.article>
             ))}
           </div>
         </div>
