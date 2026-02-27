@@ -8,8 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Plus, LogIn, Users, Trophy, ChevronRight } from "lucide-react";
+import { Plus, LogIn, Users, Trophy, ChevronRight, Building2, Palette, Mail, ImageIcon } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { trackPoolCreated, trackPoolJoined } from "@/lib/analytics";
 
 export default function Pool() {
@@ -21,6 +23,14 @@ export default function Pool() {
   const [poolDesc, setPoolDesc] = useState("");
   const [prizeText, setPrizeText] = useState("");
   const [joinCode, setJoinCode] = useState("");
+
+  // Tenant branding state
+  const [enableBranding, setEnableBranding] = useState(false);
+  const [tenantName, setTenantName] = useState("");
+  const [tenantLogo, setTenantLogo] = useState("");
+  const [tenantPrimary, setTenantPrimary] = useState("#10B981");
+  const [tenantSecondary, setTenantSecondary] = useState("#F59E0B");
+  const [tenantDomain, setTenantDomain] = useState("");
 
   const { data: pools } = useQuery({
     queryKey: ["my-pools", user?.id],
@@ -35,12 +45,43 @@ export default function Pool() {
     enabled: !!user,
   });
 
+  const resetForm = () => {
+    setPoolName(""); setPoolDesc(""); setPrizeText("");
+    setEnableBranding(false); setTenantName(""); setTenantLogo("");
+    setTenantPrimary("#10B981"); setTenantSecondary("#F59E0B"); setTenantDomain("");
+    setShowCreate(false);
+  };
+
   const createPool = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Niet ingelogd");
-      const insertData: any = { name: poolName, created_by: user.id };
-      if (poolDesc.trim()) insertData.description = poolDesc;
-      if (prizeText.trim()) insertData.prize_text = prizeText;
+
+      let tenantId: string | null = null;
+
+      // Create tenant first if branding is enabled
+      if (enableBranding && tenantName.trim()) {
+        const tenantInsert: any = {
+          name: tenantName.trim(),
+          created_by: user.id,
+          primary_color: tenantPrimary,
+          secondary_color: tenantSecondary,
+        };
+        if (tenantLogo.trim()) tenantInsert.logo_url = tenantLogo.trim();
+        if (tenantDomain.trim()) tenantInsert.allowed_email_domain = tenantDomain.trim().toLowerCase();
+
+        const { data: tenant, error: tenantErr } = await supabase
+          .from("tenants")
+          .insert(tenantInsert)
+          .select()
+          .single();
+        if (tenantErr) throw tenantErr;
+        tenantId = tenant.id;
+      }
+
+      const insertData: any = { name: poolName.trim(), created_by: user.id };
+      if (poolDesc.trim()) insertData.description = poolDesc.trim();
+      if (prizeText.trim()) insertData.prize_text = prizeText.trim();
+      if (tenantId) insertData.tenant_id = tenantId;
       
       const { data: pool, error } = await supabase
         .from("pools")
@@ -55,11 +96,10 @@ export default function Pool() {
       });
       return pool;
     },
-    onSuccess: (pool) => {
+    onSuccess: () => {
       trackPoolCreated();
       toast({ title: "Poule aangemaakt! 🎉" });
-      setPoolName(""); setPoolDesc(""); setPrizeText("");
-      setShowCreate(false);
+      resetForm();
       queryClient.invalidateQueries({ queryKey: ["my-pools"] });
     },
     onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
@@ -83,7 +123,7 @@ export default function Pool() {
       }
       return pool;
     },
-    onSuccess: (pool) => {
+    onSuccess: () => {
       trackPoolJoined();
       toast({ title: "Je bent lid! 🎉" });
       setJoinCode("");
@@ -124,15 +164,128 @@ export default function Pool() {
         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
           <Card className="border-0 shadow-lg">
             <CardContent className="pt-4 space-y-3">
-              <Input placeholder="Naam van de poule *" value={poolName} onChange={(e) => setPoolName(e.target.value)} className="h-12" />
-              <Textarea placeholder="Beschrijving (optioneel)" value={poolDesc} onChange={(e) => setPoolDesc(e.target.value)} rows={2} />
-              <Input placeholder="Prijs (optioneel, bijv. '€50 cadeaubon')" value={prizeText} onChange={(e) => setPrizeText(e.target.value)} className="h-12" />
+              <Input placeholder="Naam van de poule *" value={poolName} onChange={(e) => setPoolName(e.target.value)} className="h-12" maxLength={100} />
+              <Textarea placeholder="Beschrijving (optioneel)" value={poolDesc} onChange={(e) => setPoolDesc(e.target.value)} rows={2} maxLength={500} />
+              <Input placeholder="Prijs (optioneel, bijv. '€50 cadeaubon')" value={prizeText} onChange={(e) => setPrizeText(e.target.value)} className="h-12" maxLength={200} />
+
+              {/* Tenant Branding Toggle */}
+              <div className="border border-border/60 rounded-xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    <Label htmlFor="branding-toggle" className="text-sm font-semibold cursor-pointer">Bedrijfsbranding</Label>
+                  </div>
+                  <Switch id="branding-toggle" checked={enableBranding} onCheckedChange={setEnableBranding} />
+                </div>
+
+                {enableBranding && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-3">
+                    <p className="text-xs text-muted-foreground">Voeg je bedrijfsidentiteit toe zodat deelnemers jouw branding zien.</p>
+
+                    {/* Company Name */}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Bedrijfsnaam *</Label>
+                      <Input
+                        placeholder="bijv. Acme B.V."
+                        value={tenantName}
+                        onChange={(e) => setTenantName(e.target.value)}
+                        className="h-10"
+                        maxLength={100}
+                      />
+                    </div>
+
+                    {/* Logo URL */}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                        <ImageIcon className="h-3 w-3" /> Logo URL (optioneel)
+                      </Label>
+                      <Input
+                        placeholder="https://example.com/logo.png"
+                        value={tenantLogo}
+                        onChange={(e) => setTenantLogo(e.target.value)}
+                        className="h-10"
+                        type="url"
+                        maxLength={500}
+                      />
+                      {tenantLogo && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="h-10 w-10 rounded-lg border border-border/50 bg-white flex items-center justify-center overflow-hidden p-1">
+                            <img src={tenantLogo} alt="Logo preview" className="h-full w-full object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">Preview</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Colors */}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Palette className="h-3 w-3" /> Kleuren
+                      </Label>
+                      <div className="flex gap-3">
+                        <div className="flex-1 space-y-1">
+                          <label className="text-[10px] text-muted-foreground">Primair</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={tenantPrimary}
+                              onChange={(e) => setTenantPrimary(e.target.value)}
+                              className="h-9 w-9 rounded-lg border border-border cursor-pointer"
+                            />
+                            <Input
+                              value={tenantPrimary}
+                              onChange={(e) => setTenantPrimary(e.target.value)}
+                              className="h-9 text-xs font-mono flex-1"
+                              maxLength={7}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <label className="text-[10px] text-muted-foreground">Secundair</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={tenantSecondary}
+                              onChange={(e) => setTenantSecondary(e.target.value)}
+                              className="h-9 w-9 rounded-lg border border-border cursor-pointer"
+                            />
+                            <Input
+                              value={tenantSecondary}
+                              onChange={(e) => setTenantSecondary(e.target.value)}
+                              className="h-9 text-xs font-mono flex-1"
+                              maxLength={7}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      {/* Color preview bar */}
+                      <div className="h-2 rounded-full mt-2 overflow-hidden" style={{ background: `linear-gradient(90deg, ${tenantPrimary}, ${tenantSecondary})` }} />
+                    </div>
+
+                    {/* Email Domain */}
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Mail className="h-3 w-3" /> E-maildomein (optioneel)
+                      </Label>
+                      <Input
+                        placeholder="bijv. acme.nl"
+                        value={tenantDomain}
+                        onChange={(e) => setTenantDomain(e.target.value)}
+                        className="h-10"
+                        maxLength={100}
+                      />
+                      <p className="text-[10px] text-muted-foreground">Alleen gebruikers met dit e-maildomein kunnen deelnemen.</p>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+
               <Button
                 className="w-full h-12 gradient-primary text-primary-foreground"
-                disabled={!poolName.trim() || createPool.isPending}
+                disabled={!poolName.trim() || (enableBranding && !tenantName.trim()) || createPool.isPending}
                 onClick={() => createPool.mutate()}
               >
-                {createPool.isPending ? "Aanmaken..." : "Poule aanmaken"}
+                {createPool.isPending ? "Aanmaken..." : enableBranding ? "🏢 Bedrijfspoule aanmaken" : "Poule aanmaken"}
               </Button>
             </CardContent>
           </Card>
