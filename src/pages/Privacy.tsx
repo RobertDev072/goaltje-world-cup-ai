@@ -32,6 +32,7 @@ const sections = [
       "Wachtwoorden worden versleuteld opgeslagen (bcrypt hashing) en zijn nooit zichtbaar voor ons.",
       "Alle verbindingen verlopen via HTTPS/TLS-encryptie.",
       "Wij delen je gegevens **nooit** met derden voor commerciële doeleinden.",
+      "**Wij doen niets met je data** — je gegevens worden uitsluitend gebruikt om de Goaltje-app te laten functioneren (voorspellingen, poules, leaderboards). Er vindt geen verkoop, analyse voor marketing, of profilering plaats.",
     ],
   },
   {
@@ -60,7 +61,8 @@ const sections = [
     title: "Bewaartermijnen",
     content: [
       "Accountgegevens worden bewaard zolang je een actief account hebt.",
-      "Bij accountverwijdering worden al je persoonlijke gegevens, voorspellingen en poule-lidmaatschappen binnen 30 dagen definitief verwijderd.",
+      "**Inactieve accounts** (geen login gedurende 60 dagen) worden automatisch verwijderd, inclusief alle persoonlijke gegevens, voorspellingen en poule-lidmaatschappen.",
+      "Bij handmatige accountverwijdering worden al je persoonlijke gegevens binnen 30 dagen definitief verwijderd.",
       "Anonieme, geaggregeerde statistieken (zoals totale gebruikersaantallen) kunnen bewaard blijven.",
     ],
   },
@@ -69,7 +71,7 @@ const sections = [
     title: "Contact",
     content: [
       "Voor vragen over je privacy of om je rechten uit te oefenen, neem contact met ons op:",
-      "**E-mail**: privacy@robertdev.nl",
+      "**E-mail**: rb085@icloud.com",
       "**Verantwoordelijke**: RobertDev.nl, Nederland",
       "Wij reageren binnen 30 dagen op AVG-verzoeken.",
     ],
