@@ -647,16 +647,21 @@ export default function Landing() {
             <img src={goaltjeLogo} alt="Goaltje" className="w-5 h-5" />
             <span className="text-xs text-muted-foreground">© 2026 RobertDev.nl – GOALTJE</span>
           </div>
-          <div className="flex gap-3">
-            {LANGS.map((l) => (
-              <button
-                key={l.code}
-                onClick={() => switchLang(l.code)}
-                className={`text-xs ${lang === l.code ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                {l.flag} {l.code.toUpperCase()}
-              </button>
-            ))}
+          <div className="flex items-center gap-4">
+            <Link to="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              Privacybeleid
+            </Link>
+            <div className="flex gap-3">
+              {LANGS.map((l) => (
+                <button
+                  key={l.code}
+                  onClick={() => switchLang(l.code)}
+                  className={`text-xs ${lang === l.code ? "text-primary font-semibold" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {l.flag} {l.code.toUpperCase()}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </footer>
