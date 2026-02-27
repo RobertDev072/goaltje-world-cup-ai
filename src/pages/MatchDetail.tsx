@@ -125,8 +125,7 @@ export default function MatchDetail() {
 
   const isLocked = useMemo(() => {
     if (!match) return true;
-    if (!isPredictionAllowed(match.status)) return true;
-    return new Date() >= new Date(match.kickoff_utc);
+    return !isPredictionAllowed(match.status, (match as any).prediction_deadline_utc);
   }, [match]);
 
   const displayHomePred = existingPred ? String(existingPred.home_pred ?? "") : homePred;
