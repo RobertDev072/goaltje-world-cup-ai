@@ -61,6 +61,8 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     target: "es2020",
+    cssMinify: true,
+    minify: "esbuild",
     rollupOptions: {
       output: {
         manualChunks: {
@@ -75,6 +77,8 @@ export default defineConfig(({ mode }) => ({
             "@radix-ui/react-tooltip",
             "@radix-ui/react-collapsible",
           ],
+          charts: ["recharts"],
+          vercel: ["@vercel/analytics", "@vercel/speed-insights"],
         },
       },
     },
