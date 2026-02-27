@@ -68,12 +68,10 @@ export default function Pool() {
   const joinPool = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Niet ingelogd");
-      const { data: pool, error: findError } = await supabase
-        .from("pools")
-        .select("id")
-        .eq("invite_code", joinCode.toUpperCase().trim())
-        .single();
-      if (findError || !pool) throw new Error("Deze code bestaat niet. Controleer en probeer opnieuw.");
+      const { data, error: findError } = await supabase
+        .rpc("lookup_pool_by_invite_code", { _code: joinCode.toUpperCase().trim() });
+      const pool = data as { id: string; name: string } | null;
+      if (findError || !pool || !pool.id) throw new Error("Deze code bestaat niet. Controleer en probeer opnieuw.");
       const { error } = await supabase.from("pool_members").insert({
         pool_id: pool.id,
         user_id: user.id,
