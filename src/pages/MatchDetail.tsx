@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Lock, Check, X } from "lucide-react";
+import { ArrowLeft, Lock, Check, X, TrendingUp, Swords, Calendar } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { trackFirstPrediction } from "@/lib/analytics";
@@ -45,6 +45,24 @@ export default function MatchDetail() {
       return data || [];
     },
     enabled: !!id,
+  });
+
+  // Fetch H2H & form stats from API-Football
+  const { data: matchStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["match-stats", match?.home_team?.name, match?.away_team?.name],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("match-stats", {
+        body: {
+          homeTeamName: match!.home_team!.name,
+          awayTeamName: match!.away_team!.name,
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!match?.home_team?.name && !!match?.away_team?.name,
+    staleTime: 1000 * 60 * 60, // cache 1 hour
+    retry: 1,
   });
 
   // Get user's pools
@@ -363,6 +381,136 @@ export default function MatchDetail() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Match Stats Section */}
+      {statsLoading && (
+        <div className="space-y-3">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-32 rounded-xl" />
+          <Skeleton className="h-24 rounded-xl" />
+        </div>
+      )}
+
+      {matchStats && !matchStats.error && (
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="space-y-4">
+          
+          {/* H2H Summary */}
+          {matchStats.h2h && matchStats.h2h.total > 0 && (
+            <Card className="border-0 shadow-lg">
+              <CardContent className="p-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Swords className="h-5 w-5 text-primary" />
+                  <h3 className="font-display font-semibold text-base">Head-to-Head</h3>
+                  <Badge variant="outline" className="ml-auto text-xs">{matchStats.h2h.total} wedstrijden</Badge>
+                </div>
+
+                {/* Win bars */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">{match?.home_team?.name}</span>
+                    <span className="text-xs text-muted-foreground">{matchStats.h2h.homeWins}W</span>
+                  </div>
+                  <div className="flex h-3 rounded-full overflow-hidden bg-muted">
+                    {matchStats.h2h.homeWins > 0 && (
+                      <div className="bg-primary h-full transition-all" style={{ width: `${(matchStats.h2h.homeWins / matchStats.h2h.total) * 100}%` }} />
+                    )}
+                    {matchStats.h2h.draws > 0 && (
+                      <div className="bg-muted-foreground/40 h-full transition-all" style={{ width: `${(matchStats.h2h.draws / matchStats.h2h.total) * 100}%` }} />
+                    )}
+                    {matchStats.h2h.awayWins > 0 && (
+                      <div className="bg-accent h-full transition-all" style={{ width: `${(matchStats.h2h.awayWins / matchStats.h2h.total) * 100}%` }} />
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">{match?.away_team?.name}</span>
+                    <span className="text-xs text-muted-foreground">{matchStats.h2h.awayWins}W</span>
+                  </div>
+                  <p className="text-center text-xs text-muted-foreground">{matchStats.h2h.draws} gelijk</p>
+                </div>
+
+                {/* Recent H2H matches */}
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Laatste ontmoetingen</p>
+                  {matchStats.h2h.matches.map((m: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between text-xs bg-muted/50 rounded-lg px-3 py-2">
+                      <span className="text-muted-foreground w-20 truncate">{new Date(m.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
+                      <span className="font-medium flex-1 text-right truncate">{m.home}</span>
+                      <span className="font-bold text-primary mx-2">{m.homeGoals} - {m.awayGoals}</span>
+                      <span className="font-medium flex-1 truncate">{m.away}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Recent Form */}
+          {(matchStats.homeForm?.length > 0 || matchStats.awayForm?.length > 0) && (
+            <Card className="border-0 shadow-lg">
+              <CardContent className="p-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <h3 className="font-display font-semibold text-base">Recente vorm</h3>
+                </div>
+
+                {/* Home team form */}
+                {matchStats.homeForm?.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold">{match?.home_team?.name}</p>
+                    <div className="flex gap-1.5">
+                      {matchStats.homeForm.map((f: any, i: number) => (
+                        <span
+                          key={i}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white ${
+                            f.result === 'W' ? 'bg-emerald-500' : f.result === 'L' ? 'bg-red-500' : 'bg-muted-foreground/60'
+                          }`}
+                          title={`${f.score} vs ${f.opponent}`}
+                        >
+                          {f.result}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="space-y-1">
+                      {matchStats.homeForm.map((f: any, i: number) => (
+                        <p key={i} className="text-[11px] text-muted-foreground">
+                          {f.score} vs {f.opponent} <span className="opacity-60">· {f.league}</span>
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Away team form */}
+                {matchStats.awayForm?.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-border">
+                    <p className="text-sm font-semibold">{match?.away_team?.name}</p>
+                    <div className="flex gap-1.5">
+                      {matchStats.awayForm.map((f: any, i: number) => (
+                        <span
+                          key={i}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white ${
+                            f.result === 'W' ? 'bg-emerald-500' : f.result === 'L' ? 'bg-red-500' : 'bg-muted-foreground/60'
+                          }`}
+                          title={`${f.score} vs ${f.opponent}`}
+                        >
+                          {f.result}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="space-y-1">
+                      {matchStats.awayForm.map((f: any, i: number) => (
+                        <p key={i} className="text-[11px] text-muted-foreground">
+                          {f.score} vs {f.opponent} <span className="opacity-60">· {f.league}</span>
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </motion.div>
       )}
     </div>
   );
