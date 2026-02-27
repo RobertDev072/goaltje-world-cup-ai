@@ -194,7 +194,7 @@ export function PoolChat({ poolId }: PoolChatProps) {
                     {!sameUser && !isMe && (
                       <div className="h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold overflow-hidden shrink-0 mt-1">
                         {profile?.avatar_url
-                          ? <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                          ? <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
                           : (profile?.name || "?")[0].toUpperCase()}
                       </div>
                     )}

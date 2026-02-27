@@ -148,7 +148,7 @@ export default function Profile() {
           <CardContent className="pt-0 -mt-10 text-center space-y-4 pb-6">
             <div className="relative inline-block">
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Avatar" className="h-20 w-20 rounded-full object-cover mx-auto border-4 border-card" />
+                <img src={profile.avatar_url} alt="Avatar" className="h-20 w-20 rounded-full object-cover mx-auto border-4 border-card" loading="lazy" decoding="async" />
               ) : (
                 <div className="h-20 w-20 rounded-full bg-primary mx-auto flex items-center justify-center text-3xl font-bold text-primary-foreground border-4 border-card">
                   {(profile?.name || user.email || "?")[0].toUpperCase()}
