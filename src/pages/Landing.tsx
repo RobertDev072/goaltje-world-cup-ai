@@ -28,12 +28,12 @@ const showcaseItems = [
 const faqKeys = ["1", "2", "3", "4", "5", "6"];
 
 const blogArticles = [
-  { key: "1", icon: Calendar, color: "from-blue-500 to-cyan-500" },
-  { key: "2", icon: TrendingUp, color: "from-purple-500 to-pink-500" },
-  { key: "3", icon: MapPin, color: "from-green-500 to-emerald-500" },
-  { key: "4", icon: Target, color: "from-orange-500 to-red-500" },
-  { key: "5", icon: Lightbulb, color: "from-yellow-500 to-amber-500" },
-  { key: "6", icon: Flag, color: "from-primary to-blue-600" },
+  { key: "1", icon: Calendar, color: "from-blue-500 to-cyan-500", slug: "wk-2026-speelschema" },
+  { key: "2", icon: TrendingUp, color: "from-purple-500 to-pink-500", slug: "wk-2026-format-48-landen" },
+  { key: "3", icon: MapPin, color: "from-green-500 to-emerald-500", slug: "wk-2026-speelsteden-stadions" },
+  { key: "4", icon: Target, color: "from-orange-500 to-red-500", slug: "wk-2026-voorspellingen-favorieten" },
+  { key: "5", icon: Lightbulb, color: "from-yellow-500 to-amber-500", slug: "wk-poule-winnen-strategieen" },
+  { key: "6", icon: Flag, color: "from-primary to-blue-600", slug: "nederland-oranje-wk-2026" },
 ];
 
 export default function Landing() {
@@ -484,7 +484,7 @@ export default function Landing() {
                     <p className="text-muted-foreground text-xs leading-relaxed flex-1">
                       {t(lang, `blog_${article.key}_summary`)}
                     </p>
-                    <Link to="/auth" className="mt-4 inline-flex items-center gap-1 text-primary text-xs font-semibold hover:underline">
+                    <Link to={`/blog/${article.slug}`} className="mt-4 inline-flex items-center gap-1 text-primary text-xs font-semibold hover:underline">
                       {t(lang, "blog_read_more")} →
                     </Link>
                   </CardContent>
