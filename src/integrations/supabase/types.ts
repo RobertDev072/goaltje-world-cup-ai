@@ -565,6 +565,50 @@ export type Database = {
         }
         Relationships: []
       }
+      wk_news_cache: {
+        Row: {
+          away_team_name: string
+          category: string
+          expires_at: string
+          generated_at: string
+          home_team_name: string
+          id: string
+          match_id: string | null
+          summary: string
+          title: string
+        }
+        Insert: {
+          away_team_name: string
+          category: string
+          expires_at?: string
+          generated_at?: string
+          home_team_name: string
+          id?: string
+          match_id?: string | null
+          summary: string
+          title: string
+        }
+        Update: {
+          away_team_name?: string
+          category?: string
+          expires_at?: string
+          generated_at?: string
+          home_team_name?: string
+          id?: string
+          match_id?: string | null
+          summary?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wk_news_cache_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
