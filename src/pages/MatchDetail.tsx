@@ -16,6 +16,7 @@ import { CountdownTimer } from "@/components/CountdownTimer";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { trackFirstPrediction } from "@/lib/analytics";
+import { ExactScoreConfetti, useExactScoreConfetti } from "@/components/ExactScoreConfetti";
 
 export default function MatchDetail() {
   const { id } = useParams();
@@ -192,6 +193,8 @@ export default function MatchDetail() {
     );
   }, [match, existingPred]);
 
+  const showConfetti = useExactScoreConfetti(pointsAwarded, id);
+
   if (isLoading) {
     return (
       <div className="max-w-lg mx-auto px-4 pt-6 space-y-4">
@@ -211,6 +214,7 @@ export default function MatchDetail() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-4">
+      <ExactScoreConfetti trigger={showConfetti} />
       <Link to="/matches" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm">
         <ArrowLeft className="h-4 w-4" /> Terug
       </Link>
