@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,8 +8,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, Moon, Sun, Shield, Camera, Loader2, Trophy, Target, Zap, Users, ChevronRight } from "lucide-react";
+import { LogOut, Moon, Sun, Shield, Camera, Loader2, Trophy, Target, Zap, Users, ChevronRight, Cookie } from "lucide-react";
 import { motion } from "framer-motion";
+import { getConsent, getConsentCategories, setConsent } from "@/lib/consent";
+import { Switch } from "@/components/ui/switch";
 
 export default function Profile() {
   const { user, signOut } = useAuth();
@@ -18,6 +20,15 @@ export default function Profile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
   const [uploading, setUploading] = useState(false);
+  const [showCookieSettings, setShowCookieSettings] = useState(false);
+  const [cookieAnalytics, setCookieAnalytics] = useState(() => getConsentCategories().analytics);
+  const [cookieFunctional, setCookieFunctional] = useState(() => getConsentCategories().functional);
+
+  const saveCookiePrefs = useCallback(() => {
+    setConsent("granted", { analytics: cookieAnalytics, functional: cookieFunctional });
+    toast({ title: "Cookie-voorkeuren opgeslagen ✅" });
+    setShowCookieSettings(false);
+  }, [cookieAnalytics, cookieFunctional]);
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -233,6 +244,44 @@ export default function Profile() {
             {isDark ? <Sun className="h-5 w-5 mr-3" /> : <Moon className="h-5 w-5 mr-3" />}
             {isDark ? "Licht thema" : "Donker thema"}
           </Button>
+          <Button variant="outline" className="w-full h-12 justify-start" onClick={() => setShowCookieSettings(!showCookieSettings)}>
+            <Cookie className="h-5 w-5 mr-3 text-primary" /> Cookie-voorkeuren
+          </Button>
+          {showCookieSettings && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="border border-border/50 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold">Noodzakelijk</p>
+                  <p className="text-[10px] text-muted-foreground">Altijd actief</p>
+                </div>
+                <Switch checked disabled className="opacity-60" />
+              </div>
+              <div className="border-t border-border/30" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="prof-func" className="text-xs font-semibold cursor-pointer">Functioneel</Label>
+                  <p className="text-[10px] text-muted-foreground">Taalvoorkeur, thema</p>
+                </div>
+                <Switch id="prof-func" checked={cookieFunctional} onCheckedChange={setCookieFunctional} />
+              </div>
+              <div className="border-t border-border/30" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="prof-analytics" className="text-xs font-semibold cursor-pointer">Analytisch</Label>
+                  <p className="text-[10px] text-muted-foreground">Anonieme statistieken</p>
+                </div>
+                <Switch id="prof-analytics" checked={cookieAnalytics} onCheckedChange={setCookieAnalytics} />
+              </div>
+              <Button size="sm" className="w-full h-9 rounded-xl gradient-primary text-white text-xs" onClick={saveCookiePrefs}>
+                Voorkeuren opslaan
+              </Button>
+            </motion.div>
+          )}
+          <Link to="/privacy" className="block">
+            <Button variant="outline" className="w-full h-12 justify-start">
+              <Shield className="h-5 w-5 mr-3 text-muted-foreground" /> Privacybeleid
+            </Button>
+          </Link>
           <Button variant="outline" className="w-full h-12 justify-start text-destructive hover:text-destructive" onClick={handleSignOut}>
             <LogOut className="h-5 w-5 mr-3" /> Uitloggen
           </Button>
