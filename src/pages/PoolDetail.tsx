@@ -68,6 +68,17 @@ export default function PoolDetail() {
     enabled: !!id,
   });
 
+  // Fetch tenant branding if pool has tenant_id
+  const { data: tenant } = useQuery({
+    queryKey: ["tenant", pool?.tenant_id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("tenants").select("*").eq("id", pool!.tenant_id!).single();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!pool?.tenant_id,
+  });
+
   const { data: members } = useQuery({
     queryKey: ["pool-members", id],
     queryFn: async () => {
@@ -307,14 +318,34 @@ export default function PoolDetail() {
       {/* Pool Hero Header */}
       <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="border-0 shadow-elevation-3 overflow-hidden">
-          <div className="gradient-primary h-1.5" />
+          {/* Tenant branded gradient bar or default */}
+          <div
+            className="h-1.5"
+            style={tenant?.primary_color
+              ? { background: `linear-gradient(90deg, ${tenant.primary_color}, ${tenant.secondary_color || tenant.primary_color})` }
+              : undefined}
+          >
+            {!tenant?.primary_color && <div className="gradient-primary h-full w-full" />}
+          </div>
           <CardContent className="p-5 space-y-3">
             <div className="flex items-start gap-3">
-              <div className="h-14 w-14 rounded-2xl gradient-navy flex items-center justify-center shrink-0 shadow-elevation-2">
-                <Trophy className="h-7 w-7 text-secondary" />
-              </div>
+              {/* Tenant logo or default trophy icon */}
+              {tenant?.logo_url ? (
+                <div className="h-14 w-14 rounded-2xl bg-white border border-border/50 flex items-center justify-center shrink-0 shadow-elevation-2 overflow-hidden p-1.5">
+                  <img src={tenant.logo_url} alt={tenant.name} className="h-full w-full object-contain" />
+                </div>
+              ) : (
+                <div className="h-14 w-14 rounded-2xl gradient-navy flex items-center justify-center shrink-0 shadow-elevation-2">
+                  <Trophy className="h-7 w-7 text-secondary" />
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <h1 className="text-xl font-bold font-display truncate">{pool.name}</h1>
+                {tenant && (
+                  <p className="text-[10px] font-semibold uppercase tracking-wider mt-0.5" style={{ color: tenant.primary_color || undefined }}>
+                    {tenant.name}
+                  </p>
+                )}
                 {pool.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{pool.description}</p>}
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
