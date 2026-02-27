@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Lock, Check, X, TrendingUp, Swords, Calendar } from "lucide-react";
+import { ArrowLeft, Lock, Check, X, TrendingUp, Swords, Newspaper, Zap, Users, History, ShieldCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { trackFirstPrediction } from "@/lib/analytics";
@@ -62,6 +62,27 @@ export default function MatchDetail() {
     },
     enabled: !!match?.home_team?.name && !!match?.away_team?.name,
     staleTime: 1000 * 60 * 60, // cache 1 hour
+    retry: 1,
+  });
+
+  // Fetch match news/insights via AI
+  const { data: matchNews, isLoading: newsLoading } = useQuery({
+    queryKey: ["match-news", match?.home_team?.name, match?.away_team?.name],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("match-news", {
+        body: {
+          homeTeam: match!.home_team!.name,
+          awayTeam: match!.away_team!.name,
+          matchDate: match!.kickoff_utc,
+          stage: match!.stage,
+          group: match!.group,
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!match?.home_team?.name && !!match?.away_team?.name,
+    staleTime: 1000 * 60 * 60 * 4, // cache 4 hours
     retry: 1,
   });
 
@@ -510,6 +531,63 @@ export default function MatchDetail() {
               </CardContent>
             </Card>
           )}
+        </motion.div>
+      )}
+
+      {/* Match News Section */}
+      {newsLoading && (
+        <div className="space-y-3">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-24 rounded-xl" />
+          <Skeleton className="h-24 rounded-xl" />
+        </div>
+      )}
+
+      {matchNews?.items && matchNews.items.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Newspaper className="h-5 w-5 text-primary" />
+            <h2 className="font-display font-semibold text-lg">Wedstrijd Nieuws</h2>
+          </div>
+
+          {matchNews.items.map((item: any, i: number) => {
+            const categoryIcon = {
+              vorm: <Zap className="h-4 w-4" />,
+              historie: <History className="h-4 w-4" />,
+              spelers: <Users className="h-4 w-4" />,
+              tactiek: <ShieldCheck className="h-4 w-4" />,
+            }[item.category] || <Newspaper className="h-4 w-4" />;
+
+            const categoryColor = {
+              vorm: 'bg-emerald-500/10 text-emerald-700',
+              historie: 'bg-amber-500/10 text-amber-700',
+              spelers: 'bg-blue-500/10 text-blue-700',
+              tactiek: 'bg-purple-500/10 text-purple-700',
+            }[item.category] || 'bg-muted text-muted-foreground';
+
+            return (
+              <Card key={i} className="border-0 shadow-md overflow-hidden">
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg shrink-0 ${categoryColor}`}>
+                      {categoryIcon}
+                    </div>
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] capitalize">{item.category}</Badge>
+                      </div>
+                      <h3 className="font-semibold text-sm leading-tight">{item.title}</h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{item.summary}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          <p className="text-[10px] text-muted-foreground text-center opacity-60">
+            📰 Gegenereerd door AI op basis van beschikbare data
+          </p>
         </motion.div>
       )}
     </div>
