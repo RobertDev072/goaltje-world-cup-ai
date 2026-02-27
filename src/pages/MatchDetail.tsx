@@ -116,8 +116,8 @@ export default function MatchDetail() {
   });
 
   const [selectedPoolId, setSelectedPoolId] = useState<string>("");
-  const [homePred, setHomePred] = useState<string>("");
-  const [awayPred, setAwayPred] = useState<string>("");
+  const [homePred, setHomePred] = useState<string | null>(null);
+  const [awayPred, setAwayPred] = useState<string | null>(null);
 
   // Set defaults when pools/predictions load
   const activePool = selectedPoolId || (myPools && myPools.length > 0 ? myPools[0].id : "");
@@ -128,15 +128,22 @@ export default function MatchDetail() {
     return !isPredictionAllowed(match.status, (match as any).prediction_deadline_utc);
   }, [match]);
 
-  const displayHomePred = existingPred ? String(existingPred.home_pred ?? "") : homePred;
-  const displayAwayPred = existingPred ? String(existingPred.away_pred ?? "") : awayPred;
+  // Show prediction form only when scheduled (not live/finished/cancelled etc.)
+  const showPredictionForm = useMemo(() => {
+    if (!match) return false;
+    return !['live', 'finished', 'cancelled', 'void'].includes(match.status);
+  }, [match]);
+
+  // Compute display values: user edits take priority, otherwise show existing prediction
+  const displayHomePred = homePred !== null ? homePred : (existingPred?.home_pred != null ? String(existingPred.home_pred) : "");
+  const displayAwayPred = awayPred !== null ? awayPred : (existingPred?.away_pred != null ? String(existingPred.away_pred) : "");
 
   const savePrediction = useMutation({
     mutationFn: async () => {
       if (!user || !activePool) throw new Error("Niet ingelogd of geen poule geselecteerd");
       if (isLocked) throw new Error("Wedstrijd is al begonnen!");
-      const hp = parseInt(homePred || displayHomePred);
-      const ap = parseInt(awayPred || displayAwayPred);
+      const hp = parseInt(displayHomePred);
+      const ap = parseInt(displayAwayPred);
       if (isNaN(hp) || isNaN(ap) || hp < 0 || ap < 0) throw new Error("Vul geldige scores in");
 
       if (existingPred) {
@@ -256,22 +263,24 @@ export default function MatchDetail() {
       </motion.div>
 
       {/* Prediction Section */}
-      {user && myPools && myPools.length > 0 && (
+      {user && myPools && myPools.length > 0 && (showPredictionForm || (isMatchCounted(match.status) && existingPred)) && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <Card className="border-0 shadow-lg">
             <CardContent className="p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-display font-semibold text-base">Jouw voorspelling</h3>
-                {isLocked && (
+                <h3 className="font-display font-semibold text-base">
+                  {showPredictionForm ? "Jouw voorspelling" : "Jouw resultaat"}
+                </h3>
+                {isLocked && showPredictionForm && (
                   <Badge variant="outline" className="text-xs gap-1">
-                    <Lock className="h-3 w-3" /> Locked
+                    <Lock className="h-3 w-3" /> Gesloten
                   </Badge>
                 )}
               </div>
 
               {/* Pool selector */}
               {myPools.length > 1 && (
-                <Select value={activePool} onValueChange={setSelectedPoolId}>
+                <Select value={activePool} onValueChange={(v) => { setSelectedPoolId(v); setHomePred(null); setAwayPred(null); }}>
                   <SelectTrigger className="h-10">
                     <SelectValue placeholder="Kies poule" />
                   </SelectTrigger>
@@ -286,38 +295,42 @@ export default function MatchDetail() {
                 <p className="text-xs text-muted-foreground">Poule: {myPools[0].name}</p>
               )}
 
-              {/* Score inputs */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">{match.home_team?.short_name || "HOME"}</p>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={20}
-                    className="h-14 text-center text-2xl font-bold font-display"
-                    value={existingPred ? (homePred || String(existingPred.home_pred ?? "")) : homePred}
-                    onChange={(e) => setHomePred(e.target.value)}
-                    disabled={isLocked}
-                    placeholder="-"
-                  />
-                </div>
-                <span className="text-xl font-bold text-muted-foreground mt-5">-</span>
-                <div className="flex-1 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">{match.away_team?.short_name || "AWAY"}</p>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={20}
-                    className="h-14 text-center text-2xl font-bold font-display"
-                    value={existingPred ? (awayPred || String(existingPred.away_pred ?? "")) : awayPred}
-                    onChange={(e) => setAwayPred(e.target.value)}
-                    disabled={isLocked}
-                    placeholder="-"
-                  />
-                </div>
-              </div>
+              {/* Score inputs - only show when form is active */}
+              {showPredictionForm && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 text-center">
+                      <p className="text-xs text-muted-foreground mb-1">{match.home_team?.short_name || "HOME"}</p>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={20}
+                        className="h-14 text-center text-2xl font-bold font-display"
+                        value={displayHomePred}
+                        onChange={(e) => setHomePred(e.target.value)}
+                        disabled={isLocked}
+                        placeholder="-"
+                      />
+                    </div>
+                    <span className="text-xl font-bold text-muted-foreground mt-5">-</span>
+                    <div className="flex-1 text-center">
+                      <p className="text-xs text-muted-foreground mb-1">{match.away_team?.short_name || "AWAY"}</p>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={20}
+                        className="h-14 text-center text-2xl font-bold font-display"
+                        value={displayAwayPred}
+                        onChange={(e) => setAwayPred(e.target.value)}
+                        disabled={isLocked}
+                        placeholder="-"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
-              {!isLocked && (
+              {showPredictionForm && !isLocked && (
                 <Button
                   className="w-full h-12 gradient-primary text-primary-foreground font-semibold"
                   onClick={() => savePrediction.mutate()}
@@ -325,6 +338,14 @@ export default function MatchDetail() {
                 >
                   {savePrediction.isPending ? "Opslaan..." : existingPred ? "Bijwerken" : "Opslaan"}
                 </Button>
+              )}
+
+              {showPredictionForm && isLocked && (
+                <div className="rounded-xl p-3 text-center bg-muted">
+                  <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                    <Lock className="h-3 w-3" /> Voorspellingen zijn gesloten: deadline verstreken
+                  </p>
+                </div>
               )}
 
               {/* Points result with explanation */}
