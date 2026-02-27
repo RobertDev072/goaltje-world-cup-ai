@@ -99,32 +99,19 @@ export default function Index() {
   const recentFinished = upcomingMatches?.filter((m: any) => m.status === "finished").slice(-3) || [];
   const upcoming = upcomingMatches?.filter((m: any) => m.status === "scheduled").slice(0, 5) || [];
 
-  // Pick the first 2 upcoming matches with real team names for news
-  const newsMatches = upcoming.filter(
-    (m: any) => m.home_team?.name && m.away_team?.name &&
-      !m.home_team.name.includes("Playoff") && !m.away_team.name.includes("Playoff")
-  ).slice(0, 2);
-
-  // Fetch news for first newsworthy match
-  const newsMatch = newsMatches[0];
-  const { data: homeNews, isLoading: newsLoading } = useQuery({
-    queryKey: ["home-news", newsMatch?.home_team?.name, newsMatch?.away_team?.name],
+  // Fetch cached WK news from database
+  const { data: cachedNews, isLoading: newsLoading } = useQuery({
+    queryKey: ["wk-news-cache"],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("match-news", {
-        body: {
-          homeTeam: newsMatch!.home_team!.name,
-          awayTeam: newsMatch!.away_team!.name,
-          matchDate: newsMatch!.kickoff_utc,
-          stage: newsMatch!.stage,
-          group: newsMatch!.group,
-        },
-      });
-      if (error) throw error;
-      return { ...data, match: newsMatch };
+      const { data } = await supabase
+        .from("wk_news_cache")
+        .select("*, matches(id, home_team:teams!matches_home_team_id_fkey(name, flag_url), away_team:teams!matches_away_team_id_fkey(name, flag_url))")
+        .gt("expires_at", new Date().toISOString())
+        .order("generated_at", { ascending: false })
+        .limit(8);
+      return data || [];
     },
-    enabled: !!newsMatch?.home_team?.name && !!newsMatch?.away_team?.name,
-    staleTime: 1000 * 60 * 60 * 4,
-    retry: 1,
+    staleTime: 1000 * 60 * 5,
   });
 
   return (
@@ -267,7 +254,7 @@ export default function Index() {
       )}
 
       {/* WK Nieuws Feed */}
-      {(newsLoading || (homeNews?.items && homeNews.items.length > 0)) && (
+      {(newsLoading || (cachedNews && cachedNews.length > 0)) && (
         <div>
           <h2 className="font-display font-semibold text-lg flex items-center gap-2 mb-3">
             <Newspaper className="h-5 w-5 text-primary" /> WK Nieuws
@@ -279,12 +266,7 @@ export default function Index() {
             </div>
           ) : (
             <div className="space-y-2">
-              {homeNews?.match && (
-                <p className="text-xs text-muted-foreground mb-2">
-                  {homeNews.match.home_team?.flag_url} {homeNews.match.home_team?.name} vs {homeNews.match.away_team?.name} {homeNews.match.away_team?.flag_url}
-                </p>
-              )}
-              {homeNews?.items?.slice(0, 3).map((item: any, i: number) => {
+              {cachedNews?.slice(0, 4).map((item: any, i: number) => {
                 const categoryIcon: Record<string, React.ReactNode> = {
                   vorm: <Zap className="h-3.5 w-3.5" />,
                   historie: <History className="h-3.5 w-3.5" />,
@@ -299,7 +281,7 @@ export default function Index() {
                 };
 
                 return (
-                  <Link key={i} to={`/match/${homeNews.match?.id}`}>
+                  <Link key={item.id || i} to={`/match/${item.match_id}`}>
                     <Card className="border-0 shadow-sm hover:shadow-md transition-all group">
                       <CardContent className="p-3 flex items-start gap-3">
                         <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${categoryColor[item.category] || 'bg-muted text-muted-foreground'}`}>
@@ -308,6 +290,7 @@ export default function Index() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-0.5">
                             <Badge variant="outline" className="text-[9px] capitalize px-1.5 py-0">{item.category}</Badge>
+                            <span className="text-[9px] text-muted-foreground">{item.home_team_name} vs {item.away_team_name}</span>
                           </div>
                           <p className="text-sm font-semibold leading-tight line-clamp-1">{item.title}</p>
                           <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2 mt-0.5">{item.summary}</p>
@@ -318,11 +301,6 @@ export default function Index() {
                   </Link>
                 );
               })}
-              {homeNews?.match && (
-                <Link to={`/match/${homeNews.match.id}`} className="text-xs text-primary font-medium flex items-center gap-1 justify-center pt-1">
-                  Meer lezen <ChevronRight className="h-3 w-3" />
-                </Link>
-              )}
             </div>
           )}
         </div>
