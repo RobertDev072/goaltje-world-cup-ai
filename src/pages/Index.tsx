@@ -238,13 +238,22 @@ export default function Index() {
           <div className="space-y-3">
             {pools.map((pool: any) => (
               <Link key={pool.id} to={`/pool/${pool.id}`}>
-                <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all mb-3 group">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold">{pool.name}</p>
-                      <p className="text-xs text-muted-foreground">Code: {pool.invite_code}</p>
+                <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all mb-3 group overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className="flex items-center gap-3 p-4">
+                      <div className="h-11 w-11 rounded-2xl gradient-navy flex items-center justify-center shrink-0 shadow-elevation-1">
+                        <Trophy className="h-5 w-5 text-secondary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-display font-bold text-sm truncate">{pool.name}</p>
+                        {pool.invite_code && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono mt-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold tracking-wider">
+                            {pool.invite_code}
+                          </span>
+                        )}
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-primary shrink-0 group-hover:translate-x-1 transition-transform" />
                     </div>
-                    <ChevronRight className="h-5 w-5 text-primary group-hover:translate-x-1 transition-transform" />
                   </CardContent>
                 </Card>
               </Link>
