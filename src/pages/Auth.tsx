@@ -155,6 +155,7 @@ export default function Auth() {
         <Link to="/nl" className="block text-center text-xs text-white/50 hover:text-white/80 transition-colors">
           ← Terug naar homepage
         </Link>
+        <p className="text-center text-[10px] text-white/30 mt-2">© 2026 RobertDev.nl – GOALTJE</p>
       </motion.div>
     </div>
   );

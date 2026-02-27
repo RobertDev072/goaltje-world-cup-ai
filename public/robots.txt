@@ -1,9 +1,11 @@
 User-agent: Googlebot
-Allow: /
+Allow: /nl
+Allow: /blog
 Crawl-delay: 1
 
 User-agent: Bingbot
-Allow: /
+Allow: /nl
+Allow: /blog
 Crawl-delay: 2
 
 User-agent: Twitterbot
@@ -16,10 +18,17 @@ User-agent: LinkedInBot
 Allow: /
 
 User-agent: *
-Allow: /
+Allow: /nl
+Allow: /blog
 Disallow: /admin
 Disallow: /auth
 Disallow: /reset-password
 Disallow: /profile
+Disallow: /pool
+Disallow: /join
+Disallow: /matches
+Disallow: /bracket
+Disallow: /assets/
+Disallow: /*.map$
 
-Sitemap: https://goaltje.com/sitemap.xml
+Sitemap: https://goaltje.nl/sitemap.xml
