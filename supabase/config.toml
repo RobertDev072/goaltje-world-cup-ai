@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.fetch-scores]
 verify_jwt = false
+
+[functions.match-stats]
+verify_jwt = false
