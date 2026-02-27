@@ -170,21 +170,22 @@ export default function Pool() {
             <motion.div key={membership.pool_id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
               <Link to={`/pool/${membership.pool_id}`}>
                 <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all group overflow-hidden">
+                  <div className="bg-gradient-to-r from-primary via-primary/80 to-secondary h-1" />
                   <CardContent className="p-0">
                     <div className="flex items-center gap-4 p-4">
-                      <div className="h-12 w-12 rounded-2xl gradient-navy flex items-center justify-center shrink-0 shadow-elevation-1">
+                      <div className="h-13 w-13 rounded-2xl gradient-navy flex items-center justify-center shrink-0 shadow-elevation-1">
                         <Trophy className="h-6 w-6 text-secondary" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-display font-bold text-base truncate">{membership.pools?.name}</p>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
                           {membership.role === "admin" && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary/15 text-secondary-foreground">
-                              👑 Owner
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-secondary/15 text-secondary">
+                              👑 Beheerder
                             </span>
                           )}
                           {membership.pools?.invite_code && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold tracking-wider">
+                            <span className="inline-flex items-center text-[10px] font-mono font-bold tracking-[0.2em] px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                               {membership.pools.invite_code}
                             </span>
                           )}

@@ -63,21 +63,29 @@ export function SocialShareSheet({ poolName, inviteCode, poolLink, shareText, on
 
   return (
     <div className="space-y-5">
+      {/* Pool name badge */}
+      <div className="text-center">
+        <span className="inline-flex items-center gap-1.5 text-xs font-display font-bold px-3 py-1 rounded-full bg-primary/10 text-primary">
+          <Users className="h-3 w-3" />
+          {poolName}
+        </span>
+      </div>
+
       {/* Hero: QR Code + Invite Code combined */}
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         className="flex flex-col items-center"
       >
-        <div className="relative bg-white p-4 rounded-3xl shadow-elevation-3 ring-1 ring-border/10">
+        <div className="relative bg-white p-5 rounded-3xl shadow-elevation-3 ring-1 ring-border/10">
           <QRCodeSVG
             value={poolLink}
-            size={180}
+            size={200}
             level="H"
             imageSettings={{
               src: goaltjeLogo,
-              height: 40,
-              width: 40,
+              height: 44,
+              width: 44,
               excavate: true,
             }}
           />
@@ -113,7 +121,7 @@ export function SocialShareSheet({ poolName, inviteCode, poolLink, shareText, on
         transition={{ delay: 0.15 }}
         className="text-center text-xs text-muted-foreground mt-6"
       >
-        Scan de QR-code of deel de code met vrienden
+        Scan de QR-code of deel de uitnodigingscode
       </motion.p>
 
       {/* Social Buttons */}
