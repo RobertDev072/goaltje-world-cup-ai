@@ -39,6 +39,8 @@ const BlogArticle = lazy(() => import("./pages/BlogArticle"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
+const AppSplashLoader = lazy(() => import("@/components/AppSplashLoader").then(m => ({ default: m.AppSplashLoader })));
+
 const PageLoader = () => (
   <div className="max-w-lg mx-auto px-4 pt-8 space-y-4">
     <Skeleton className="h-8 w-48" />
@@ -60,6 +62,7 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
+  <div data-app-mounted>
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
@@ -105,6 +108,7 @@ const App = () => (
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
+  </div>
 );
 
 export default App;

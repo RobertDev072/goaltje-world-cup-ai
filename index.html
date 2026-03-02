@@ -156,8 +156,27 @@
     </script>
   </head>
 
-  <body>
-    <div id="root"></div>
+  <body style="background:#0a1628;margin:0">
+    <div id="root">
+      <!-- Inline splash to prevent white flash before JS loads -->
+      <div id="pre-splash" style="position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#0a1628,#0f2345,#1565c0)">
+        <img src="/pwa-192x192.png" alt="" width="96" height="96" style="opacity:.9;filter:drop-shadow(0 4px 24px rgba(0,0,0,.4))">
+        <p style="color:rgba(255,255,255,.5);font-size:13px;margin-top:24px;font-family:system-ui,sans-serif;letter-spacing:.05em">Goaltje laden…</p>
+      </div>
+    </div>
+    <script>
+      // Remove pre-splash once React mounts
+      const observer = new MutationObserver(() => {
+        const splash = document.getElementById('pre-splash');
+        if (splash && document.querySelector('[data-app-mounted]')) {
+          splash.style.transition = 'opacity .2s';
+          splash.style.opacity = '0';
+          setTimeout(() => splash.remove(), 200);
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.getElementById('root'), { childList: true, subtree: true });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

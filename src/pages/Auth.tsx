@@ -137,7 +137,12 @@ export default function Auth() {
               )}
 
               <Button type="submit" className="w-full h-12 text-base font-semibold gradient-primary text-primary-foreground" disabled={loading}>
-                {loading ? "Even geduld..." : mode === "login" ? "Inloggen" : mode === "register" ? "Registreren" : "Reset link versturen"}
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="block w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    {mode === "login" ? "Inloggen…" : mode === "register" ? "Registreren…" : "Versturen…"}
+                  </span>
+                ) : mode === "login" ? "Inloggen" : mode === "register" ? "Registreren" : "Reset link versturen"}
               </Button>
             </form>
           </CardContent>
