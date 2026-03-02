@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
+import { AppSplashLoader } from "@/components/AppSplashLoader";
 
 type AuthMode = "login" | "register" | "forgot";
 
@@ -20,20 +21,25 @@ export default function Auth() {
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
   const { user, signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (user) {
-      const joinCode = sessionStorage.getItem("joinCode");
-      if (joinCode) {
-        sessionStorage.removeItem("joinCode");
-        navigate(`/join/${joinCode}`);
-      } else {
-        navigate("/app");
-      }
+  const navigateAfterLogin = useCallback(() => {
+    const joinCode = sessionStorage.getItem("joinCode");
+    if (joinCode) {
+      sessionStorage.removeItem("joinCode");
+      navigate(`/join/${joinCode}`);
+    } else {
+      navigate("/app");
     }
-  }, [user, navigate]);
+  }, [navigate]);
+
+  useEffect(() => {
+    if (user && !showSplash) {
+      navigateAfterLogin();
+    }
+  }, [user, showSplash, navigateAfterLogin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,10 +49,17 @@ export default function Auth() {
       if (mode === "login") {
         const { error } = await signIn(email, password);
         if (error) throw error;
+        // Show branded splash before navigating
+        setShowSplash(true);
+        setTimeout(() => navigateAfterLogin(), 500);
+        return; // skip finally setLoading
       } else if (mode === "register") {
         const { error } = await signUp(email, password, name);
         if (error) throw error;
         toast({ title: "Account aangemaakt! 🎉", description: "Je bent nu ingelogd. Veel plezier!" });
+        setShowSplash(true);
+        setTimeout(() => navigateAfterLogin(), 500);
+        return;
       } else {
         const { error } = await resetPassword(email);
         if (error) throw error;
@@ -58,6 +71,10 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
+  if (showSplash) {
+    return <AppSplashLoader message="Welkom terug! ⚽" />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-[hsl(var(--goaltje-navy))] via-[hsl(var(--goaltje-darkblue))] to-[hsl(var(--primary))]">
