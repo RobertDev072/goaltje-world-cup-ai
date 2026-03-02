@@ -19,6 +19,11 @@
           "type": "header",
           "key": "user-agent",
           "value": ".*(Googlebot|Bingbot|bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|TelegramBot|Applebot).*"
+        },
+        {
+          "type": "header",
+          "key": "X-Prerender-Token",
+          "value": "iKVVdAxnjWcqXuQV3uQ2"
         }
       ]
     }
