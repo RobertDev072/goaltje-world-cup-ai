@@ -27,7 +27,7 @@ import { PoolChat } from "@/components/PoolChat";
 import { ShareCard } from "@/components/ShareCard";
 import { VirtualizedLeaderboard } from "@/components/VirtualizedLeaderboard";
 import { TiebreakerInfo } from "@/components/TiebreakerInfo";
-import { staleTimes } from "@/lib/queryKeys";
+import { queryKeys, staleTimes } from "@/lib/queryKeys";
 
 
 interface LeaderboardEntry {
@@ -138,7 +138,7 @@ export default function PoolDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-pools"] });
-      queryClient.invalidateQueries({ queryKey: ["leaderboard", id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaderboard(id || "") });
       queryClient.invalidateQueries({ queryKey: ["pool-members", id] });
       toast({ title: "Je hebt de poule verlaten" });
       navigate("/app/pool");
@@ -147,79 +147,11 @@ export default function PoolDetail() {
   });
 
   const { data: leaderboard } = useQuery({
-    queryKey: ["leaderboard", id],
+    queryKey: queryKeys.leaderboard(id || ""),
     queryFn: async () => {
-      const { data: memberRows } = await supabase.from("pool_members").select("user_id, role").eq("pool_id", id!);
-      if (!memberRows || memberRows.length === 0) return [];
-      const userIds = memberRows.map((m) => m.user_id);
-      const { data: preds } = await supabase
-        .from("predictions").select("user_id, points_awarded, home_pred, away_pred, match_id, updated_at, matches(kickoff_utc, home_score, away_score, status)").eq("pool_id", id!);
-      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-      const userPoints: Record<string, number> = {};
-      const userTodayPoints: Record<string, number> = {};
-      const userExactCount: Record<string, number> = {};
-      const userCorrectResults: Record<string, number> = {};
-      const userTotalCorrectGoals: Record<string, number> = {};
-      const userLastCorrectAt: Record<string, string | null> = {};
-      userIds.forEach((uid) => {
-        userPoints[uid] = 0; userTodayPoints[uid] = 0;
-        userExactCount[uid] = 0; userCorrectResults[uid] = 0;
-        userTotalCorrectGoals[uid] = 0; userLastCorrectAt[uid] = null;
-      });
-      preds?.forEach((p: any) => {
-        const pts = p.points_awarded || 0;
-        const m = p.matches;
-        userPoints[p.user_id] = (userPoints[p.user_id] || 0) + pts;
-        const kickoff = m?.kickoff_utc ? new Date(m.kickoff_utc) : null;
-        if (kickoff && kickoff >= todayStart) { userTodayPoints[p.user_id] = (userTodayPoints[p.user_id] || 0) + pts; }
-
-        // Tiebreaker stats (only for finished matches)
-        if (m?.status === 'finished' && m.home_score != null && m.away_score != null && p.home_pred != null && p.away_pred != null) {
-          // Exact score
-          if (p.home_pred === m.home_score && p.away_pred === m.away_score) {
-            userExactCount[p.user_id] = (userExactCount[p.user_id] || 0) + 1;
-          }
-          // Correct result
-          if (pts > 0) {
-            userCorrectResults[p.user_id] = (userCorrectResults[p.user_id] || 0) + 1;
-            // Total correct predicted goals
-            const homeCorrect = p.home_pred === m.home_score ? 1 : 0;
-            const awayCorrect = p.away_pred === m.away_score ? 1 : 0;
-            userTotalCorrectGoals[p.user_id] = (userTotalCorrectGoals[p.user_id] || 0) + homeCorrect + awayCorrect;
-            // Last correct prediction timestamp
-            if (!userLastCorrectAt[p.user_id] || p.updated_at > userLastCorrectAt[p.user_id]!) {
-              userLastCorrectAt[p.user_id] = p.updated_at;
-            }
-          }
-        }
-      });
-      const { data: profiles } = await supabase.from("profiles").select("user_id, name, avatar_url").in("user_id", userIds);
-      const profileMap: Record<string, any> = {};
-      profiles?.forEach((p: any) => { profileMap[p.user_id] = p; });
-      const roleMap: Record<string, string> = {};
-      memberRows.forEach((m) => { roleMap[m.user_id] = m.role; });
-      return Object.entries(userPoints)
-        .map(([userId, points]) => ({
-          userId, name: profileMap[userId]?.name || "Onbekend", avatar_url: profileMap[userId]?.avatar_url || null,
-          points, todayPoints: userTodayPoints[userId] || 0, role: roleMap[userId] || "member",
-          exactCount: userExactCount[userId] || 0,
-          correctResults: userCorrectResults[userId] || 0,
-          totalCorrectGoals: userTotalCorrectGoals[userId] || 0,
-          lastCorrectAt: userLastCorrectAt[userId] || null,
-        }))
-        .sort((a, b) => {
-          // 1. Points
-          if (b.points !== a.points) return b.points - a.points;
-          // 2. Most exact scores
-          if (b.exactCount !== a.exactCount) return b.exactCount - a.exactCount;
-          // 3. Most correct results
-          if (b.correctResults !== a.correctResults) return b.correctResults - a.correctResults;
-          // 4. Total correct goals predicted
-          if (b.totalCorrectGoals !== a.totalCorrectGoals) return b.totalCorrectGoals - a.totalCorrectGoals;
-          // 5. Last correct prediction (earlier = higher)
-          if (a.lastCorrectAt && b.lastCorrectAt) return a.lastCorrectAt < b.lastCorrectAt ? -1 : 1;
-          return 0;
-        }) as LeaderboardEntry[];
+      const { data, error } = await supabase.rpc("get_pool_leaderboard", { _pool_id: id! });
+      if (error) throw error;
+      return (data as unknown as LeaderboardEntry[]) || [];
     },
     enabled: !!id,
     staleTime: staleTimes.leaderboard,

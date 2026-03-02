@@ -1,6 +1,10 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { initErrorLogger } from "./lib/errorLogger";
+
+// Initialize client-side error logging
+initErrorLogger();
 
 // Restore theme preference (light is default)
 if (localStorage.getItem("theme") === "dark") {
