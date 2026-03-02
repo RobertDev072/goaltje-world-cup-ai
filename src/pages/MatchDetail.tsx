@@ -513,7 +513,7 @@ export default function MatchDetail() {
               )}
 
               {/* Form */}
-              {matchStats.homeForm && (
+              {typeof matchStats.homeForm === "string" && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">{match.home_team?.name} vorm</p>
@@ -527,7 +527,7 @@ export default function MatchDetail() {
                       ))}
                     </div>
                   </div>
-                  {matchStats.awayForm && (
+                  {typeof matchStats.awayForm === "string" && (
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">{match.away_team?.name} vorm</p>
                       <div className="flex gap-0.5">
