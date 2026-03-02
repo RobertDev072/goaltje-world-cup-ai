@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +11,7 @@ import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, Trophy, Users, TrendingUp, TrendingDown, Minus, Crown,
-  Swords, X, Share2, ChevronRight,
+  Swords, X, Share2, ChevronRight, LogOut,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,7 @@ interface LeaderboardEntry {
 export default function PoolDetail() {
   const { id } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { showGoal, triggerGoal, hideGoal } = useGoalCelebration();
   const [rankNotification, setRankNotification] = useState<{
@@ -115,6 +116,29 @@ export default function PoolDetail() {
       queryClient.invalidateQueries({ queryKey: ["my-membership", id] });
       toast({ title: "Rivaal ingesteld! ⚔️" });
     },
+  });
+
+  const leavePool = useMutation({
+    mutationFn: async () => {
+      if (!user || !id) throw new Error("Not ready");
+      // Delete predictions for this pool
+      await supabase.from("predictions").delete().eq("pool_id", id).eq("user_id", user.id);
+      // Delete bonus predictions for this pool
+      await supabase.from("bonus_predictions").delete().eq("pool_id", id).eq("user_id", user.id);
+      // Delete pool messages by this user in this pool
+      await supabase.from("pool_messages").delete().eq("pool_id", id).eq("user_id", user.id);
+      // Remove membership
+      const { error } = await supabase.from("pool_members").delete().eq("pool_id", id).eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-pools"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard", id] });
+      queryClient.invalidateQueries({ queryKey: ["pool-members", id] });
+      toast({ title: "Je hebt de poule verlaten" });
+      navigate("/app/pool");
+    },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
   });
 
   const { data: leaderboard } = useQuery({
@@ -564,6 +588,23 @@ export default function PoolDetail() {
                 </CardContent>
               </Card>
             </div>
+          )}
+
+          {/* Leave Pool Button */}
+          {user && myMembership && myMembership.role !== "admin" && (
+            <Button
+              variant="outline"
+              className="w-full mt-4 gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+              onClick={() => {
+                if (window.confirm("Weet je zeker dat je deze poule wilt verlaten? Je voorspellingen worden verwijderd.")) {
+                  leavePool.mutate();
+                }
+              }}
+              disabled={leavePool.isPending}
+            >
+              <LogOut className="h-4 w-4" />
+              {leavePool.isPending ? "Verlaten..." : "Poule verlaten"}
+            </Button>
           )}
         </TabsContent>
 

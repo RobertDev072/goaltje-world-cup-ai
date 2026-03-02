@@ -211,7 +211,7 @@ export default function Profile() {
           <h2 className="font-display font-semibold text-sm text-muted-foreground mb-2">🏆 Mijn poules</h2>
           <div className="space-y-2">
             {myPools.map((pool: any) => (
-              <Link key={pool.id} to={`/pool/${pool.id}`}>
+              <Link key={pool.id} to={`/app/pool/${pool.id}`}>
                 <Card className="border-0 shadow-elevation-1 hover:shadow-elevation-2 transition-all mb-2 group">
                   <CardContent className="p-3 flex items-center justify-between">
                     <p className="font-medium text-sm">{pool.name}</p>

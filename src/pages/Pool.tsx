@@ -60,6 +60,17 @@ export default function Pool() {
 
       // Create tenant first if branding is enabled
       if (enableBranding && tenantName.trim()) {
+        // Check if this user already has a tenant with a pool
+        const { data: existingTenants } = await supabase
+          .from("tenants")
+          .select("id, pools:pools(id)")
+          .eq("created_by", user.id);
+        
+        const tenantsWithPools = existingTenants?.filter((t: any) => t.pools && t.pools.length > 0) || [];
+        if (tenantsWithPools.length > 0) {
+          throw new Error("Je bedrijf heeft al een poule. Elk bedrijf mag maximaal 1 poule aanmaken.");
+        }
+
         const tenantInsert: any = {
           name: tenantName.trim(),
           created_by: user.id,
@@ -321,7 +332,7 @@ export default function Pool() {
         <div className="space-y-3">
           {pools.map((membership: any, i: number) => (
             <motion.div key={membership.pool_id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <Link to={`/pool/${membership.pool_id}`}>
+              <Link to={`/app/pool/${membership.pool_id}`}>
                 <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all group overflow-hidden">
                   <div className="bg-gradient-to-r from-primary via-primary/80 to-secondary h-1" />
                   <CardContent className="p-0">
