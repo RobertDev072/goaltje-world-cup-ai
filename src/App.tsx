@@ -45,6 +45,7 @@ const BedrijfspouleKantoor = lazy(() => import("./pages/seo/BedrijfspouleKantoor
 const PouleRegels = lazy(() => import("./pages/seo/PouleRegels"));
 const PouleTips = lazy(() => import("./pages/seo/PouleTips"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
+const Templates = lazy(() => import("./pages/Templates"));
 
 const AppSplashLoader = lazy(() => import("@/components/AppSplashLoader").then(m => ({ default: m.AppSplashLoader })));
 
@@ -102,6 +103,8 @@ const App = () => (
               {/* Public leaderboard */}
               <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/en/leaderboard" element={<Leaderboard />} />
+              <Route path="/templates" element={<Templates />} />
+              <Route path="/en/templates" element={<Templates />} />
 
               {/* Auth */}
               <Route path="/login" element={<Auth />} />

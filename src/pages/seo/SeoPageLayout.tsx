@@ -8,6 +8,8 @@ const SEO_PAGES_NL = [
   { path: "/bedrijfspoule-wk-2026-kantoor", label: "Bedrijfspoule kantoor" },
   { path: "/voetbalpoule-regels-puntentelling", label: "Regels & puntentelling" },
   { path: "/wk-poule-tips-voorspellingen", label: "Tips & voorspellingen" },
+  { path: "/leaderboard", label: "Live klassement" },
+  { path: "/templates", label: "Poule templates" },
 ];
 
 const SEO_PAGES_EN = [
@@ -15,6 +17,8 @@ const SEO_PAGES_EN = [
   { path: "/company-wk-2026-pool-office", label: "Company pool office" },
   { path: "/football-pool-rules-scoring", label: "Rules & scoring" },
   { path: "/wk-pool-prediction-tips", label: "Prediction tips" },
+  { path: "/en/leaderboard", label: "Live leaderboard" },
+  { path: "/en/templates", label: "Pool templates" },
 ];
 
 interface Props {
