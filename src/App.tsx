@@ -46,6 +46,7 @@ const PouleRegels = lazy(() => import("./pages/seo/PouleRegels"));
 const PouleTips = lazy(() => import("./pages/seo/PouleTips"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Templates = lazy(() => import("./pages/Templates"));
+const Sitemap = lazy(() => import("./pages/Sitemap"));
 
 const AppSplashLoader = lazy(() => import("@/components/AppSplashLoader").then(m => ({ default: m.AppSplashLoader })));
 
@@ -105,7 +106,7 @@ const App = () => (
               <Route path="/en/leaderboard" element={<Leaderboard />} />
               <Route path="/templates" element={<Templates />} />
               <Route path="/en/templates" element={<Templates />} />
-
+              <Route path="/sitemap" element={<Sitemap />} />
               {/* Auth */}
               <Route path="/login" element={<Auth />} />
               <Route path="/auth" element={<Navigate to="/login" replace />} />
