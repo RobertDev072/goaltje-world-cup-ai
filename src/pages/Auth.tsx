@@ -30,7 +30,7 @@ export default function Auth() {
         sessionStorage.removeItem("joinCode");
         navigate(`/join/${joinCode}`);
       } else {
-        navigate("/");
+        navigate("/app");
       }
     }
   }, [user, navigate]);
@@ -68,7 +68,7 @@ export default function Auth() {
       >
         {/* Logo + link to landing */}
         <div className="text-center space-y-2">
-          <Link to="/nl" className="inline-block">
+          <Link to="/" className="inline-block">
             <img src={goaltjeLogo} alt="Goaltje" className="w-28 h-28 mx-auto hover:scale-105 transition-transform" />
           </Link>
           <h1 className="font-display font-bold text-xl text-white">GOALTJE ⚽</h1>
@@ -152,7 +152,7 @@ export default function Auth() {
           </p>
         )}
 
-        <Link to="/nl" className="block text-center text-xs text-white/50 hover:text-white/80 transition-colors">
+        <Link to="/" className="block text-center text-xs text-white/50 hover:text-white/80 transition-colors">
           ← Terug naar homepage
         </Link>
         <p className="text-center text-[10px] text-white/30 mt-2">© 2026 RobertDev.nl – GOALTJE</p>

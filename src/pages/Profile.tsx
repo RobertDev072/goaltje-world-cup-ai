@@ -140,7 +140,7 @@ export default function Profile() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/auth");
+    navigate("/login");
   };
 
   if (!user) {
@@ -148,7 +148,7 @@ export default function Profile() {
       <div className="max-w-lg mx-auto px-4 pt-4 text-center space-y-4">
         <h1 className="text-2xl font-bold font-display">Profiel</h1>
         <p className="text-muted-foreground">Log in om je profiel te bekijken.</p>
-        <Link to="/auth"><Button className="bg-primary text-primary-foreground">Inloggen</Button></Link>
+        <Link to="/login"><Button className="bg-primary text-primary-foreground">Inloggen</Button></Link>
       </div>
     );
   }
@@ -257,7 +257,7 @@ export default function Profile() {
       <Card className="border-0 shadow-md">
         <CardContent className="pt-4 space-y-3">
           {isAdmin && (
-            <Link to="/admin">
+            <Link to="/app/admin">
               <Button variant="outline" className="w-full h-12 justify-start gap-3">
                 <Shield className="h-5 w-5 text-primary" /> Developer Dashboard
               </Button>

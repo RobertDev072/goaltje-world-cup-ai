@@ -146,7 +146,7 @@ export default function Landing() {
                 </div>
               )}
             </div>
-            <Link to="/auth">
+            <Link to="/login">
               <Button size="sm" className="bg-secondary text-secondary-foreground font-semibold h-8 text-xs hover:bg-secondary/90">
                 {t(lang, "cta_login")}
               </Button>
@@ -184,12 +184,12 @@ export default function Landing() {
               {t(lang, "hero_accessible")}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link to="/auth">
+              <Link to="/login">
                 <Button size="lg" className="bg-secondary text-secondary-foreground h-14 px-8 text-base md:text-lg font-semibold shadow-lg hover:shadow-xl hover:bg-secondary/90 transition-all w-full sm:w-auto">
                   🏆 {t(lang, "cta_create")}
                 </Button>
               </Link>
-              <Link to="/auth">
+              <Link to="/login">
                 <Button size="lg" variant="outline" className="h-14 px-8 text-base md:text-lg font-semibold w-full sm:w-auto border-white/30 text-white bg-transparent hover:bg-white/10">
                   🔗 {t(lang, "cta_join")}
                 </Button>
@@ -622,7 +622,7 @@ export default function Landing() {
         <div className="max-w-2xl mx-auto px-4 text-center space-y-4">
           <h2 className="text-2xl md:text-3xl font-display font-bold">{t(lang, "cta_final_title")}</h2>
           <p className="text-muted-foreground text-sm">{t(lang, "cta_final_subtitle")}</p>
-          <Link to="/auth">
+          <Link to="/login">
             <Button size="lg" className="bg-primary text-primary-foreground h-14 px-8 text-lg font-semibold shadow-lg mt-2">
               🚀 {t(lang, "cta_create")}
             </Button>

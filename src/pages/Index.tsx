@@ -143,7 +143,7 @@ export default function Index() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 gap-3">
-        <Link to="/pool">
+        <Link to="/app/pool">
           <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all gradient-navy text-white overflow-hidden group">
             <CardContent className="p-4 flex items-center gap-3 relative">
               <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center group-hover:bg-white/20 transition-colors">
@@ -156,7 +156,7 @@ export default function Index() {
             </CardContent>
           </Card>
         </Link>
-        <Link to="/matches">
+        <Link to="/app/matches">
           <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all bg-secondary text-secondary-foreground overflow-hidden group">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-black/10 flex items-center justify-center group-hover:bg-black/15 transition-colors">
@@ -198,7 +198,7 @@ export default function Index() {
           <h2 className="font-display font-semibold text-lg flex items-center gap-2">
             🟡 Voorspellingen
           </h2>
-          <Link to="/matches" className="text-sm text-primary font-medium flex items-center gap-1">
+          <Link to="/app/matches" className="text-sm text-primary font-medium flex items-center gap-1">
             Alles <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
@@ -237,7 +237,7 @@ export default function Index() {
           </h2>
           <div className="space-y-3">
             {pools.map((pool: any) => (
-              <Link key={pool.id} to={`/pool/${pool.id}`}>
+              <Link key={pool.id} to={`/app/pool/${pool.id}`}>
                 <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all mb-3 group overflow-hidden">
                   <CardContent className="p-0">
                     <div className="flex items-center gap-3 p-4">
@@ -320,7 +320,7 @@ export default function Index() {
           <CardContent className="p-6 text-center space-y-3">
             <p className="font-display font-semibold text-lg">Klaar om mee te doen?</p>
             <p className="text-sm opacity-80">Maak een account aan en doe mee met poules!</p>
-            <Link to="/auth">
+            <Link to="/login">
               <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90 mt-2 font-semibold">Aan de slag</Button>
             </Link>
           </CardContent>

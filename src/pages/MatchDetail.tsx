@@ -215,7 +215,7 @@ export default function MatchDetail() {
   return (
     <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-4">
       <ExactScoreConfetti trigger={showConfetti} />
-      <Link to="/matches" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm">
+      <Link to="/app/matches" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm">
         <ArrowLeft className="h-4 w-4" /> Terug
       </Link>
 
@@ -400,7 +400,7 @@ export default function MatchDetail() {
         <Card className="border-0 shadow-lg">
           <CardContent className="p-5 text-center space-y-3">
             <p className="text-muted-foreground text-sm">Log in om voorspellingen te doen</p>
-            <Link to="/auth">
+            <Link to="/login">
               <Button className="gradient-primary text-primary-foreground">Inloggen</Button>
             </Link>
           </CardContent>

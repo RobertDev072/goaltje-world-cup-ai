@@ -38,7 +38,7 @@ export default function JoinPool() {
     if (loading) return;
     if (!user) {
       sessionStorage.setItem("joinCode", code || "");
-      navigate("/auth");
+      navigate("/login");
       return;
     }
 
@@ -47,7 +47,7 @@ export default function JoinPool() {
         const pool = poolInfo || (await supabase.rpc("lookup_pool_by_invite_code", { _code: code! }).then(r => r.data)) as PoolLookup | null;
         if (!pool || !pool.id) {
           toast({ title: "Poule niet gevonden", variant: "destructive" });
-          navigate("/pool");
+          navigate("/app/pool");
           return;
         }
 
@@ -67,10 +67,10 @@ export default function JoinPool() {
           toast({ title: `Welkom bij "${pool.name}"! 🎉` });
         }
 
-        navigate(`/pool/${pool.id}`);
+        navigate(`/app/pool/${pool.id}`);
       } catch (err: any) {
         toast({ title: "Fout", description: err.message, variant: "destructive" });
-        navigate("/pool");
+        navigate("/app/pool");
       }
     };
 

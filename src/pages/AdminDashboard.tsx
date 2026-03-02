@@ -381,11 +381,11 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    if (!authLoading && !user) navigate("/auth");
+    if (!authLoading && !user) navigate("/login");
   }, [authLoading, user, navigate]);
 
   useEffect(() => {
-    if (!roleLoading && isAdmin === false) navigate("/");
+    if (!roleLoading && isAdmin === false) navigate("/app");
   }, [roleLoading, isAdmin, navigate]);
 
   if (authLoading || roleLoading || !isAdmin) {
@@ -406,7 +406,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 space-y-5 pb-8">
-      <Link to="/profile" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm">
+      <Link to="/app/profile" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm">
         <ArrowLeft className="h-4 w-4" /> Terug
       </Link>
 
