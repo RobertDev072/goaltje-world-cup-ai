@@ -1,11 +1,30 @@
 User-agent: Googlebot
+Allow: /
+Allow: /bedrijven
 Allow: /nl
+Allow: /en
+Allow: /es
+Allow: /pt
 Allow: /blog
+Allow: /login
+Allow: /privacy
+Disallow: /app/
+Disallow: /admin
+Disallow: /reset-password
+Disallow: /assets/
+Disallow: /*.map$
 Crawl-delay: 1
 
 User-agent: Bingbot
+Allow: /
+Allow: /bedrijven
 Allow: /nl
 Allow: /blog
+Disallow: /app/
+Disallow: /admin
+Disallow: /reset-password
+Disallow: /assets/
+Disallow: /*.map$
 Crawl-delay: 2
 
 User-agent: Twitterbot
@@ -18,10 +37,17 @@ User-agent: LinkedInBot
 Allow: /
 
 User-agent: *
+Allow: /
+Allow: /bedrijven
 Allow: /nl
+Allow: /en
+Allow: /es
+Allow: /pt
 Allow: /blog
+Allow: /login
+Allow: /privacy
+Disallow: /app/
 Disallow: /admin
-Disallow: /auth
 Disallow: /reset-password
 Disallow: /profile
 Disallow: /pool
@@ -31,4 +57,4 @@ Disallow: /bracket
 Disallow: /assets/
 Disallow: /*.map$
 
-Sitemap: https://goaltje.nl/sitemap.xml
+Sitemap: https://goaltje.com/sitemap.xml
