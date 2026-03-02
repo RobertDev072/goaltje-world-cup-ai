@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,14 +17,16 @@ import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { trackFirstPrediction } from "@/lib/analytics";
 import { ExactScoreConfetti, useExactScoreConfetti } from "@/components/ExactScoreConfetti";
+import { queryKeys } from "@/lib/queryKeys";
 
 export default function MatchDetail() {
   const { id } = useParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [saveLabel, setSaveLabel] = useState<"default" | "saving" | "saved">("default");
 
   const { data: match, isLoading } = useQuery({
-    queryKey: ["match", id],
+    queryKey: queryKeys.matchDetail(id!),
     queryFn: async () => {
       const { data } = await supabase
         .from("matches")
@@ -63,7 +65,7 @@ export default function MatchDetail() {
       return data;
     },
     enabled: !!match?.home_team?.name && !!match?.away_team?.name,
-    staleTime: 1000 * 60 * 60, // cache 1 hour
+    staleTime: 1000 * 60 * 60,
     retry: 1,
   });
 
@@ -84,13 +86,13 @@ export default function MatchDetail() {
       return data;
     },
     enabled: !!match?.home_team?.name && !!match?.away_team?.name,
-    staleTime: 1000 * 60 * 60 * 4, // cache 4 hours
+    staleTime: 1000 * 60 * 60 * 4,
     retry: 1,
   });
 
   // Get user's pools
   const { data: myPools } = useQuery({
-    queryKey: ["my-pools", user?.id],
+    queryKey: queryKeys.myPools(user?.id || ""),
     queryFn: async () => {
       if (!user) return [];
       const { data } = await supabase
@@ -104,7 +106,7 @@ export default function MatchDetail() {
 
   // Get predictions for this match across all pools
   const { data: predictions } = useQuery({
-    queryKey: ["my-predictions", id, user?.id],
+    queryKey: queryKeys.myPredictions(id!, user?.id || ""),
     queryFn: async () => {
       if (!user) return [];
       const { data } = await supabase
@@ -130,13 +132,11 @@ export default function MatchDetail() {
     return !isPredictionAllowed(match.status, (match as any).prediction_deadline_utc);
   }, [match]);
 
-  // Show prediction form only when scheduled (not live/finished/cancelled etc.)
   const showPredictionForm = useMemo(() => {
     if (!match) return false;
     return !['live', 'finished', 'cancelled', 'void'].includes(match.status);
   }, [match]);
 
-  // Compute display values: user edits take priority, otherwise show existing prediction
   const displayHomePred = homePred !== null ? homePred : (existingPred?.home_pred != null ? String(existingPred.home_pred) : "");
   const displayAwayPred = awayPred !== null ? awayPred : (existingPred?.away_pred != null ? String(existingPred.away_pred) : "");
 
@@ -172,34 +172,38 @@ export default function MatchDetail() {
       return { hp, ap };
     },
     onMutate: async () => {
-      // Optimistic update: immediately update prediction caches
+      setSaveLabel("saving");
       const hp = parseInt(displayHomePred);
       const ap = parseInt(displayAwayPred);
       if (isNaN(hp) || isNaN(ap)) return {};
 
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["my-predictions", id, user?.id] });
-      await queryClient.cancelQueries({ queryKey: ["home-predictions"] });
+      const userId = user?.id || "";
+      const predUpdate = { match_id: id, pool_id: activePool, user_id: userId, home_pred: hp, away_pred: ap, points_awarded: null };
 
-      // Snapshot previous data
-      const previousPredictions = queryClient.getQueryData(["my-predictions", id, user?.id]);
-      const previousHomePredictions = queryClient.getQueryData(["home-predictions", user?.id]);
+      // Cancel all related outgoing refetches
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: queryKeys.myPredictions(id!, userId) }),
+        queryClient.cancelQueries({ queryKey: queryKeys.allHomePredictions() }),
+        queryClient.cancelQueries({ queryKey: queryKeys.allMatchPredictions() }),
+      ]);
 
-      // Optimistically update match detail predictions
-      queryClient.setQueryData(["my-predictions", id, user?.id], (old: any[] | undefined) => {
-        const updated = { match_id: id, pool_id: activePool, user_id: user?.id, home_pred: hp, away_pred: ap, points_awarded: null };
-        if (!old) return [updated];
+      // Snapshot previous data for rollback
+      const prevMyPreds = queryClient.getQueryData(queryKeys.myPredictions(id!, userId));
+
+      // 1. Update match detail predictions
+      queryClient.setQueryData(queryKeys.myPredictions(id!, userId), (old: any[] | undefined) => {
+        if (!old) return [predUpdate];
         const idx = old.findIndex((p: any) => p.pool_id === activePool);
         if (idx >= 0) {
           const copy = [...old];
           copy[idx] = { ...copy[idx], home_pred: hp, away_pred: ap };
           return copy;
         }
-        return [...old, updated];
+        return [...old, predUpdate];
       });
 
-      // Optimistically update home page predictions
-      queryClient.setQueriesData({ queryKey: ["home-predictions"] }, (old: any[] | undefined) => {
+      // 2. Update ALL home-predictions caches (any matchIds combination)
+      queryClient.setQueriesData({ queryKey: queryKeys.allHomePredictions() }, (old: any[] | undefined) => {
         if (!old) return old;
         const idx = old.findIndex((p: any) => p.match_id === id && p.pool_id === activePool);
         if (idx >= 0) {
@@ -207,27 +211,45 @@ export default function MatchDetail() {
           copy[idx] = { ...copy[idx], home_pred: hp, away_pred: ap };
           return copy;
         }
-        return [...old, { match_id: id, pool_id: activePool, home_pred: hp, away_pred: ap, points_awarded: null }];
+        return [...old, predUpdate];
       });
 
-      return { previousPredictions, previousHomePredictions };
+      // 3. Update ALL match-predictions caches (Matches page)
+      queryClient.setQueriesData({ queryKey: queryKeys.allMatchPredictions() }, (old: any[] | undefined) => {
+        if (!old) return old;
+        const idx = old.findIndex((p: any) => p.match_id === id && p.pool_id === activePool);
+        if (idx >= 0) {
+          const copy = [...old];
+          copy[idx] = { ...copy[idx], home_pred: hp, away_pred: ap };
+          return copy;
+        }
+        return [...old, predUpdate];
+      });
+
+      return { prevMyPreds };
     },
     onSuccess: () => {
       if (!existingPred) trackFirstPrediction();
+      setSaveLabel("saved");
+      setTimeout(() => setSaveLabel("default"), 1200);
       toast({ title: "Opgeslagen ✓", description: "Je voorspelling is bijgewerkt." });
-      // Background refetch to sync with server (no full reload needed)
-      queryClient.invalidateQueries({ queryKey: ["my-predictions", id, user?.id] });
-      queryClient.invalidateQueries({ queryKey: ["home-predictions"] });
-      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+
+      const userId = user?.id || "";
+      // Background sync — targeted invalidation only
+      queryClient.invalidateQueries({ queryKey: queryKeys.myPredictions(id!, userId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaderboard(activePool) });
     },
     onError: (err: any, _vars, context: any) => {
-      // Rollback on error
-      if (context?.previousPredictions) {
-        queryClient.setQueryData(["my-predictions", id, user?.id], context.previousPredictions);
+      setSaveLabel("default");
+      // Rollback
+      if (context?.prevMyPreds) {
+        queryClient.setQueryData(queryKeys.myPredictions(id!, user?.id || ""), context.prevMyPreds);
       }
-      if (context?.previousHomePredictions) {
-        queryClient.setQueriesData({ queryKey: ["home-predictions"] }, context.previousHomePredictions);
-      }
+      // Re-fetch to get correct server state
+      queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
       toast({ title: "Fout", description: err.message, variant: "destructive" });
     },
   });
@@ -244,6 +266,8 @@ export default function MatchDetail() {
   }, [match, existingPred]);
 
   const showConfetti = useExactScoreConfetti(pointsAwarded, id);
+
+  const buttonLabel = saveLabel === "saving" ? "Opslaan…" : saveLabel === "saved" ? "Opgeslagen ✓" : existingPred ? "Bijwerken" : "Opslaan";
 
   if (isLoading) {
     return (
@@ -354,7 +378,7 @@ export default function MatchDetail() {
                 <p className="text-xs text-muted-foreground">Poule: {myPools[0].name}</p>
               )}
 
-              {/* Score inputs - only show when form is active */}
+              {/* Score inputs */}
               {showPredictionForm && (
                 <>
                   <div className="flex items-center gap-3">
@@ -391,11 +415,16 @@ export default function MatchDetail() {
 
               {showPredictionForm && !isLocked && (
                 <Button
-                  className="w-full h-12 gradient-primary text-primary-foreground font-semibold"
+                  className={`w-full h-12 font-semibold transition-all ${
+                    saveLabel === "saved"
+                      ? "bg-emerald-600 text-white hover:bg-emerald-600"
+                      : "gradient-primary text-primary-foreground"
+                  }`}
                   onClick={() => savePrediction.mutate()}
-                  disabled={savePrediction.isPending}
+                  disabled={savePrediction.isPending || saveLabel === "saved"}
                 >
-                  {savePrediction.isPending ? "Opslaan..." : existingPred ? "Bijwerken" : "Opslaan"}
+                  {saveLabel === "saved" && <Check className="h-4 w-4 mr-1.5" />}
+                  {buttonLabel}
                 </Button>
               )}
 
@@ -417,258 +446,152 @@ export default function MatchDetail() {
                   <div className={`rounded-xl p-3 text-center ${explanation.points > 0 ? "bg-primary/10" : "bg-muted"}`}>
                     <p className="text-xs text-muted-foreground">Jouw voorspelling: {existingPred.home_pred} - {existingPred.away_pred}</p>
                     <p className="text-lg font-bold font-display mt-1">
-                      {explanation.points > 0 ? (
-                        <span className="text-primary flex items-center justify-center gap-1">
-                          <Check className="h-5 w-5" /> +{explanation.points} punten
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground flex items-center justify-center gap-1">
-                          <X className="h-5 w-5" /> 0 punten
-                        </span>
-                      )}
+                      {explanation.points > 0 ? "🎯" : "❌"} {explanation.points} punten
                     </p>
-                    <p className="text-[10px] text-muted-foreground mt-1">{explanation.reason}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{explanation.reason}</p>
                   </div>
                 );
               })()}
-
-              {/* Cancelled/void notice */}
-              {(match.status === 'cancelled' || match.status === 'void') && (
-                <div className="rounded-xl p-3 text-center bg-destructive/10">
-                  <p className="text-xs text-destructive font-medium">
-                    {STATUS_CONFIG[(match.status as MatchStatus)].emoji} Deze wedstrijd is {STATUS_CONFIG[(match.status as MatchStatus)].label.toLowerCase()} en telt niet mee voor het klassement.
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
         </motion.div>
       )}
 
-      {/* Not logged in prompt */}
-      {!user && (
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-5 text-center space-y-3">
-            <p className="text-muted-foreground text-sm">Log in om voorspellingen te doen</p>
-            <Link to="/login">
-              <Button className="gradient-primary text-primary-foreground">Inloggen</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Events */}
+      {/* Match Events Timeline */}
       {events && events.length > 0 && (
-        <div>
-          <h2 className="font-display font-semibold text-lg mb-3">Wedstrijdevents</h2>
-          <div className="space-y-2">
-            {events.map((event: any) => (
-              <Card key={event.id} className="border-0 shadow-sm">
-                <CardContent className="p-3 flex items-center gap-3">
-                  <span className="text-sm font-bold text-primary w-8">{event.minute}'</span>
-                  <span className="text-sm">
-                    {event.type === "goal" && "⚽"}
-                    {event.type === "yellow_card" && "🟨"}
-                    {event.type === "red_card" && "🟥"}
-                    {event.type === "substitution" && "🔄"}
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium">{event.player_name || "Onbekend"}</p>
-                    <p className="text-xs text-muted-foreground">{event.team?.name}</p>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+          <Card className="border-0 shadow-lg">
+            <CardContent className="p-5">
+              <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
+                <Swords className="h-4 w-4 text-primary" /> Wedstrijdverloop
+              </h3>
+              <div className="space-y-2">
+                {events.map((event: any) => (
+                  <div key={event.id} className="flex items-center gap-3 text-sm">
+                    <span className="text-xs font-mono w-8 text-muted-foreground text-right shrink-0">
+                      {event.minute}'
+                    </span>
+                    <span className="text-base">
+                      {event.type === "goal" ? "⚽" : event.type === "yellow_card" ? "🟨" : event.type === "red_card" ? "🟥" : event.type === "substitution" ? "🔄" : "📋"}
+                    </span>
+                    <span className="truncate">
+                      {event.player_name || event.type}
+                      {event.team && (
+                        <span className="text-muted-foreground ml-1">({event.team.short_name})</span>
+                      )}
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       )}
 
       {/* Match Stats Section */}
-      {statsLoading && (
-        <div className="space-y-3">
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-32 rounded-xl" />
-          <Skeleton className="h-24 rounded-xl" />
-        </div>
-      )}
+      {matchStats && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <Card className="border-0 shadow-lg">
+            <CardContent className="p-5">
+              <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" /> Statistieken & H2H
+              </h3>
 
-      {matchStats && !matchStats.error && (
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="space-y-4">
-          
-          {/* H2H Summary */}
-          {matchStats.h2h && matchStats.h2h.total > 0 && (
-            <Card className="border-0 shadow-lg">
-              <CardContent className="p-5 space-y-4">
-                <div className="flex items-center gap-2">
-                  <Swords className="h-5 w-5 text-primary" />
-                  <h3 className="font-display font-semibold text-base">Head-to-Head</h3>
-                  <Badge variant="outline" className="ml-auto text-xs">{matchStats.h2h.total} wedstrijden</Badge>
-                </div>
-
-                {/* Win bars */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">{match?.home_team?.name}</span>
-                    <span className="text-xs text-muted-foreground">{matchStats.h2h.homeWins}W</span>
-                  </div>
-                  <div className="flex h-3 rounded-full overflow-hidden bg-muted">
-                    {matchStats.h2h.homeWins > 0 && (
-                      <div className="bg-primary h-full transition-all" style={{ width: `${(matchStats.h2h.homeWins / matchStats.h2h.total) * 100}%` }} />
-                    )}
-                    {matchStats.h2h.draws > 0 && (
-                      <div className="bg-muted-foreground/40 h-full transition-all" style={{ width: `${(matchStats.h2h.draws / matchStats.h2h.total) * 100}%` }} />
-                    )}
-                    {matchStats.h2h.awayWins > 0 && (
-                      <div className="bg-accent h-full transition-all" style={{ width: `${(matchStats.h2h.awayWins / matchStats.h2h.total) * 100}%` }} />
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">{match?.away_team?.name}</span>
-                    <span className="text-xs text-muted-foreground">{matchStats.h2h.awayWins}W</span>
-                  </div>
-                  <p className="text-center text-xs text-muted-foreground">{matchStats.h2h.draws} gelijk</p>
-                </div>
-
-                {/* Recent H2H matches */}
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Laatste ontmoetingen</p>
-                  {matchStats.h2h.matches.map((m: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between text-xs bg-muted/50 rounded-lg px-3 py-2">
-                      <span className="text-muted-foreground w-20 truncate">{new Date(m.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
-                      <span className="font-medium flex-1 text-right truncate">{m.home}</span>
-                      <span className="font-bold text-primary mx-2">{m.homeGoals} - {m.awayGoals}</span>
-                      <span className="font-medium flex-1 truncate">{m.away}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Recent Form */}
-          {(matchStats.homeForm?.length > 0 || matchStats.awayForm?.length > 0) && (
-            <Card className="border-0 shadow-lg">
-              <CardContent className="p-5 space-y-4">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  <h3 className="font-display font-semibold text-base">Recente vorm</h3>
-                </div>
-
-                {/* Home team form */}
-                {matchStats.homeForm?.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold">{match?.home_team?.name}</p>
-                    <div className="flex gap-1.5">
-                      {matchStats.homeForm.map((f: any, i: number) => (
-                        <span
-                          key={i}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white ${
-                            f.result === 'W' ? 'bg-emerald-500' : f.result === 'L' ? 'bg-red-500' : 'bg-muted-foreground/60'
-                          }`}
-                          title={`${f.score} vs ${f.opponent}`}
-                        >
-                          {f.result}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="space-y-1">
-                      {matchStats.homeForm.map((f: any, i: number) => (
-                        <p key={i} className="text-[11px] text-muted-foreground">
-                          {f.score} vs {f.opponent} <span className="opacity-60">· {f.league}</span>
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Away team form */}
-                {matchStats.awayForm?.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-border">
-                    <p className="text-sm font-semibold">{match?.away_team?.name}</p>
-                    <div className="flex gap-1.5">
-                      {matchStats.awayForm.map((f: any, i: number) => (
-                        <span
-                          key={i}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white ${
-                            f.result === 'W' ? 'bg-emerald-500' : f.result === 'L' ? 'bg-red-500' : 'bg-muted-foreground/60'
-                          }`}
-                          title={`${f.score} vs ${f.opponent}`}
-                        >
-                          {f.result}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="space-y-1">
-                      {matchStats.awayForm.map((f: any, i: number) => (
-                        <p key={i} className="text-[11px] text-muted-foreground">
-                          {f.score} vs {f.opponent} <span className="opacity-60">· {f.league}</span>
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </motion.div>
-      )}
-
-      {/* Match News Section */}
-      {newsLoading && (
-        <div className="space-y-3">
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-24 rounded-xl" />
-          <Skeleton className="h-24 rounded-xl" />
-        </div>
-      )}
-
-      {matchNews?.items && matchNews.items.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Newspaper className="h-5 w-5 text-primary" />
-            <h2 className="font-display font-semibold text-lg">Wedstrijd Nieuws</h2>
-          </div>
-
-          {matchNews.items.map((item: any, i: number) => {
-            const categoryIcon = {
-              vorm: <Zap className="h-4 w-4" />,
-              historie: <History className="h-4 w-4" />,
-              spelers: <Users className="h-4 w-4" />,
-              tactiek: <ShieldCheck className="h-4 w-4" />,
-            }[item.category] || <Newspaper className="h-4 w-4" />;
-
-            const categoryColor = {
-              vorm: 'bg-emerald-500/10 text-emerald-700',
-              historie: 'bg-amber-500/10 text-amber-700',
-              spelers: 'bg-blue-500/10 text-blue-700',
-              tactiek: 'bg-purple-500/10 text-purple-700',
-            }[item.category] || 'bg-muted text-muted-foreground';
-
-            return (
-              <Card key={i} className="border-0 shadow-md overflow-hidden">
-                <CardContent className="p-4 space-y-2">
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg shrink-0 ${categoryColor}`}>
-                      {categoryIcon}
-                    </div>
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[10px] capitalize">{item.category}</Badge>
+              {/* Head-to-head */}
+              {matchStats.h2h && matchStats.h2h.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">Laatste onderlinge wedstrijden</p>
+                  <div className="space-y-1">
+                    {matchStats.h2h.slice(0, 5).map((h: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between text-xs bg-muted/50 rounded-lg px-3 py-1.5">
+                        <span className="truncate flex-1">{h.home} vs {h.away}</span>
+                        <span className="font-bold font-display">{h.score}</span>
                       </div>
-                      <h3 className="font-semibold text-sm leading-tight">{item.title}</h3>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{item.summary}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Form */}
+              {matchStats.homeForm && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">{match.home_team?.name} vorm</p>
+                    <div className="flex gap-0.5">
+                      {matchStats.homeForm.split("").map((r: string, i: number) => (
+                        <span key={i} className={`w-6 h-6 rounded text-[10px] font-bold flex items-center justify-center ${
+                          r === "W" ? "bg-emerald-500/20 text-emerald-700" :
+                          r === "L" ? "bg-red-500/20 text-red-700" :
+                          "bg-amber-500/20 text-amber-700"
+                        }`}>{r}</span>
+                      ))}
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  {matchStats.awayForm && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">{match.away_team?.name} vorm</p>
+                      <div className="flex gap-0.5">
+                        {matchStats.awayForm.split("").map((r: string, i: number) => (
+                          <span key={i} className={`w-6 h-6 rounded text-[10px] font-bold flex items-center justify-center ${
+                            r === "W" ? "bg-emerald-500/20 text-emerald-700" :
+                            r === "L" ? "bg-red-500/20 text-red-700" :
+                            "bg-amber-500/20 text-amber-700"
+                          }`}>{r}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
-          <p className="text-[10px] text-muted-foreground text-center opacity-60">
-            📰 Gegenereerd door AI op basis van beschikbare data
-          </p>
+              {statsLoading && <Skeleton className="h-20" />}
+            </CardContent>
+          </Card>
         </motion.div>
       )}
+
+      {/* Match News / AI Insights */}
+      {matchNews && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+          <Card className="border-0 shadow-lg">
+            <CardContent className="p-5">
+              <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
+                <Newspaper className="h-4 w-4 text-primary" /> Wedstrijd Inzichten
+              </h3>
+              {matchNews.articles?.map((article: any, i: number) => (
+                <div key={i} className="mb-3 last:mb-0">
+                  <p className="text-sm font-semibold">{article.title}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{article.summary}</p>
+                </div>
+              ))}
+              {newsLoading && <Skeleton className="h-16" />}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Scoring Rules */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <Card className="border-0 shadow-md bg-muted/30">
+          <CardContent className="p-4">
+            <h4 className="font-display font-semibold text-xs mb-2 text-muted-foreground">Puntentelling</h4>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="bg-primary/10 rounded-lg p-2">
+                <p className="text-lg font-bold font-display text-primary">{DEFAULT_RULES.exact}</p>
+                <p className="text-[10px] text-muted-foreground">Exact</p>
+              </div>
+              <div className="bg-secondary/10 rounded-lg p-2">
+                <p className="text-lg font-bold font-display text-secondary">{DEFAULT_RULES.goal_diff}</p>
+                <p className="text-[10px] text-muted-foreground">Doelsaldo</p>
+              </div>
+              <div className="bg-accent/10 rounded-lg p-2">
+                <p className="text-lg font-bold font-display text-accent">{DEFAULT_RULES.result}</p>
+                <p className="text-[10px] text-muted-foreground">Uitslag</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }

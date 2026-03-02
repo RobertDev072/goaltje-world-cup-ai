@@ -21,14 +21,26 @@ export default defineConfig(({ mode }) => ({
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "pwa-192x192.png", "pwa-512x512.png"],
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globPatterns: ["**/*.{js,css,html,ico,svg,woff2}"],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
         runtimeCaching: [
           {
+            // Supabase API — NEVER cache
             urlPattern: /supabase\.co/,
-            handler: "NetworkFirst",
+            handler: "NetworkOnly",
+          },
+          {
+            // Also catch /rest/v1 and /auth/v1 paths
+            urlPattern: /\/(rest|auth|realtime)\/v1\//,
+            handler: "NetworkOnly",
+          },
+          {
+            // PNG images — cache with revalidation
+            urlPattern: /\.png$/,
+            handler: "StaleWhileRevalidate",
             options: {
-              cacheName: "supabase-api",
-              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
+              cacheName: "images",
+              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 7 },
             },
           },
         ],
