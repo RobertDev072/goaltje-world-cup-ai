@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
-import { staleTimes } from "@/lib/queryKeys";
+import { staleTimes, normalizeForm } from "@/lib/queryKeys";
 
 interface Props {
   homeTeamName: string;
@@ -28,6 +28,9 @@ export default function MatchStatsSection({ homeTeamName, awayTeamName }: Props)
   if (isLoading) return <Skeleton className="h-32 rounded-xl" />;
   if (!matchStats) return null;
 
+  const homeForm = normalizeForm(matchStats.homeForm);
+  const awayForm = normalizeForm(matchStats.awayForm);
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <Card className="border-0 shadow-lg">
@@ -50,25 +53,27 @@ export default function MatchStatsSection({ homeTeamName, awayTeamName }: Props)
             </div>
           )}
 
-          {typeof matchStats.homeForm === "string" && (
+          {(homeForm.length > 0 || awayForm.length > 0) && (
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">{homeTeamName} vorm</p>
-                <div className="flex gap-0.5">
-                  {matchStats.homeForm.split("").map((r: string, i: number) => (
-                    <span key={i} className={`w-6 h-6 rounded text-[10px] font-bold flex items-center justify-center ${
-                      r === "W" ? "bg-emerald-500/20 text-emerald-700" :
-                      r === "L" ? "bg-red-500/20 text-red-700" :
-                      "bg-amber-500/20 text-amber-700"
-                    }`}>{r}</span>
-                  ))}
+              {homeForm.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">{homeTeamName} vorm</p>
+                  <div className="flex gap-0.5">
+                    {homeForm.map((r, i) => (
+                      <span key={i} className={`w-6 h-6 rounded text-[10px] font-bold flex items-center justify-center ${
+                        r === "W" ? "bg-emerald-500/20 text-emerald-700" :
+                        r === "L" ? "bg-red-500/20 text-red-700" :
+                        "bg-amber-500/20 text-amber-700"
+                      }`}>{r}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              {typeof matchStats.awayForm === "string" && (
+              )}
+              {awayForm.length > 0 && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">{awayTeamName} vorm</p>
                   <div className="flex gap-0.5">
-                    {matchStats.awayForm.split("").map((r: string, i: number) => (
+                    {awayForm.map((r, i) => (
                       <span key={i} className={`w-6 h-6 rounded text-[10px] font-bold flex items-center justify-center ${
                         r === "W" ? "bg-emerald-500/20 text-emerald-700" :
                         r === "L" ? "bg-red-500/20 text-red-700" :
