@@ -7,6 +7,7 @@ import { PoolSelector } from "@/components/PoolSelector";
 import { MatchSections } from "@/components/MatchSections";
 import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebration";
 import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
+import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { motion } from "framer-motion";
 
 
@@ -19,20 +20,21 @@ export default function Matches() {
   useRealtimePredictions();
 
   const { data: matches, isLoading } = useQuery({
-    queryKey: ["matches"],
+    queryKey: queryKeys.allMatches(),
     queryFn: async () => {
       const { data } = await supabase
         .from("matches")
-        .select("*, home_team:teams!matches_home_team_id_fkey(*), away_team:teams!matches_away_team_id_fkey(*)")
+        .select("id, kickoff_utc, status, stage, group, venue, home_score, away_score, prediction_deadline_utc, external_id, home_team:teams!matches_home_team_id_fkey(id, name, short_name, flag_url), away_team:teams!matches_away_team_id_fkey(id, name, short_name, flag_url)")
         .order("kickoff_utc", { ascending: true });
       return data || [];
     },
+    staleTime: staleTimes.matches,
   });
 
   // Fetch user predictions
   const matchIds = matches?.map((m: any) => m.id) || [];
   const { data: myPredictions } = useQuery({
-    queryKey: ["match-predictions", user?.id, selectedPoolId],
+    queryKey: queryKeys.matchPredictions(user?.id || "", selectedPoolId),
     queryFn: async () => {
       if (!user) return [];
       let query = supabase
@@ -46,6 +48,7 @@ export default function Matches() {
       return data || [];
     },
     enabled: !!user && matchIds.length > 0,
+    staleTime: staleTimes.predictions,
   });
 
   const predictionMap = new Map(

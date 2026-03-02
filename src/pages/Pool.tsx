@@ -13,6 +13,7 @@ import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { trackPoolCreated, trackPoolJoined } from "@/lib/analytics";
+import { staleTimes } from "@/lib/queryKeys";
 
 export default function Pool() {
   const { user } = useAuth();
@@ -43,6 +44,7 @@ export default function Pool() {
       return data || [];
     },
     enabled: !!user,
+    staleTime: staleTimes.pools,
   });
 
   const resetForm = () => {

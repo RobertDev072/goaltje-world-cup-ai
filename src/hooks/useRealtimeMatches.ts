@@ -3,12 +3,45 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 
+/** Minimum ms between realtime-triggered invalidations */
+const THROTTLE_MS = 2_000;
+
+function useThrottledCallback(fn: () => void, delay: number) {
+  const lastRun = useRef(0);
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+
+  return useCallback(() => {
+    const now = Date.now();
+    const remaining = delay - (now - lastRun.current);
+    if (remaining <= 0) {
+      lastRun.current = now;
+      fn();
+    } else if (!timer.current) {
+      timer.current = setTimeout(() => {
+        lastRun.current = Date.now();
+        timer.current = undefined;
+        fn();
+      }, remaining);
+    }
+  }, [fn, delay]);
+}
+
 /**
  * Hook that subscribes to realtime changes on the matches table.
  */
 export function useRealtimeMatches(onGoal?: (matchId: string, team: "home" | "away") => void) {
   const queryClient = useQueryClient();
   const prevScoresRef = useRef<Record<string, { home: number | null; away: number | null }>>({});
+
+  const invalidateHeavy = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.allMatches() });
+    queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.allPredictions() });
+    queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
+    queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
+  }, [queryClient]);
+
+  const throttledInvalidateHeavy = useThrottledCallback(invalidateHeavy, THROTTLE_MS);
 
   const handleMatchChange = useCallback((payload: any) => {
     const newRow = payload.new;
@@ -35,23 +68,19 @@ export function useRealtimeMatches(onGoal?: (matchId: string, team: "home" | "aw
       away: newRow.away_score,
     };
 
-    // Scoped invalidation
+    // Scoped invalidation (always immediate)
     queryClient.invalidateQueries({ queryKey: queryKeys.matchDetail(newRow.id) });
     queryClient.invalidateQueries({ queryKey: queryKeys.upcomingMatches() });
 
-    // Only invalidate heavy queries when score/status actually changed
+    // Only invalidate heavy queries when score/status actually changed — throttled
     const scoreChanged =
       oldRow?.home_score !== newRow.home_score || oldRow?.away_score !== newRow.away_score;
     const statusChanged = oldRow?.status !== newRow.status;
 
     if (scoreChanged || statusChanged) {
-      queryClient.invalidateQueries({ queryKey: queryKeys.allMatches() });
-      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
-      queryClient.invalidateQueries({ queryKey: queryKeys.allPredictions() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
+      throttledInvalidateHeavy();
     }
-  }, [queryClient, onGoal]);
+  }, [queryClient, onGoal, throttledInvalidateHeavy]);
 
   useEffect(() => {
     const channel = supabase
@@ -71,9 +100,19 @@ export function useRealtimeMatches(onGoal?: (matchId: string, team: "home" | "aw
 
 /**
  * Hook that subscribes to realtime prediction points updates.
+ * Throttled to max 1 invalidation per 2 seconds.
  */
 export function useRealtimePredictions() {
   const queryClient = useQueryClient();
+
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.allPredictions() });
+    queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
+    queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
+  }, [queryClient]);
+
+  const throttledInvalidate = useThrottledCallback(invalidate, THROTTLE_MS);
 
   useEffect(() => {
     const channel = supabase
@@ -81,17 +120,12 @@ export function useRealtimePredictions() {
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "predictions" },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
-          queryClient.invalidateQueries({ queryKey: queryKeys.allPredictions() });
-          queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
-          queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
-        }
+        () => throttledInvalidate()
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [throttledInvalidate]);
 }

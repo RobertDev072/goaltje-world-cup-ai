@@ -27,6 +27,7 @@ import { PoolChat } from "@/components/PoolChat";
 import { ShareCard } from "@/components/ShareCard";
 import { VirtualizedLeaderboard } from "@/components/VirtualizedLeaderboard";
 import { TiebreakerInfo } from "@/components/TiebreakerInfo";
+import { staleTimes } from "@/lib/queryKeys";
 
 
 interface LeaderboardEntry {
@@ -67,6 +68,7 @@ export default function PoolDetail() {
       return data;
     },
     enabled: !!id,
+    staleTime: staleTimes.pools,
   });
 
   // Fetch tenant branding if pool has tenant_id
@@ -78,6 +80,7 @@ export default function PoolDetail() {
       return data;
     },
     enabled: !!pool?.tenant_id,
+    staleTime: staleTimes.static,
   });
 
   const { data: members } = useQuery({
@@ -94,6 +97,7 @@ export default function PoolDetail() {
       return memberRows.map((m) => ({ ...m, profile: profileMap[m.user_id] || { name: null, avatar_url: null } }));
     },
     enabled: !!id,
+    staleTime: staleTimes.pools,
   });
 
   const { data: myMembership } = useQuery({
@@ -104,6 +108,7 @@ export default function PoolDetail() {
       return data;
     },
     enabled: !!id && !!user,
+    staleTime: staleTimes.pools,
   });
 
   const setRival = useMutation({
@@ -217,6 +222,7 @@ export default function PoolDetail() {
         }) as LeaderboardEntry[];
     },
     enabled: !!id,
+    staleTime: staleTimes.leaderboard,
   });
 
   const { data: myPredictions } = useQuery({
@@ -229,6 +235,7 @@ export default function PoolDetail() {
       return data || [];
     },
     enabled: !!id && !!user,
+    staleTime: staleTimes.predictions,
   });
 
   // Remaining matches count
@@ -238,6 +245,7 @@ export default function PoolDetail() {
       const { count } = await supabase.from("matches").select("id", { count: "exact", head: true }).eq("status", "scheduled");
       return count || 0;
     },
+    staleTime: staleTimes.stats,
   });
 
   const badges = useMemo(() => calculateBadges(myPredictions || []), [myPredictions]);
