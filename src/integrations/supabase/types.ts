@@ -624,6 +624,7 @@ export type Database = {
     }
     Functions: {
       get_admin_stats: { Args: never; Returns: Json }
+      get_pool_leaderboard: { Args: { _pool_id: string }; Returns: Json }
       get_public_stats: { Args: never; Returns: Json }
       has_role: {
         Args: {

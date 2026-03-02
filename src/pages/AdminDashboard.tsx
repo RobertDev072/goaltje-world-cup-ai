@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { formatNLDateTime, formatNLDate } from "@/lib/timezone";
 import { toast } from "@/hooks/use-toast";
+import { getErrorLogs } from "@/lib/errorLogger";
 
 function StatCard({ label, value, icon: Icon, sub, trend }: {
   label: string;
@@ -356,7 +357,7 @@ function AdminMatchEditor() {
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"stats" | "matches">("matches");
+  const [tab, setTab] = useState<"stats" | "matches" | "debug">("matches");
 
   const { data: isAdmin, isLoading: roleLoading } = useQuery({
     queryKey: ["is-admin", user?.id],
@@ -380,6 +381,8 @@ export default function AdminDashboard() {
     refetchInterval: 60000,
   });
 
+  const errorLogs = useMemo(() => getErrorLogs(), [tab]);
+
   useEffect(() => {
     if (!authLoading && !user) navigate("/login");
   }, [authLoading, user, navigate]);
@@ -399,9 +402,11 @@ export default function AdminDashboard() {
     );
   }
 
+
   const tabs = [
     { key: "matches" as const, label: "⚽ Scores" },
     { key: "stats" as const, label: "📊 Stats" },
+    { key: "debug" as const, label: "🐛 Debug" },
   ];
 
   return (
@@ -513,6 +518,43 @@ export default function AdminDashboard() {
             </>
           )}
         </>
+      )}
+
+      {/* Debug Tab */}
+      {tab === "debug" && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard label="Totaal poules" value={stats?.total_pools || "..."} icon={Trophy} />
+            <StatCard label="Totaal predictions" value={stats?.total_predictions || "..."} icon={Target} />
+          </div>
+          <div>
+            <h2 className="font-display font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-2">🐛 Client Error Logs</h2>
+            {errorLogs.length === 0 ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-4 text-center text-sm text-muted-foreground">
+                  Geen errors vastgelegd ✅
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-1.5 max-h-[60vh] overflow-y-auto">
+                {errorLogs.map((log, i) => (
+                  <Card key={i} className={`border-0 shadow-sm ${log.type === "error" ? "border-l-2 border-l-destructive" : log.type === "slow_query" ? "border-l-2 border-l-warning" : "border-l-2 border-l-primary"}`}>
+                    <CardContent className="p-2.5">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <Badge variant={log.type === "error" ? "destructive" : "outline"} className="text-[9px] px-1.5 py-0">
+                          {log.type}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">{new Date(log.timestamp).toLocaleTimeString("nl-NL")}</span>
+                      </div>
+                      <p className="text-xs font-medium truncate">{log.message}</p>
+                      {log.details && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{log.details}</p>}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
     </div>

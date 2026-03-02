@@ -35,10 +35,12 @@ export function useRealtimeMatches(onGoal?: (matchId: string, team: "home" | "aw
 
   const invalidateHeavy = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: queryKeys.allMatches() });
+    // Pool-scoped: invalidate all leaderboard keys (prefixed)
     queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
     queryClient.invalidateQueries({ queryKey: queryKeys.allPredictions() });
     queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
     queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
+    queryClient.invalidateQueries({ queryKey: ["my-pool-predictions"] });
   }, [queryClient]);
 
   const throttledInvalidateHeavy = useThrottledCallback(invalidateHeavy, THROTTLE_MS);
@@ -110,6 +112,7 @@ export function useRealtimePredictions() {
     queryClient.invalidateQueries({ queryKey: queryKeys.allPredictions() });
     queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
     queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
+    queryClient.invalidateQueries({ queryKey: ["my-pool-predictions"] });
   }, [queryClient]);
 
   const throttledInvalidate = useThrottledCallback(invalidate, THROTTLE_MS);
