@@ -4,11 +4,11 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 const tabs = [
-  { to: "/", icon: Home, label: "Home" },
-  { to: "/matches", icon: Trophy, label: "Matches" },
-  { to: "/pool", icon: Users, label: "Pool" },
-  { to: "/bracket", icon: GitBranch, label: "Bracket" },
-  { to: "/profile", icon: User, label: "Profiel" },
+  { to: "/app", icon: Home, label: "Home" },
+  { to: "/app/matches", icon: Trophy, label: "Matches" },
+  { to: "/app/pool", icon: Users, label: "Pool" },
+  { to: "/app/bracket", icon: GitBranch, label: "Bracket" },
+  { to: "/app/profile", icon: User, label: "Profiel" },
 ];
 
 export function BottomNav() {

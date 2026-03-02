@@ -303,7 +303,7 @@ export default function PoolDetail() {
 
       {/* Top Bar */}
       <div className="flex items-center justify-between">
-        <Link to="/pool" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm transition-colors">
+        <Link to="/app/pool" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm transition-colors">
           <ArrowLeft className="h-4 w-4" /> Terug
         </Link>
         <Button

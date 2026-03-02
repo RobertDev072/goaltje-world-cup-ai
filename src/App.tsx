@@ -16,11 +16,13 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 const VALID_LANGS = ["nl", "en", "es", "pt"];
 function LangGuard({ children }: { children: React.ReactNode }) {
   const { lang } = useParams<{ lang: string }>();
-  if (!lang || !VALID_LANGS.includes(lang)) return <Navigate to="/landing" replace />;
+  if (!lang || !VALID_LANGS.includes(lang)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
 // Lazy load all pages for lighter initial bundle
+const MarketingHome = lazy(() => import("./pages/MarketingHome"));
+const Bedrijven = lazy(() => import("./pages/Bedrijven"));
 const Auth = lazy(() => import("./pages/Auth"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Index = lazy(() => import("./pages/Index"));
@@ -68,27 +70,30 @@ const App = () => (
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              {/* Public landing pages */}
+              {/* Public marketing pages */}
+              <Route path="/" element={<MarketingHome />} />
+              <Route path="/bedrijven" element={<Bedrijven />} />
               <Route path="/landing" element={<Landing />} />
               <Route path="/:lang" element={<LangGuard><Landing /></LangGuard>} />
               <Route path="/blog/:slug" element={<BlogArticle />} />
               <Route path="/privacy" element={<Privacy />} />
               
               {/* Auth */}
-              <Route path="/auth" element={<Auth />} />
+              <Route path="/login" element={<Auth />} />
+              <Route path="/auth" element={<Navigate to="/login" replace />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/join/:code" element={<JoinPool />} />
               
               {/* App routes - auth required */}
               <Route element={<AuthGate><AppLayout /></AuthGate>}>
-                <Route path="/" element={<Index />} />
-                <Route path="/matches" element={<Matches />} />
-                <Route path="/matches/:id" element={<MatchDetail />} />
-                <Route path="/pool" element={<Pool />} />
-                <Route path="/pool/:id" element={<PoolDetail />} />
-                <Route path="/bracket" element={<Bracket />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/app" element={<Index />} />
+                <Route path="/app/matches" element={<Matches />} />
+                <Route path="/app/matches/:id" element={<MatchDetail />} />
+                <Route path="/app/pool" element={<Pool />} />
+                <Route path="/app/pool/:id" element={<PoolDetail />} />
+                <Route path="/app/bracket" element={<Bracket />} />
+                <Route path="/app/profile" element={<Profile />} />
+                <Route path="/app/admin" element={<AdminDashboard />} />
               </Route>
               
               <Route path="*" element={<NotFound />} />

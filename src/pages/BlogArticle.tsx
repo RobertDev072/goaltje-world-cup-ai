@@ -286,7 +286,7 @@ export default function BlogArticle() {
             <button onClick={handleShare} className="p-2 rounded-full hover:bg-primary-foreground/10 text-primary-foreground transition-colors">
               <Share2 className="h-4 w-4" />
             </button>
-            <Link to="/auth">
+            <Link to="/login">
               <Button size="sm" className="bg-secondary text-secondary-foreground font-semibold h-8 text-xs">
                 Gratis meedoen
               </Button>
@@ -340,7 +340,7 @@ export default function BlogArticle() {
           <p className="text-muted-foreground text-sm mb-4 max-w-md mx-auto">
             Maak gratis een account aan, nodig je vrienden uit en voorspel alle 104 WK-wedstrijden. Wie wordt de beste voorspeller?
           </p>
-          <Link to="/auth">
+          <Link to="/login">
             <Button size="lg" className="bg-secondary text-secondary-foreground font-semibold h-12 px-8">
               🏆 Gratis meedoen
             </Button>

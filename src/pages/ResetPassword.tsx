@@ -16,7 +16,7 @@ export default function ResetPassword() {
   useEffect(() => {
     const hash = window.location.hash;
     if (!hash.includes("type=recovery")) {
-      navigate("/auth");
+      navigate("/login");
     }
   }, [navigate]);
 
@@ -33,7 +33,7 @@ export default function ResetPassword() {
       toast({ title: "Fout", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Wachtwoord gewijzigd!" });
-      navigate("/");
+      navigate("/app");
     }
   };
 

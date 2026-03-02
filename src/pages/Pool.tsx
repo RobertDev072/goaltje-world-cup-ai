@@ -138,7 +138,7 @@ export default function Pool() {
       <div className="max-w-lg mx-auto px-4 pt-4 text-center space-y-4">
         <h1 className="text-2xl font-bold font-display">Poules</h1>
         <p className="text-muted-foreground">Log in om poules te maken en mee te doen.</p>
-        <Link to="/auth">
+        <Link to="/login">
           <Button className="gradient-primary text-primary-foreground">Inloggen</Button>
         </Link>
       </div>
