@@ -44,6 +44,7 @@ const PoolMakenVrienden = lazy(() => import("./pages/seo/PoolMakenVrienden"));
 const BedrijfspouleKantoor = lazy(() => import("./pages/seo/BedrijfspouleKantoor"));
 const PouleRegels = lazy(() => import("./pages/seo/PouleRegels"));
 const PouleTips = lazy(() => import("./pages/seo/PouleTips"));
+const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 
 const AppSplashLoader = lazy(() => import("@/components/AppSplashLoader").then(m => ({ default: m.AppSplashLoader })));
 
@@ -98,6 +99,10 @@ const App = () => (
               <Route path="/football-pool-rules-scoring" element={<PouleRegels />} />
               <Route path="/wk-pool-prediction-tips" element={<PouleTips />} />
               
+              {/* Public leaderboard */}
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/en/leaderboard" element={<Leaderboard />} />
+
               {/* Auth */}
               <Route path="/login" element={<Auth />} />
               <Route path="/auth" element={<Navigate to="/login" replace />} />

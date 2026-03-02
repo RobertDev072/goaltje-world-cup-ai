@@ -6,6 +6,7 @@ Allow: /en
 Allow: /es
 Allow: /pt
 Allow: /blog
+Allow: /leaderboard
 Allow: /login
 Allow: /privacy
 Disallow: /app/
