@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { motion } from "framer-motion";
-import { Smartphone, Zap, Trophy, Users, Building2, CheckCircle2, ArrowRight, Globe, Shield } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Smartphone, Zap, Trophy, Users, Building2, CheckCircle2, ArrowRight, Globe, Shield, Menu, X, Newspaper, User } from "lucide-react";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
 import promoHome from "@/assets/promo-home.png";
 import promoPool from "@/assets/promo-pool.png";
@@ -26,11 +27,19 @@ const reasons = [
 ];
 
 export default function MarketingHome() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   useSEO({
     title: "Goaltje — Gratis WK 2026 Voetbalpoule | Start in 2 minuten",
     description: "Regel in 2 minuten jullie WK 2026 poule. 100% gratis, mobiel-vriendelijk en perfect voor vriendengroepen én bedrijven. Voorspel alle 104 wedstrijden!",
     canonical: "https://goaltje.nl",
   });
+
+  const navLinks = [
+    { label: "Voor bedrijven", to: "/bedrijven", icon: Building2 },
+    { label: "Over ons", to: "/nl#founder", icon: User },
+    { label: "Blog & WK Nieuws", to: "/nl#blog", icon: Newspaper },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -86,26 +95,72 @@ export default function MarketingHome() {
           }),
         }}
       />
-      {/* Header */}
+      {/* Header with navigation */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <img src={goaltjeLogo} alt="Goaltje" className="w-8 h-8" />
             <span className="font-display font-bold text-lg">GOALTJE</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link to="/bedrijven">
-              <Button variant="ghost" size="sm" className="text-xs font-medium hidden sm:inline-flex">
-                <Building2 className="h-3.5 w-3.5 mr-1" /> Voor bedrijven
+          </Link>
+
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center gap-1">
+            {navLinks.map((link) => (
+              <Link key={link.to} to={link.to}>
+                <Button variant="ghost" size="sm" className="text-xs font-medium">
+                  <link.icon className="h-3.5 w-3.5 mr-1.5" /> {link.label}
+                </Button>
+              </Link>
+            ))}
+            <Link to="/login">
+              <Button size="sm" className="h-8 text-xs font-semibold bg-primary text-primary-foreground ml-2">
+                Inloggen
               </Button>
             </Link>
+          </nav>
+
+          {/* Mobile menu toggle */}
+          <div className="flex md:hidden items-center gap-2">
             <Link to="/login">
               <Button size="sm" className="h-8 text-xs font-semibold bg-primary text-primary-foreground">
                 Inloggen
               </Button>
             </Link>
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg hover:bg-muted transition-colors"
+              aria-label="Menu"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile dropdown */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.nav
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden border-t bg-background overflow-hidden"
+            >
+              <div className="px-4 py-3 space-y-1">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted text-sm font-medium transition-colors"
+                  >
+                    <link.icon className="h-4 w-4 text-muted-foreground" />
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </motion.nav>
+          )}
+        </AnimatePresence>
       </header>
 
       {/* Hero */}
@@ -294,6 +349,8 @@ export default function MarketingHome() {
             <span>© 2026 Goaltje · RobertDev.nl</span>
           </div>
           <div className="flex items-center gap-4">
+            <Link to="/nl#founder" className="hover:text-foreground transition-colors">Over ons</Link>
+            <Link to="/nl#blog" className="hover:text-foreground transition-colors">Blog</Link>
             <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
             <Link to="/bedrijven" className="hover:text-foreground transition-colors">Bedrijven</Link>
             <Link to="/login" className="hover:text-foreground transition-colors">Inloggen</Link>
