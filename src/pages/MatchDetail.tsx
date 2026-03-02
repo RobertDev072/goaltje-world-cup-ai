@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -11,13 +11,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Lock, Check, X, TrendingUp, Swords, Newspaper, Zap, Users, History, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Lock, Check, TrendingUp, Swords, Newspaper } from "lucide-react";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { trackFirstPrediction } from "@/lib/analytics";
 import { ExactScoreConfetti, useExactScoreConfetti } from "@/components/ExactScoreConfetti";
-import { queryKeys } from "@/lib/queryKeys";
+import { queryKeys, staleTimes } from "@/lib/queryKeys";
+
+// Lazy-loaded heavy sections
+const MatchStatsSection = lazy(() => import("@/components/MatchStatsSection"));
+const MatchNewsSection = lazy(() => import("@/components/MatchNewsSection"));
+
+const SectionSkeleton = () => <Skeleton className="h-32 rounded-xl" />;
 
 export default function MatchDetail() {
   const { id } = useParams();
@@ -30,12 +36,13 @@ export default function MatchDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("matches")
-        .select("*, home_team:teams!matches_home_team_id_fkey(*), away_team:teams!matches_away_team_id_fkey(*)")
+        .select("id, kickoff_utc, status, stage, group, venue, home_score, away_score, prediction_deadline_utc, home_team:teams!matches_home_team_id_fkey(id, name, short_name, flag_url), away_team:teams!matches_away_team_id_fkey(id, name, short_name, flag_url)")
         .eq("id", id!)
         .single();
       return data;
     },
     enabled: !!id,
+    staleTime: staleTimes.matches,
   });
 
   const { data: events } = useQuery({
@@ -43,51 +50,13 @@ export default function MatchDetail() {
     queryFn: async () => {
       const { data } = await supabase
         .from("match_events")
-        .select("*, team:teams(*)")
+        .select("id, minute, type, player_name, team:teams(short_name)")
         .eq("match_id", id!)
         .order("minute", { ascending: true });
       return data || [];
     },
     enabled: !!id,
-  });
-
-  // Fetch H2H & form stats from API-Football
-  const { data: matchStats, isLoading: statsLoading } = useQuery({
-    queryKey: ["match-stats", match?.home_team?.name, match?.away_team?.name],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("match-stats", {
-        body: {
-          homeTeamName: match!.home_team!.name,
-          awayTeamName: match!.away_team!.name,
-        },
-      });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!match?.home_team?.name && !!match?.away_team?.name,
-    staleTime: 1000 * 60 * 60,
-    retry: 1,
-  });
-
-  // Fetch match news/insights via AI
-  const { data: matchNews, isLoading: newsLoading } = useQuery({
-    queryKey: ["match-news", match?.home_team?.name, match?.away_team?.name],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("match-news", {
-        body: {
-          homeTeam: match!.home_team!.name,
-          awayTeam: match!.away_team!.name,
-          matchDate: match!.kickoff_utc,
-          stage: match!.stage,
-          group: match!.group,
-        },
-      });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!match?.home_team?.name && !!match?.away_team?.name,
-    staleTime: 1000 * 60 * 60 * 4,
-    retry: 1,
+    staleTime: staleTimes.matches,
   });
 
   // Get user's pools
@@ -102,6 +71,7 @@ export default function MatchDetail() {
       return data?.map((m: any) => m.pools).filter(Boolean) || [];
     },
     enabled: !!user,
+    staleTime: staleTimes.pools,
   });
 
   // Get predictions for this match across all pools
@@ -111,12 +81,13 @@ export default function MatchDetail() {
       if (!user) return [];
       const { data } = await supabase
         .from("predictions")
-        .select("*")
+        .select("id, match_id, pool_id, user_id, home_pred, away_pred, points_awarded")
         .eq("match_id", id!)
         .eq("user_id", user.id);
       return data || [];
     },
     enabled: !!user && !!id,
+    staleTime: staleTimes.predictions,
   });
 
   const [selectedPoolId, setSelectedPoolId] = useState<string>("");
@@ -488,86 +459,27 @@ export default function MatchDetail() {
         </motion.div>
       )}
 
-      {/* Match Stats Section */}
-      {matchStats && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-5">
-              <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" /> Statistieken & H2H
-              </h3>
-
-              {/* Head-to-head */}
-              {matchStats.h2h && matchStats.h2h.length > 0 && (
-                <div className="mb-4">
-                  <p className="text-xs font-semibold text-muted-foreground mb-2">Laatste onderlinge wedstrijden</p>
-                  <div className="space-y-1">
-                    {matchStats.h2h.slice(0, 5).map((h: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between text-xs bg-muted/50 rounded-lg px-3 py-1.5">
-                        <span className="truncate flex-1">{h.home} vs {h.away}</span>
-                        <span className="font-bold font-display">{h.score}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Form */}
-              {typeof matchStats.homeForm === "string" && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">{match.home_team?.name} vorm</p>
-                    <div className="flex gap-0.5">
-                      {matchStats.homeForm.split("").map((r: string, i: number) => (
-                        <span key={i} className={`w-6 h-6 rounded text-[10px] font-bold flex items-center justify-center ${
-                          r === "W" ? "bg-emerald-500/20 text-emerald-700" :
-                          r === "L" ? "bg-red-500/20 text-red-700" :
-                          "bg-amber-500/20 text-amber-700"
-                        }`}>{r}</span>
-                      ))}
-                    </div>
-                  </div>
-                  {typeof matchStats.awayForm === "string" && (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">{match.away_team?.name} vorm</p>
-                      <div className="flex gap-0.5">
-                        {matchStats.awayForm.split("").map((r: string, i: number) => (
-                          <span key={i} className={`w-6 h-6 rounded text-[10px] font-bold flex items-center justify-center ${
-                            r === "W" ? "bg-emerald-500/20 text-emerald-700" :
-                            r === "L" ? "bg-red-500/20 text-red-700" :
-                            "bg-amber-500/20 text-amber-700"
-                          }`}>{r}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {statsLoading && <Skeleton className="h-20" />}
-            </CardContent>
-          </Card>
-        </motion.div>
+      {/* Lazy-loaded: Stats & H2H */}
+      {match?.home_team?.name && match?.away_team?.name && (
+        <Suspense fallback={<SectionSkeleton />}>
+          <MatchStatsSection
+            homeTeamName={match.home_team.name}
+            awayTeamName={match.away_team.name}
+          />
+        </Suspense>
       )}
 
-      {/* Match News / AI Insights */}
-      {matchNews && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-5">
-              <h3 className="font-display font-semibold text-base mb-3 flex items-center gap-2">
-                <Newspaper className="h-4 w-4 text-primary" /> Wedstrijd Inzichten
-              </h3>
-              {matchNews.articles?.map((article: any, i: number) => (
-                <div key={i} className="mb-3 last:mb-0">
-                  <p className="text-sm font-semibold">{article.title}</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{article.summary}</p>
-                </div>
-              ))}
-              {newsLoading && <Skeleton className="h-16" />}
-            </CardContent>
-          </Card>
-        </motion.div>
+      {/* Lazy-loaded: AI News */}
+      {match?.home_team?.name && match?.away_team?.name && (
+        <Suspense fallback={<SectionSkeleton />}>
+          <MatchNewsSection
+            homeTeamName={match.home_team.name}
+            awayTeamName={match.away_team.name}
+            matchDate={match.kickoff_utc}
+            stage={match.stage}
+            group={match.group}
+          />
+        </Suspense>
       )}
 
       {/* Scoring Rules */}

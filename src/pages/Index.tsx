@@ -14,6 +14,7 @@ import { MatchCard } from "@/components/MatchCard";
 import { LiveMatchBanner } from "@/components/LiveMatchBanner";
 import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebration";
 import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
+import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
 
 
@@ -29,32 +30,34 @@ export default function Index() {
   useRealtimePredictions();
 
   const { data: profile } = useQuery({
-    queryKey: ["profile", user?.id],
+    queryKey: queryKeys.profile(user?.id || ""),
     queryFn: async () => {
       if (!user) return null;
-      const { data } = await supabase.from("profiles").select("*").eq("user_id", user.id).single();
+      const { data } = await supabase.from("profiles").select("name, avatar_url").eq("user_id", user.id).single();
       return data;
     },
     enabled: !!user,
+    staleTime: staleTimes.profile,
   });
 
   // Fetch both upcoming AND recent finished matches
   const { data: upcomingMatches, isLoading: matchesLoading } = useQuery({
-    queryKey: ["upcoming-matches"],
+    queryKey: queryKeys.upcomingMatches(),
     queryFn: async () => {
       const { data } = await supabase
         .from("matches")
-        .select("*, home_team:teams!matches_home_team_id_fkey(*), away_team:teams!matches_away_team_id_fkey(*)")
+        .select("id, kickoff_utc, status, stage, group, venue, home_score, away_score, prediction_deadline_utc, home_team:teams!matches_home_team_id_fkey(id, name, short_name, flag_url), away_team:teams!matches_away_team_id_fkey(id, name, short_name, flag_url)")
         .gte("kickoff_utc", new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString())
         .order("kickoff_utc", { ascending: true })
         .limit(8);
       return data || [];
     },
+    staleTime: staleTimes.matches,
   });
 
   const matchIds = upcomingMatches?.map((m: any) => m.id) || [];
   const { data: myPredictions } = useQuery({
-    queryKey: ["home-predictions", user?.id, matchIds],
+    queryKey: queryKeys.homePredictions(user?.id || "", matchIds),
     queryFn: async () => {
       if (!user || matchIds.length === 0) return [];
       const { data } = await supabase
@@ -65,6 +68,7 @@ export default function Index() {
       return data || [];
     },
     enabled: !!user && matchIds.length > 0,
+    staleTime: staleTimes.predictions,
   });
 
   // Build prediction map filtered by selected pool
@@ -75,7 +79,7 @@ export default function Index() {
   );
 
   const { data: pools } = useQuery({
-    queryKey: ["my-pools", user?.id],
+    queryKey: queryKeys.myPools(user?.id || ""),
     queryFn: async () => {
       if (!user) return [];
       const { data } = await supabase
@@ -85,6 +89,7 @@ export default function Index() {
       return data?.map((m: any) => m.pools).filter(Boolean) || [];
     },
     enabled: !!user,
+    staleTime: staleTimes.pools,
   });
 
   const greeting = () => {
@@ -105,13 +110,13 @@ export default function Index() {
     queryFn: async () => {
       const { data } = await supabase
         .from("wk_news_cache")
-        .select("*, matches(id, home_team:teams!matches_home_team_id_fkey(name, flag_url), away_team:teams!matches_away_team_id_fkey(name, flag_url))")
+        .select("id, title, summary, category, match_id, home_team_name, away_team_name")
         .gt("expires_at", new Date().toISOString())
         .order("generated_at", { ascending: false })
-        .limit(8);
+        .limit(4);
       return data || [];
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: staleTimes.news,
   });
 
   return (
@@ -275,7 +280,7 @@ export default function Index() {
             </div>
           ) : (
             <div className="space-y-2">
-              {cachedNews?.slice(0, 4).map((item: any, i: number) => {
+              {cachedNews?.map((item: any, i: number) => {
                 const categoryIcon: Record<string, React.ReactNode> = {
                   vorm: <Zap className="h-3.5 w-3.5" />,
                   historie: <History className="h-3.5 w-3.5" />,

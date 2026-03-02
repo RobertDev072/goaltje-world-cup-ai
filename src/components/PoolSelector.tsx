@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { queryKeys, staleTimes } from "@/lib/queryKeys";
 
 interface PoolSelectorProps {
   value: string;
@@ -16,7 +17,7 @@ export function PoolSelector({ value, onChange, className }: PoolSelectorProps) 
   const { user } = useAuth();
 
   const { data: pools } = useQuery({
-    queryKey: ["my-pools", user?.id],
+    queryKey: queryKeys.myPools(user?.id || ""),
     queryFn: async () => {
       if (!user) return [];
       const { data } = await supabase
@@ -26,6 +27,7 @@ export function PoolSelector({ value, onChange, className }: PoolSelectorProps) 
       return data?.map((m: any) => m.pools).filter(Boolean) || [];
     },
     enabled: !!user,
+    staleTime: staleTimes.pools,
   });
 
   // Auto-select first pool

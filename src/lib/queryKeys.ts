@@ -34,3 +34,26 @@ export const queryKeys = {
   allHomePredictions: () => ["home-predictions"] as const,
   allMatchPredictions: () => ["match-predictions"] as const,
 } as const;
+
+/**
+ * Centralized staleTime constants (in ms).
+ * Keeps cache freshness consistent across all pages.
+ */
+export const staleTimes = {
+  /** Matches list / detail — 30s (semi-live) */
+  matches: 30_000,
+  /** Predictions — 30s */
+  predictions: 30_000,
+  /** Pools & members — 2 min */
+  pools: 2 * 60_000,
+  /** Profile data — 5 min */
+  profile: 5 * 60_000,
+  /** Stats / news / AI insights — 1 hour */
+  stats: 60 * 60_000,
+  /** News cache — 5 min */
+  news: 5 * 60_000,
+  /** Leaderboard — 30s */
+  leaderboard: 30_000,
+  /** Static data (teams, rules) — 10 min */
+  static: 10 * 60_000,
+} as const;
