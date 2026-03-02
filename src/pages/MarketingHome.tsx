@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Smartphone, Zap, Trophy, Users, Building2, CheckCircle2, ArrowRight, Globe, Shield } from "lucide-react";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
+import { useSEO } from "@/lib/seo";
 
 const steps = [
   { num: "1", title: "Maak een poule aan", desc: "In 30 seconden klaar", emoji: "📋" },
@@ -22,8 +23,66 @@ const reasons = [
 ];
 
 export default function MarketingHome() {
+  useSEO({
+    title: "Goaltje — Gratis WK 2026 Voetbalpoule | Start in 2 minuten",
+    description: "Regel in 2 minuten jullie WK 2026 poule. 100% gratis, mobiel-vriendelijk en perfect voor vriendengroepen én bedrijven. Voorspel alle 104 wedstrijden!",
+    canonical: "https://goaltje.nl",
+  });
+
   return (
     <div className="min-h-screen bg-background">
+      {/* JSON-LD: WebApplication + HowTo */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "WebApplication",
+                "name": "Goaltje",
+                "url": "https://goaltje.nl",
+                "description": "Gratis WK 2026 voetbalpoule-app. Maak poules, voorspel alle 104 wedstrijden en volg live scores.",
+                "applicationCategory": "SportsApplication",
+                "operatingSystem": "Web",
+                "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+                "author": { "@type": "Organization", "name": "Goaltje", "url": "https://goaltje.nl" },
+              },
+              {
+                "@type": "HowTo",
+                "name": "Hoe start je een WK 2026 poule op Goaltje?",
+                "description": "In vier simpele stappen je eigen WK poule starten.",
+                "step": [
+                  { "@type": "HowToStep", "position": 1, "name": "Maak een poule aan", "text": "Registreer gratis en maak in 30 seconden een nieuwe poule aan." },
+                  { "@type": "HowToStep", "position": 2, "name": "Deel de link", "text": "Stuur de uitnodigingslink naar vrienden of collega's via WhatsApp, e-mail of social media." },
+                  { "@type": "HowToStep", "position": 3, "name": "Voorspel wedstrijden", "text": "Iedereen voorspelt de uitslagen van alle 104 WK 2026 wedstrijden." },
+                  { "@type": "HowToStep", "position": 4, "name": "Bekijk de ranglijst", "text": "Volg live de standen en ontdek wie de beste voorspeller is." },
+                ],
+              },
+              {
+                "@type": "FAQPage",
+                "mainEntity": [
+                  {
+                    "@type": "Question",
+                    "name": "Is Goaltje gratis?",
+                    "acceptedAnswer": { "@type": "Answer", "text": "Ja, Goaltje is 100% gratis. Geen creditcard nodig, geen verborgen kosten." },
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "Moet ik een app downloaden?",
+                    "acceptedAnswer": { "@type": "Answer", "text": "Nee, Goaltje werkt direct in je browser op elk apparaat. Geen download nodig." },
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "Hoeveel wedstrijden kan ik voorspellen?",
+                    "acceptedAnswer": { "@type": "Answer", "text": "Je kunt alle 104 WK 2026 wedstrijden voorspellen, van de groepsfase tot de finale." },
+                  },
+                ],
+              },
+            ],
+          }),
+        }}
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">

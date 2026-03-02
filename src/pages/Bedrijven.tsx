@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Building2, Users, Smartphone, Shield, Zap, CheckCircle2, ArrowRight, AlertTriangle, Image, Link2, BarChart3, HeadphonesIcon, Lock } from "lucide-react";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
+import { useSEO } from "@/lib/seo";
 
 const problems = [
   { icon: AlertTriangle, text: "Excel chaos tijdens het WK", color: "text-destructive" },
@@ -30,8 +31,54 @@ const features = [
 ];
 
 export default function Bedrijven() {
+  useSEO({
+    title: "Bedrijfspoule WK 2026 — Goaltje voor Bedrijven & Organisaties",
+    description: "Organiseer eenvoudig een professionele WK 2026 bedrijfspoule met eigen branding. Ideaal voor HR, teambuilding en kantoorcompetitie. Gratis starten.",
+    canonical: "https://goaltje.nl/bedrijven",
+  });
+
   return (
     <div className="min-h-screen bg-background">
+      {/* JSON-LD: Service + FAQ */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "Service",
+                "name": "Goaltje Bedrijfspoule",
+                "description": "Professionele WK 2026 bedrijfspoule met eigen branding, interne ranglijst en eenvoudig beheer voor HR managers.",
+                "provider": { "@type": "Organization", "name": "Goaltje", "url": "https://goaltje.nl" },
+                "serviceType": "Team Building / Employee Engagement",
+                "areaServed": { "@type": "Country", "name": "Netherlands" },
+                "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR", "description": "Gratis bedrijfspoule" },
+              },
+              {
+                "@type": "FAQPage",
+                "mainEntity": [
+                  {
+                    "@type": "Question",
+                    "name": "Wat kost een bedrijfspoule bij Goaltje?",
+                    "acceptedAnswer": { "@type": "Answer", "text": "Een bedrijfspoule bij Goaltje is volledig gratis. Geen verborgen kosten." },
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "Kan ik ons bedrijfslogo toevoegen?",
+                    "acceptedAnswer": { "@type": "Answer", "text": "Ja, je kunt je bedrijfslogo en naam uploaden voor een white-label ervaring." },
+                  },
+                  {
+                    "@type": "Question",
+                    "name": "Hoe delen medewerkers de poule?",
+                    "acceptedAnswer": { "@type": "Answer", "text": "Deel de invite link via Microsoft Teams, Slack, e-mail of een QR-code. Geen app download nodig." },
+                  },
+                ],
+              },
+            ],
+          }),
+        }}
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
