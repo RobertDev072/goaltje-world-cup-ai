@@ -4,6 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Building2, Users, Smartphone, Shield, Zap, CheckCircle2, ArrowRight, AlertTriangle, Image, Link2, BarChart3, HeadphonesIcon, Lock } from "lucide-react";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
+import promoPool2 from "@/assets/promo-pool2.png";
+import promoLanding from "@/assets/promo-landing.png";
 import { useSEO } from "@/lib/seo";
 
 const problems = [
@@ -107,31 +109,47 @@ export default function Bedrijven() {
           backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
           backgroundSize: "40px 40px",
         }} />
-        <div className="max-w-5xl mx-auto px-4 py-20 md:py-32 text-center relative">
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 text-white/80 text-xs font-medium mb-6">
-              <Building2 className="h-3.5 w-3.5" /> Voor bedrijven & organisaties
-            </div>
-            <h1 className="text-3xl md:text-5xl lg:text-6xl font-display font-bold mb-5 leading-tight text-white max-w-4xl mx-auto">
-              Maak van WK 2026 hét{" "}
-              <span className="text-secondary">kantoor evenement</span> ⚽
-            </h1>
-            <p className="text-lg md:text-xl text-white/60 max-w-xl mx-auto mb-10">
-              Organiseer eenvoudig een professionele bedrijfspoule met eigen branding.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <a href="mailto:info@goaltje.nl?subject=Demo%20bedrijfspoule">
-                <Button size="lg" className="bg-secondary text-secondary-foreground h-14 px-10 text-base font-bold shadow-lg hover:bg-secondary/90 transition-all w-full sm:w-auto">
-                  Plan gratis demo
-                </Button>
-              </a>
-              <Link to="/login">
-                <Button size="lg" variant="outline" className="h-14 px-8 text-base font-semibold border-white/25 text-white bg-white/5 hover:bg-white/10 w-full sm:w-auto">
-                  Start bedrijfspoule <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
+        <div className="max-w-6xl mx-auto px-4 py-16 md:py-28 relative">
+          <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16">
+            <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="flex-1 text-center md:text-left">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 text-white/80 text-xs font-medium mb-6">
+                <Building2 className="h-3.5 w-3.5" /> Voor bedrijven & organisaties
+              </div>
+              <h1 className="text-3xl md:text-5xl lg:text-6xl font-display font-bold mb-5 leading-tight text-white max-w-4xl">
+                Maak van WK 2026 hét{" "}
+                <span className="text-secondary">kantoor evenement</span> ⚽
+              </h1>
+              <p className="text-lg md:text-xl text-white/60 max-w-xl mb-10">
+                Organiseer eenvoudig een professionele bedrijfspoule met eigen branding.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center md:items-start gap-3">
+                <a href="mailto:info@goaltje.nl?subject=Demo%20bedrijfspoule">
+                  <Button size="lg" className="bg-secondary text-secondary-foreground h-14 px-10 text-base font-bold shadow-lg hover:bg-secondary/90 transition-all w-full sm:w-auto">
+                    Plan gratis demo
+                  </Button>
+                </a>
+                <Link to="/login">
+                  <Button size="lg" variant="outline" className="h-14 px-8 text-base font-semibold border-white/25 text-white bg-white/5 hover:bg-white/10 w-full sm:w-auto">
+                    Start bedrijfspoule <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+              </div>
+            </motion.div>
+            {/* Phone mockup */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="flex-shrink-0 w-56 md:w-72"
+            >
+              <img
+                src={promoPool2}
+                alt="Goaltje bedrijfspoule - ranglijst en branding"
+                className="w-full h-auto rounded-3xl shadow-2xl"
+                loading="eager"
+              />
+            </motion.div>
+          </div>
         </div>
       </section>
 
@@ -201,6 +219,31 @@ export default function Bedrijven() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* App Preview */}
+      <section className="py-12 md:py-16">
+        <div className="max-w-3xl mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex flex-col md:flex-row items-center gap-8"
+          >
+            <img
+              src={promoLanding}
+              alt="Goaltje landing pagina op mobiel"
+              className="w-48 md:w-56 rounded-2xl shadow-elevation-3"
+              loading="lazy"
+            />
+            <div>
+              <h3 className="font-display font-bold text-lg md:text-xl mb-2">Direct aan de slag</h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Medewerkers openen gewoon de link in hun browser — geen app download, geen account van de IT-afdeling nodig. Werkt op elke telefoon, tablet en computer.
+              </p>
+            </div>
+          </motion.div>
         </div>
       </section>
 
