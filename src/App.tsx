@@ -39,6 +39,12 @@ const BlogArticle = lazy(() => import("./pages/BlogArticle"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
+// SEO pages
+const PoolMakenVrienden = lazy(() => import("./pages/seo/PoolMakenVrienden"));
+const BedrijfspouleKantoor = lazy(() => import("./pages/seo/BedrijfspouleKantoor"));
+const PouleRegels = lazy(() => import("./pages/seo/PouleRegels"));
+const PouleTips = lazy(() => import("./pages/seo/PouleTips"));
+
 const AppSplashLoader = lazy(() => import("@/components/AppSplashLoader").then(m => ({ default: m.AppSplashLoader })));
 
 const PageLoader = () => (
@@ -80,6 +86,17 @@ const App = () => (
               <Route path="/:lang" element={<LangGuard><Landing /></LangGuard>} />
               <Route path="/blog/:slug" element={<BlogArticle />} />
               <Route path="/privacy" element={<Privacy />} />
+              
+              {/* SEO pages - NL */}
+              <Route path="/wk-2026-poule-maken-met-vrienden" element={<PoolMakenVrienden />} />
+              <Route path="/bedrijfspoule-wk-2026-kantoor" element={<BedrijfspouleKantoor />} />
+              <Route path="/voetbalpoule-regels-puntentelling" element={<PouleRegels />} />
+              <Route path="/wk-poule-tips-voorspellingen" element={<PouleTips />} />
+              {/* SEO pages - EN */}
+              <Route path="/make-wk-2026-pool-with-friends" element={<PoolMakenVrienden />} />
+              <Route path="/company-wk-2026-pool-office" element={<BedrijfspouleKantoor />} />
+              <Route path="/football-pool-rules-scoring" element={<PouleRegels />} />
+              <Route path="/wk-pool-prediction-tips" element={<PouleTips />} />
               
               {/* Auth */}
               <Route path="/login" element={<Auth />} />

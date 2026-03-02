@@ -3,7 +3,7 @@
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <!-- Marketing homepage -->
   <url>
-    <loc>https://goaltje.com/</loc>
+    <loc>https://goaltje.nl/</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
@@ -11,7 +11,7 @@
 
   <!-- Bedrijvenpagina -->
   <url>
-    <loc>https://goaltje.com/bedrijven</loc>
+    <loc>https://goaltje.nl/bedrijven</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
@@ -19,38 +19,84 @@
 
   <!-- Multilingual landing pages -->
   <url>
-    <loc>https://goaltje.com/nl</loc>
-    <xhtml:link rel="alternate" hreflang="nl" href="https://goaltje.com/nl"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://goaltje.com/en"/>
-    <xhtml:link rel="alternate" hreflang="es" href="https://goaltje.com/es"/>
-    <xhtml:link rel="alternate" hreflang="pt" href="https://goaltje.com/pt"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://goaltje.com/nl"/>
+    <loc>https://goaltje.nl/nl</loc>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://goaltje.nl/nl"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://goaltje.nl/en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://goaltje.nl/nl"/>
     <lastmod>2026-03-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://goaltje.com/en</loc>
-    <lastmod>2026-03-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://goaltje.com/es</loc>
-    <lastmod>2026-03-02</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://goaltje.com/pt</loc>
+    <loc>https://goaltje.nl/en</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
 
+  <!-- SEO pages - Dutch -->
+  <url>
+    <loc>https://goaltje.nl/wk-2026-poule-maken-met-vrienden</loc>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://goaltje.nl/wk-2026-poule-maken-met-vrienden"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://goaltje.nl/make-wk-2026-pool-with-friends"/>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://goaltje.nl/bedrijfspoule-wk-2026-kantoor</loc>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://goaltje.nl/bedrijfspoule-wk-2026-kantoor"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://goaltje.nl/company-wk-2026-pool-office"/>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://goaltje.nl/voetbalpoule-regels-puntentelling</loc>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://goaltje.nl/voetbalpoule-regels-puntentelling"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://goaltje.nl/football-pool-rules-scoring"/>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://goaltje.nl/wk-poule-tips-voorspellingen</loc>
+    <xhtml:link rel="alternate" hreflang="nl" href="https://goaltje.nl/wk-poule-tips-voorspellingen"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://goaltje.nl/wk-pool-prediction-tips"/>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- SEO pages - English -->
+  <url>
+    <loc>https://goaltje.nl/make-wk-2026-pool-with-friends</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://goaltje.nl/company-wk-2026-pool-office</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://goaltje.nl/football-pool-rules-scoring</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://goaltje.nl/wk-pool-prediction-tips</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
   <!-- Login -->
   <url>
-    <loc>https://goaltje.com/login</loc>
+    <loc>https://goaltje.nl/login</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -58,7 +104,7 @@
 
   <!-- Privacy -->
   <url>
-    <loc>https://goaltje.com/privacy</loc>
+    <loc>https://goaltje.nl/privacy</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
