@@ -169,17 +169,67 @@ export default function MatchDetail() {
           throw error;
         }
       }
+      return { hp, ap };
+    },
+    onMutate: async () => {
+      // Optimistic update: immediately update prediction caches
+      const hp = parseInt(displayHomePred);
+      const ap = parseInt(displayAwayPred);
+      if (isNaN(hp) || isNaN(ap)) return {};
+
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["my-predictions", id, user?.id] });
+      await queryClient.cancelQueries({ queryKey: ["home-predictions"] });
+
+      // Snapshot previous data
+      const previousPredictions = queryClient.getQueryData(["my-predictions", id, user?.id]);
+      const previousHomePredictions = queryClient.getQueryData(["home-predictions", user?.id]);
+
+      // Optimistically update match detail predictions
+      queryClient.setQueryData(["my-predictions", id, user?.id], (old: any[] | undefined) => {
+        const updated = { match_id: id, pool_id: activePool, user_id: user?.id, home_pred: hp, away_pred: ap, points_awarded: null };
+        if (!old) return [updated];
+        const idx = old.findIndex((p: any) => p.pool_id === activePool);
+        if (idx >= 0) {
+          const copy = [...old];
+          copy[idx] = { ...copy[idx], home_pred: hp, away_pred: ap };
+          return copy;
+        }
+        return [...old, updated];
+      });
+
+      // Optimistically update home page predictions
+      queryClient.setQueriesData({ queryKey: ["home-predictions"] }, (old: any[] | undefined) => {
+        if (!old) return old;
+        const idx = old.findIndex((p: any) => p.match_id === id && p.pool_id === activePool);
+        if (idx >= 0) {
+          const copy = [...old];
+          copy[idx] = { ...copy[idx], home_pred: hp, away_pred: ap };
+          return copy;
+        }
+        return [...old, { match_id: id, pool_id: activePool, home_pred: hp, away_pred: ap, points_awarded: null }];
+      });
+
+      return { previousPredictions, previousHomePredictions };
     },
     onSuccess: () => {
       if (!existingPred) trackFirstPrediction();
-      toast({ title: "Voorspelling opgeslagen! ✅" });
-      // Invalidate all prediction-related queries so Home + other screens update
-      queryClient.invalidateQueries({ queryKey: ["my-predictions"] });
-      queryClient.invalidateQueries({ queryKey: ["upcoming-matches"] });
-      queryClient.invalidateQueries({ queryKey: ["matches"] });
+      toast({ title: "Opgeslagen ✓", description: "Je voorspelling is bijgewerkt." });
+      // Background refetch to sync with server (no full reload needed)
+      queryClient.invalidateQueries({ queryKey: ["my-predictions", id, user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["home-predictions"] });
       queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
     },
-    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+    onError: (err: any, _vars, context: any) => {
+      // Rollback on error
+      if (context?.previousPredictions) {
+        queryClient.setQueryData(["my-predictions", id, user?.id], context.previousPredictions);
+      }
+      if (context?.previousHomePredictions) {
+        queryClient.setQueriesData({ queryKey: ["home-predictions"] }, context.previousHomePredictions);
+      }
+      toast({ title: "Fout", description: err.message, variant: "destructive" });
+    },
   });
 
   // Calculate points if match is finished

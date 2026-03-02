@@ -4,6 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Smartphone, Zap, Trophy, Users, Building2, CheckCircle2, ArrowRight, Globe, Shield } from "lucide-react";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
+import promoHome from "@/assets/promo-home.png";
+import promoPool from "@/assets/promo-pool.png";
+import promoShare from "@/assets/promo-share.png";
 import { useSEO } from "@/lib/seo";
 
 const steps = [
@@ -120,29 +123,45 @@ export default function MarketingHome() {
           ⚽
         </motion.div>
 
-        <div className="max-w-5xl mx-auto px-4 py-20 md:py-32 text-center relative">
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-            <img src={goaltjeLogo} alt="Goaltje" className="w-20 h-20 md:w-28 md:h-28 mx-auto mb-6" loading="eager" />
-            <h1 className="text-3xl md:text-5xl lg:text-6xl font-display font-bold mb-5 leading-tight text-white max-w-3xl mx-auto">
-              Regel in 2 minuten jullie{" "}
-              <span className="text-secondary">WK 2026</span> poule ⚽
-            </h1>
-            <p className="text-lg md:text-xl text-white/70 max-w-xl mx-auto mb-10">
-              Gratis, mobiel-vriendelijk en perfect voor vriendengroepen én bedrijven.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Link to="/login">
-                <Button size="lg" className="bg-secondary text-secondary-foreground h-14 px-10 text-base md:text-lg font-bold shadow-lg hover:shadow-xl hover:bg-secondary/90 transition-all w-full sm:w-auto">
-                  Start gratis poule <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <Link to="/bedrijven">
-                <Button size="lg" variant="outline" className="h-14 px-8 text-base font-semibold border-white/25 text-white bg-white/5 hover:bg-white/10 w-full sm:w-auto">
-                  <Building2 className="mr-2 h-5 w-5" /> Voor bedrijven
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
+        <div className="max-w-6xl mx-auto px-4 py-16 md:py-28 relative">
+          <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16">
+            {/* Left: Text */}
+            <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="flex-1 text-center md:text-left">
+              <h1 className="text-3xl md:text-5xl lg:text-6xl font-display font-bold mb-5 leading-tight text-white">
+                Regel in 2 minuten jullie{" "}
+                <span className="text-secondary">WK 2026</span> poule ⚽
+              </h1>
+              <p className="text-lg md:text-xl text-white/70 max-w-xl mb-10">
+                Gratis, mobiel-vriendelijk en perfect voor vriendengroepen én bedrijven.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center md:items-start gap-3">
+                <Link to="/login">
+                  <Button size="lg" className="bg-secondary text-secondary-foreground h-14 px-10 text-base md:text-lg font-bold shadow-lg hover:shadow-xl hover:bg-secondary/90 transition-all w-full sm:w-auto">
+                    Start gratis poule <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+                <Link to="/bedrijven">
+                  <Button size="lg" variant="outline" className="h-14 px-8 text-base font-semibold border-white/25 text-white bg-white/5 hover:bg-white/10 w-full sm:w-auto">
+                    <Building2 className="mr-2 h-5 w-5" /> Voor bedrijven
+                  </Button>
+                </Link>
+              </div>
+            </motion.div>
+            {/* Right: Phone mockup */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="flex-shrink-0 w-64 md:w-80"
+            >
+              <img
+                src={promoHome}
+                alt="Goaltje app - WK 2026 voorspellingen"
+                className="w-full h-auto rounded-3xl shadow-2xl"
+                loading="eager"
+              />
+            </motion.div>
+          </div>
         </div>
       </section>
 
@@ -180,7 +199,7 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      {/* Why Goaltje */}
+      {/* Why Goaltje + Screenshots */}
       <section className="py-16 md:py-24 bg-muted/30">
         <div className="max-w-5xl mx-auto px-4">
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
@@ -189,6 +208,33 @@ export default function MarketingHome() {
               Alles wat je nodig hebt voor de perfecte WK ervaring.
             </p>
           </motion.div>
+
+          {/* App screenshots showcase */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-14">
+            {[
+              { src: promoHome, alt: "Goaltje Home - WK 2026 wedstrijden voorspellen", label: "Voorspellingen" },
+              { src: promoPool, alt: "Goaltje Poule - Ranglijst en statistieken", label: "Poule & Ranglijst" },
+              { src: promoShare, alt: "Goaltje Delen - QR code en social sharing", label: "Delen via QR" },
+            ].map((img, i) => (
+              <motion.div
+                key={img.label}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.15 }}
+                className="text-center"
+              >
+                <img
+                  src={img.src}
+                  alt={img.alt}
+                  className="w-full max-w-[240px] mx-auto rounded-2xl shadow-elevation-3 mb-3"
+                  loading="lazy"
+                />
+                <p className="text-xs font-display font-semibold text-muted-foreground">{img.label}</p>
+              </motion.div>
+            ))}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
             {reasons.map((reason, i) => (
               <motion.div
