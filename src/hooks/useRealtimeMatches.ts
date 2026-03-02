@@ -1,13 +1,10 @@
 import { useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 
 /**
  * Hook that subscribes to realtime changes on the matches table.
- * When a match is updated (score change, status change), it invalidates
- * relevant queries so the UI updates instantly.
- * 
- * Also detects goal events by comparing old vs new scores.
  */
 export function useRealtimeMatches(onGoal?: (matchId: string, team: "home" | "away") => void) {
   const queryClient = useQueryClient();
@@ -38,9 +35,9 @@ export function useRealtimeMatches(onGoal?: (matchId: string, team: "home" | "aw
       away: newRow.away_score,
     };
 
-    // Scoped invalidation — only invalidate what's needed
-    queryClient.invalidateQueries({ queryKey: ["match", newRow.id] });
-    queryClient.invalidateQueries({ queryKey: ["upcoming-matches"] });
+    // Scoped invalidation
+    queryClient.invalidateQueries({ queryKey: queryKeys.matchDetail(newRow.id) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.upcomingMatches() });
 
     // Only invalidate heavy queries when score/status actually changed
     const scoreChanged =
@@ -48,11 +45,11 @@ export function useRealtimeMatches(onGoal?: (matchId: string, team: "home" | "aw
     const statusChanged = oldRow?.status !== newRow.status;
 
     if (scoreChanged || statusChanged) {
-      queryClient.invalidateQueries({ queryKey: ["matches"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allMatches() });
       queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
-      queryClient.invalidateQueries({ queryKey: ["my-predictions"] });
-      queryClient.invalidateQueries({ queryKey: ["home-predictions"] });
-      queryClient.invalidateQueries({ queryKey: ["match-predictions"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allPredictions() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
     }
   }, [queryClient, onGoal]);
 
@@ -74,7 +71,6 @@ export function useRealtimeMatches(onGoal?: (matchId: string, team: "home" | "aw
 
 /**
  * Hook that subscribes to realtime prediction points updates.
- * When points are recalculated (after admin enters scores), the leaderboard updates.
  */
 export function useRealtimePredictions() {
   const queryClient = useQueryClient();
@@ -87,10 +83,9 @@ export function useRealtimePredictions() {
         { event: "UPDATE", schema: "public", table: "predictions" },
         () => {
           queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
-          queryClient.invalidateQueries({ queryKey: ["my-predictions"] });
-          queryClient.invalidateQueries({ queryKey: ["home-predictions"] });
-          queryClient.invalidateQueries({ queryKey: ["match-predictions"] });
-          queryClient.invalidateQueries({ queryKey: ["my-pool-predictions"] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.allPredictions() });
+          queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
+          queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
         }
       )
       .subscribe();
