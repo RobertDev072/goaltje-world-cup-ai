@@ -4,12 +4,12 @@
  */
 export const queryKeys = {
   // Match detail predictions (per match, per user, per pool)
-  myPredictions: (matchId: string, userId: string) =>
-    ["my-predictions", matchId, userId] as const,
+  myPredictions: (matchId: string, userId: string, poolId: string) =>
+    ["my-predictions", matchId, userId, poolId] as const,
 
-  // Home page predictions (per user, per matchIds set)
+  // Home page predictions (per user, stable matchIds signature)
   homePredictions: (userId: string, matchIds: string[]) =>
-    ["home-predictions", userId, matchIds] as const,
+    ["home-predictions", userId, matchIds.slice().sort().join(",")] as const,
 
   // Matches list page predictions (per user, optionally filtered by pool)
   matchPredictions: (userId: string, poolId: string) =>
@@ -57,3 +57,17 @@ export const staleTimes = {
   /** Static data (teams, rules) — 10 min */
   static: 10 * 60_000,
 } as const;
+
+/**
+ * Safely normalize a "form" value (W/L/D string) from match-stats API.
+ * Handles string, array, object, null, undefined — never crashes.
+ */
+export function normalizeForm(raw: unknown): string[] {
+  if (typeof raw === "string" && raw.length > 0) {
+    return raw.split("");
+  }
+  if (Array.isArray(raw)) {
+    return raw.map((v) => String(v ?? "")).filter(Boolean);
+  }
+  return [];
+}

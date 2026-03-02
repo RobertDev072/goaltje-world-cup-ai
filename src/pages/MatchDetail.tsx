@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Lock, Check, TrendingUp, Swords, Newspaper } from "lucide-react";
+import { ArrowLeft, Lock, Check, Swords } from "lucide-react";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -30,6 +30,9 @@ export default function MatchDetail() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [saveLabel, setSaveLabel] = useState<"default" | "saving" | "saved">("default");
+  const [selectedPoolId, setSelectedPoolId] = useState<string>("");
+  const [homePred, setHomePred] = useState<string | null>(null);
+  const [awayPred, setAwayPred] = useState<string | null>(null);
 
   const { data: match, isLoading } = useQuery({
     queryKey: queryKeys.matchDetail(id!),
@@ -74,29 +77,28 @@ export default function MatchDetail() {
     staleTime: staleTimes.pools,
   });
 
-  // Get predictions for this match across all pools
-  const { data: predictions } = useQuery({
-    queryKey: queryKeys.myPredictions(id!, user?.id || ""),
+  // Derive activePool early so we can use it in the query key
+  const activePool = selectedPoolId || (myPools && myPools.length > 0 ? myPools[0].id : "");
+
+  // Get prediction for this match for the ACTIVE pool only
+  const { data: prediction } = useQuery({
+    queryKey: queryKeys.myPredictions(id!, user?.id || "", activePool),
     queryFn: async () => {
-      if (!user) return [];
+      if (!user || !activePool) return null;
       const { data } = await supabase
         .from("predictions")
         .select("id, match_id, pool_id, user_id, home_pred, away_pred, points_awarded")
         .eq("match_id", id!)
-        .eq("user_id", user.id);
-      return data || [];
+        .eq("user_id", user.id)
+        .eq("pool_id", activePool)
+        .maybeSingle();
+      return data || null;
     },
-    enabled: !!user && !!id,
+    enabled: !!user && !!id && !!activePool,
     staleTime: staleTimes.predictions,
   });
 
-  const [selectedPoolId, setSelectedPoolId] = useState<string>("");
-  const [homePred, setHomePred] = useState<string | null>(null);
-  const [awayPred, setAwayPred] = useState<string | null>(null);
-
-  // Set defaults when pools/predictions load
-  const activePool = selectedPoolId || (myPools && myPools.length > 0 ? myPools[0].id : "");
-  const existingPred = predictions?.find((p: any) => p.pool_id === activePool);
+  const existingPred = prediction;
 
   const isLocked = useMemo(() => {
     if (!match) return true;
@@ -149,31 +151,27 @@ export default function MatchDetail() {
       if (isNaN(hp) || isNaN(ap)) return {};
 
       const userId = user?.id || "";
-      const predUpdate = { match_id: id, pool_id: activePool, user_id: userId, home_pred: hp, away_pred: ap, points_awarded: null };
+      const myPredKey = queryKeys.myPredictions(id!, userId, activePool);
 
-      // Cancel all related outgoing refetches
+      // Cancel outgoing refetches
       await Promise.all([
-        queryClient.cancelQueries({ queryKey: queryKeys.myPredictions(id!, userId) }),
+        queryClient.cancelQueries({ queryKey: myPredKey }),
         queryClient.cancelQueries({ queryKey: queryKeys.allHomePredictions() }),
         queryClient.cancelQueries({ queryKey: queryKeys.allMatchPredictions() }),
       ]);
 
-      // Snapshot previous data for rollback
-      const prevMyPreds = queryClient.getQueryData(queryKeys.myPredictions(id!, userId));
+      // Snapshot for rollback
+      const prevMyPred = queryClient.getQueryData(myPredKey);
 
-      // 1. Update match detail predictions
-      queryClient.setQueryData(queryKeys.myPredictions(id!, userId), (old: any[] | undefined) => {
-        if (!old) return [predUpdate];
-        const idx = old.findIndex((p: any) => p.pool_id === activePool);
-        if (idx >= 0) {
-          const copy = [...old];
-          copy[idx] = { ...copy[idx], home_pred: hp, away_pred: ap };
-          return copy;
-        }
-        return [...old, predUpdate];
+      // 1. Optimistic update for this pool's prediction
+      queryClient.setQueryData(myPredKey, (old: any) => {
+        if (old) return { ...old, home_pred: hp, away_pred: ap };
+        return { match_id: id, pool_id: activePool, user_id: userId, home_pred: hp, away_pred: ap, points_awarded: null };
       });
 
-      // 2. Update ALL home-predictions caches (any matchIds combination)
+      const predUpdate = { match_id: id, pool_id: activePool, user_id: userId, home_pred: hp, away_pred: ap, points_awarded: null };
+
+      // 2. Update ALL home-predictions caches
       queryClient.setQueriesData({ queryKey: queryKeys.allHomePredictions() }, (old: any[] | undefined) => {
         if (!old) return old;
         const idx = old.findIndex((p: any) => p.match_id === id && p.pool_id === activePool);
@@ -185,7 +183,7 @@ export default function MatchDetail() {
         return [...old, predUpdate];
       });
 
-      // 3. Update ALL match-predictions caches (Matches page)
+      // 3. Update ALL match-predictions caches
       queryClient.setQueriesData({ queryKey: queryKeys.allMatchPredictions() }, (old: any[] | undefined) => {
         if (!old) return old;
         const idx = old.findIndex((p: any) => p.match_id === id && p.pool_id === activePool);
@@ -197,17 +195,18 @@ export default function MatchDetail() {
         return [...old, predUpdate];
       });
 
-      return { prevMyPreds };
+      return { prevMyPred, myPredKey };
     },
-    onSuccess: () => {
+    onSuccess: (_data, _vars, context: any) => {
       if (!existingPred) trackFirstPrediction();
       setSaveLabel("saved");
       setTimeout(() => setSaveLabel("default"), 1200);
       toast({ title: "Opgeslagen ✓", description: "Je voorspelling is bijgewerkt." });
 
-      const userId = user?.id || "";
       // Background sync — targeted invalidation only
-      queryClient.invalidateQueries({ queryKey: queryKeys.myPredictions(id!, userId) });
+      if (context?.myPredKey) {
+        queryClient.invalidateQueries({ queryKey: context.myPredKey });
+      }
       queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
       queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
       queryClient.invalidateQueries({ queryKey: queryKeys.leaderboard(activePool) });
@@ -215,10 +214,9 @@ export default function MatchDetail() {
     onError: (err: any, _vars, context: any) => {
       setSaveLabel("default");
       // Rollback
-      if (context?.prevMyPreds) {
-        queryClient.setQueryData(queryKeys.myPredictions(id!, user?.id || ""), context.prevMyPreds);
+      if (context?.myPredKey && context?.prevMyPred !== undefined) {
+        queryClient.setQueryData(context.myPredKey, context.prevMyPred);
       }
-      // Re-fetch to get correct server state
       queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
       queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
       toast({ title: "Fout", description: err.message, variant: "destructive" });
