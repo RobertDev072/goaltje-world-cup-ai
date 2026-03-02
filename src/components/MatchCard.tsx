@@ -36,7 +36,7 @@ export function MatchCard({ match, prediction, index = 0, rankingImpact, streak,
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, duration: 0.3 }}
     >
-      <Link to={`/matches/${match.id}`}>
+      <Link to={`/app/matches/${match.id}`}>
         <Card className={cn(
           "border-0 overflow-hidden transition-all duration-300 group",
           isLive && "shadow-glow-primary ring-1 ring-primary/20",

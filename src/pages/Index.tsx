@@ -290,7 +290,7 @@ export default function Index() {
                 };
 
                 return (
-                  <Link key={item.id || i} to={`/match/${item.match_id}`}>
+                  <Link key={item.id || i} to={`/app/matches/${item.match_id}`}>
                     <Card className="border-0 shadow-sm hover:shadow-md transition-all group">
                       <CardContent className="p-3 flex items-start gap-3">
                         <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${categoryColor[item.category] || 'bg-muted text-muted-foreground'}`}>
