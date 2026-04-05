@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +13,7 @@ import { CookieConsent } from "@/components/CookieConsent";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { hasAnalyticsConsent } from "@/lib/consent";
 
 // Lazy load all pages for lighter initial bundle
 const MarketingHome = lazy(() => import("./pages/MarketingHome"));
@@ -76,61 +77,78 @@ const queryClient = new QueryClient({
   },
 });
 
-const App = () => (
-  <div data-app-mounted>
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <InstallPrompt />
-        <CookieConsent />
-        <BrowserRouter>
-          <ErrorBoundary>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              {/* Public marketing pages */}
-              <Route path="/" element={<MarketingHome />} />
-              <Route path="/bedrijven" element={<Bedrijven />} />
-              <Route path="/blog/:slug" element={<BlogArticle />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/sitemap" element={<Sitemap />} />
+const App = () => {
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(() => hasAnalyticsConsent());
 
-              {/* SEO & public pages */}
-              {SEO_ROUTES.map(({ path, element }) => (
-                <Route key={path} path={path} element={element} />
-              ))}
+  useEffect(() => {
+    const syncConsent = () => setAnalyticsEnabled(hasAnalyticsConsent());
 
-              {/* Auth */}
-              <Route path="/login" element={<Auth />} />
-              <Route path="/auth" element={<Navigate to="/login" replace />} />
-              <Route path="/landing" element={<Navigate to="/" replace />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/join/:code" element={<JoinPool />} />
+    syncConsent();
+    window.addEventListener("consent-change", syncConsent);
 
-              {/* App routes - auth required */}
-              <Route element={<AuthGate><AppLayout /></AuthGate>}>
-                <Route path="/app" element={<Index />} />
-                <Route path="/app/matches" element={<Matches />} />
-                <Route path="/app/matches/:id" element={<MatchDetail />} />
-                <Route path="/app/pool" element={<Pool />} />
-                <Route path="/app/pool/:id" element={<PoolDetail />} />
-                <Route path="/app/bracket" element={<Bracket />} />
-                <Route path="/app/profile" element={<Profile />} />
-                <Route path="/app/admin" element={<AdminDashboard />} />
-              </Route>
+    return () => window.removeEventListener("consent-change", syncConsent);
+  }, []);
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-          </ErrorBoundary>
-        </BrowserRouter>
-        <Analytics />
-        <SpeedInsights />
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-  </div>
-);
+  return (
+    <div data-app-mounted>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <InstallPrompt />
+            <CookieConsent />
+            <BrowserRouter>
+              <ErrorBoundary>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    {/* Public marketing pages */}
+                    <Route path="/" element={<MarketingHome />} />
+                    <Route path="/bedrijven" element={<Bedrijven />} />
+                    <Route path="/blog/:slug" element={<BlogArticle />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/sitemap" element={<Sitemap />} />
+
+                    {/* SEO & public pages */}
+                    {SEO_ROUTES.map(({ path, element }) => (
+                      <Route key={path} path={path} element={element} />
+                    ))}
+
+                    {/* Auth */}
+                    <Route path="/login" element={<Auth />} />
+                    <Route path="/auth" element={<Navigate to="/login" replace />} />
+                    <Route path="/landing" element={<Navigate to="/" replace />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
+                    <Route path="/join/:code" element={<JoinPool />} />
+
+                    {/* App routes - auth required */}
+                    <Route element={<AuthGate><AppLayout /></AuthGate>}>
+                      <Route path="/app" element={<Index />} />
+                      <Route path="/app/matches" element={<Matches />} />
+                      <Route path="/app/matches/:id" element={<MatchDetail />} />
+                      <Route path="/app/pool" element={<Pool />} />
+                      <Route path="/app/pool/:id" element={<PoolDetail />} />
+                      <Route path="/app/bracket" element={<Bracket />} />
+                      <Route path="/app/profile" element={<Profile />} />
+                      <Route path="/app/admin" element={<AdminDashboard />} />
+                    </Route>
+
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </ErrorBoundary>
+            </BrowserRouter>
+            {analyticsEnabled && (
+              <>
+                <Analytics />
+                <SpeedInsights />
+              </>
+            )}
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </div>
+  );
+};
 
 export default App;

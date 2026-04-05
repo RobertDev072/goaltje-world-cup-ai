@@ -46,7 +46,7 @@ export function useSEO({
 
     if (canonical) {
       setMeta("property", "og:url", canonical);
-      let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+      const link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
       if (link) {
         link.href = canonical;
       }

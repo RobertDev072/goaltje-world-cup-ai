@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -9,6 +9,8 @@ import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebratio
 import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { motion } from "framer-motion";
+import { PredictionReminderBanner } from "@/components/PredictionReminderBanner";
+import { getPredictionState, isMissingToday } from "@/lib/predictionStatus";
 
 
 export default function Matches() {
@@ -31,28 +33,51 @@ export default function Matches() {
     staleTime: staleTimes.matches,
   });
 
+  const { data: pools } = useQuery({
+    queryKey: queryKeys.myPools(user?.id || ""),
+    queryFn: async () => {
+      if (!user) return [];
+      const { data } = await supabase
+        .from("pool_members")
+        .select("pool_id, pools(id, name)")
+        .eq("user_id", user.id);
+      return data?.map((row: any) => row.pools).filter(Boolean) || [];
+    },
+    enabled: !!user,
+    staleTime: staleTimes.pools,
+  });
+
+  const activePoolId = selectedPoolId || pools?.[0]?.id || "";
+
   // Fetch user predictions
   const matchIds = matches?.map((m: any) => m.id) || [];
   const { data: myPredictions } = useQuery({
-    queryKey: queryKeys.matchPredictions(user?.id || "", selectedPoolId),
+    queryKey: queryKeys.matchPredictions(user?.id || "", activePoolId),
     queryFn: async () => {
-      if (!user) return [];
-      let query = supabase
+      if (!user || !activePoolId) return [];
+      const { data } = await supabase
         .from("predictions")
         .select("match_id, home_pred, away_pred, points_awarded, pool_id")
-        .eq("user_id", user.id);
-      if (selectedPoolId) {
-        query = query.eq("pool_id", selectedPoolId);
-      }
-      const { data } = await query;
+        .eq("user_id", user.id)
+        .eq("pool_id", activePoolId);
       return data || [];
     },
-    enabled: !!user && matchIds.length > 0,
+    enabled: !!user && !!activePoolId && matchIds.length > 0,
     staleTime: staleTimes.predictions,
   });
 
   const predictionMap = new Map(
     myPredictions?.map((p: any) => [p.match_id, p]) || []
+  );
+
+  const missingTodayMatches = useMemo(
+    () => (matches || []).filter((match: any) => isMissingToday(match, predictionMap.get(match.id))),
+    [matches, predictionMap],
+  );
+
+  const missedMatches = useMemo(
+    () => (matches || []).filter((match: any) => getPredictionState(match, predictionMap.get(match.id)) === "missed"),
+    [matches, predictionMap],
   );
 
   return (
@@ -67,6 +92,13 @@ export default function Matches() {
       {/* Pool Selector */}
       {user && (
         <PoolSelector value={selectedPoolId} onChange={setSelectedPoolId} />
+      )}
+
+      {user && activePoolId && (
+        <PredictionReminderBanner
+          missingTodayMatches={missingTodayMatches}
+          missedMatches={missedMatches}
+        />
       )}
 
       {/* Match Sections */}

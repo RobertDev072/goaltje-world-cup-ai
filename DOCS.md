@@ -170,7 +170,7 @@
 ## 🚀 Deployment
 
 ### Frontend (Vercel)
-- Automatische deploys via Lovable
+- Automatische deploys via Vercel
 - Aggressive caching: JS/CSS 1 jaar, images 1 week
 - Security headers: X-Frame-Options, Referrer-Policy
 - SPA rewrites via vercel.json

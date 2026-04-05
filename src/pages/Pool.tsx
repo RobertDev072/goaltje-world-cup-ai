@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Plus, LogIn, Users, Trophy, ChevronRight, Building2, Palette, Mail, ImageIcon } from "lucide-react";
+import { Plus, LogIn, Users, Trophy, ChevronRight, Building2, Palette, ImageIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -31,8 +31,6 @@ export default function Pool() {
   const [tenantLogo, setTenantLogo] = useState("");
   const [tenantPrimary, setTenantPrimary] = useState("#10B981");
   const [tenantSecondary, setTenantSecondary] = useState("#F59E0B");
-  const [tenantDomain, setTenantDomain] = useState("");
-
   const { data: pools } = useQuery({
     queryKey: ["my-pools", user?.id],
     queryFn: async () => {
@@ -50,7 +48,7 @@ export default function Pool() {
   const resetForm = () => {
     setPoolName(""); setPoolDesc(""); setPrizeText("");
     setEnableBranding(false); setTenantName(""); setTenantLogo("");
-    setTenantPrimary("#10B981"); setTenantSecondary("#F59E0B"); setTenantDomain("");
+    setTenantPrimary("#10B981"); setTenantSecondary("#F59E0B");
     setShowCreate(false);
   };
 
@@ -80,7 +78,6 @@ export default function Pool() {
           secondary_color: tenantSecondary,
         };
         if (tenantLogo.trim()) tenantInsert.logo_url = tenantLogo.trim();
-        if (tenantDomain.trim()) tenantInsert.allowed_email_domain = tenantDomain.trim().toLowerCase();
 
         const { data: tenant, error: tenantErr } = await supabase
           .from("tenants")
@@ -194,7 +191,7 @@ export default function Pool() {
 
                 {enableBranding && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-3">
-                    <p className="text-xs text-muted-foreground">Voeg je bedrijfsidentiteit toe zodat deelnemers jouw branding zien.</p>
+                    <p className="text-xs text-muted-foreground">Voeg optioneel je bedrijfsprofiel toe met naam, logo en kleuren. Geen bedrijfsdomein nodig.</p>
 
                     {/* Company Name */}
                     <div className="space-y-1">
@@ -274,21 +271,6 @@ export default function Pool() {
                       </div>
                       {/* Color preview bar */}
                       <div className="h-2 rounded-full mt-2 overflow-hidden" style={{ background: `linear-gradient(90deg, ${tenantPrimary}, ${tenantSecondary})` }} />
-                    </div>
-
-                    {/* Email Domain */}
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Mail className="h-3 w-3" /> E-maildomein (optioneel)
-                      </Label>
-                      <Input
-                        placeholder="bijv. acme.nl"
-                        value={tenantDomain}
-                        onChange={(e) => setTenantDomain(e.target.value)}
-                        className="h-10"
-                        maxLength={100}
-                      />
-                      <p className="text-[10px] text-muted-foreground">Alleen gebruikers met dit e-maildomein kunnen deelnemen.</p>
                     </div>
                   </motion.div>
                 )}

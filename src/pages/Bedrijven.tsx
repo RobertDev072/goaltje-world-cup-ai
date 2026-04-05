@@ -267,7 +267,7 @@ export default function Bedrijven() {
                 <span className="text-secondary">kantoor evenement</span> ⚽
               </h1>
               <p className="text-lg md:text-xl text-white/60 max-w-xl mb-10">
-                Organiseer eenvoudig een professionele bedrijfspoule met eigen branding.
+                Organiseer eenvoudig een professionele bedrijfspoule. Een bedrijfsprofiel met logo en branding mag, maar is niet verplicht.
               </p>
               <div className="flex flex-col sm:flex-row items-center md:items-start gap-3">
                 <a href="#start-form">

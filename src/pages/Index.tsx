@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -16,6 +16,9 @@ import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebratio
 import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
+import { PredictionReminderBanner } from "@/components/PredictionReminderBanner";
+import { getPredictionState, isMissingToday } from "@/lib/predictionStatus";
+import { toast } from "@/hooks/use-toast";
 
 
 export default function Index() {
@@ -56,28 +59,6 @@ export default function Index() {
   });
 
   const matchIds = upcomingMatches?.map((m: any) => m.id) || [];
-  const { data: myPredictions } = useQuery({
-    queryKey: queryKeys.homePredictions(user?.id || "", matchIds, selectedPoolId || undefined),
-    queryFn: async () => {
-      if (!user || matchIds.length === 0) return [];
-      let query = supabase
-        .from("predictions")
-        .select("match_id, home_pred, away_pred, points_awarded, pool_id")
-        .eq("user_id", user.id)
-        .in("match_id", matchIds);
-      if (selectedPoolId) query = query.eq("pool_id", selectedPoolId);
-      const { data } = await query;
-      return data || [];
-    },
-    enabled: !!user && matchIds.length > 0,
-    staleTime: staleTimes.predictions,
-  });
-
-  // Build prediction map (already filtered server-side when pool is selected)
-  const predictionMap = new Map(
-    myPredictions?.map((p: any) => [p.match_id, p]) || []
-  );
-
   const { data: pools } = useQuery({
     queryKey: queryKeys.myPools(user?.id || ""),
     queryFn: async () => {
@@ -92,6 +73,28 @@ export default function Index() {
     staleTime: staleTimes.pools,
   });
 
+  const activePoolId = selectedPoolId || pools?.[0]?.id || "";
+
+  const { data: myPredictions } = useQuery({
+    queryKey: queryKeys.homePredictions(user?.id || "", matchIds, activePoolId),
+    queryFn: async () => {
+      if (!user || matchIds.length === 0 || !activePoolId) return [];
+      const { data } = await supabase
+        .from("predictions")
+        .select("match_id, home_pred, away_pred, points_awarded, pool_id")
+        .eq("user_id", user.id)
+        .eq("pool_id", activePoolId)
+        .in("match_id", matchIds);
+      return data || [];
+    },
+    enabled: !!user && !!activePoolId && matchIds.length > 0,
+    staleTime: staleTimes.predictions,
+  });
+
+  const predictionMap = new Map(
+    myPredictions?.map((p: any) => [p.match_id, p]) || []
+  );
+
   const greeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Goedemorgen";
@@ -103,6 +106,31 @@ export default function Index() {
   const liveMatches = upcomingMatches?.filter((m: any) => m.status === "live") || [];
   const recentFinished = upcomingMatches?.filter((m: any) => m.status === "finished").slice(-3) || [];
   const upcoming = upcomingMatches?.filter((m: any) => m.status === "scheduled").slice(0, 5) || [];
+
+  const missingTodayMatches = useMemo(
+    () => (upcomingMatches || []).filter((match: any) => isMissingToday(match, predictionMap.get(match.id))),
+    [upcomingMatches, predictionMap],
+  );
+
+  const missedMatches = useMemo(
+    () => (upcomingMatches || []).filter((match: any) => getPredictionState(match, predictionMap.get(match.id)) === "missed"),
+    [upcomingMatches, predictionMap],
+  );
+
+  useEffect(() => {
+    if (!user || !activePoolId || missingTodayMatches.length === 0) return;
+
+    const todayKey = new Date().toLocaleDateString("nl-NL", { timeZone: "Europe/Amsterdam" });
+    const storageKey = `prediction-reminder:${activePoolId}:${todayKey}`;
+
+    if (localStorage.getItem(storageKey)) return;
+
+    localStorage.setItem(storageKey, "1");
+    toast({
+      title: `Je mist nog ${missingTodayMatches.length} voorspelling${missingTodayMatches.length > 1 ? "en" : ""} vandaag`,
+      description: "Open wedstrijden en vul ze nog in voordat de deadline sluit.",
+    });
+  }, [user, activePoolId, missingTodayMatches]);
 
   // Fetch cached WK news from database
   const { data: cachedNews, isLoading: newsLoading } = useQuery({
@@ -144,6 +172,13 @@ export default function Index() {
       {/* Live Match Banner */}
       {liveMatches.length > 0 && (
         <LiveMatchBanner matches={liveMatches} />
+      )}
+
+      {user && activePoolId && (
+        <PredictionReminderBanner
+          missingTodayMatches={missingTodayMatches}
+          missedMatches={missedMatches}
+        />
       )}
 
       {/* Quick Stats */}

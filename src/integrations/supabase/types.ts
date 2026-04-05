@@ -501,7 +501,6 @@ export type Database = {
       }
       tenants: {
         Row: {
-          allowed_email_domain: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -511,7 +510,6 @@ export type Database = {
           secondary_color: string | null
         }
         Insert: {
-          allowed_email_domain?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -521,7 +519,6 @@ export type Database = {
           secondary_color?: string | null
         }
         Update: {
-          allowed_email_domain?: string | null
           created_at?: string
           created_by?: string | null
           id?: string

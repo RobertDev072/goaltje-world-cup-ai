@@ -58,4 +58,4 @@ Disallow: /bracket
 Disallow: /assets/
 Disallow: /*.map$
 
-Sitemap: https://goaltje.com/sitemap.xml
+Sitemap: https://goaltje.nl/sitemap.xml

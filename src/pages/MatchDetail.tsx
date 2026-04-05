@@ -18,6 +18,7 @@ import { motion } from "framer-motion";
 import { trackFirstPrediction } from "@/lib/analytics";
 import { ExactScoreConfetti, useExactScoreConfetti } from "@/components/ExactScoreConfetti";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
+import { getPredictionState } from "@/lib/predictionStatus";
 
 // Lazy-loaded heavy sections
 const MatchStatsSection = lazy(() => import("@/components/MatchStatsSection"));
@@ -120,6 +121,7 @@ export default function MatchDetail() {
 
   const displayHomePred = homePred !== null ? homePred : (existingPred?.home_pred != null ? String(existingPred.home_pred) : "");
   const displayAwayPred = awayPred !== null ? awayPred : (existingPred?.away_pred != null ? String(existingPred.away_pred) : "");
+  const predictionState = match ? getPredictionState(match, existingPred) : "open_missing";
 
   const savePrediction = useMutation({
     mutationFn: async () => {
@@ -424,6 +426,15 @@ export default function MatchDetail() {
                 <div className="rounded-xl p-3 text-center bg-muted">
                   <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
                     <Lock className="h-3 w-3" /> Voorspellingen zijn gesloten: deadline verstreken
+                  </p>
+                </div>
+              )}
+
+              {predictionState === "missed" && (
+                <div className="rounded-xl p-3 text-center bg-destructive/10">
+                  <p className="text-sm font-semibold text-destructive">Niet ingevuld</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Je had voor deze wedstrijd geen voorspelling opgeslagen. Deze telt daarom als 0 punten.
                   </p>
                 </div>
               )}
