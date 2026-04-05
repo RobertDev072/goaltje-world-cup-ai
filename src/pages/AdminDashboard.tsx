@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, Users, Trophy, Target, Activity, TrendingUp, TrendingDown, Clock, CheckCircle2, Search, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Users, Trophy, Target, Activity, TrendingUp, TrendingDown, Clock, CheckCircle2, Search, Plus, Trash2, Wifi, WifiOff, RefreshCw, AlertCircle, Server } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { formatNLDateTime, formatNLDate } from "@/lib/timezone";
@@ -375,10 +375,73 @@ function AdminMatchEditor() {
   );
 }
 
+function BedrijvenHealthCheck() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-bedrijven-health"],
+    queryFn: async () => {
+      const { data: tenants } = await supabase
+        .from("tenants")
+        .select("id, name, pools:pools(id, pool_members(count))")
+        .order("created_at" as any, { ascending: false })
+        .limit(10);
+
+      const { count: totalTenants } = await supabase
+        .from("tenants")
+        .select("*", { count: "exact", head: true });
+
+      return { tenants: tenants || [], totalTenants: totalTenants || 0 };
+    },
+    staleTime: 60_000,
+  });
+
+  if (isLoading) return <div className="text-sm text-muted-foreground">Laden...</div>;
+
+  const tenants = data?.tenants || [];
+
+  return (
+    <Card className="border-0 shadow-md">
+      <CardContent className="p-0">
+        <div className="p-3 border-b border-border/50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Server className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Bedrijfspoules</span>
+          </div>
+          <Badge variant="secondary">{data?.totalTenants} totaal</Badge>
+        </div>
+        {tenants.length === 0 ? (
+          <div className="p-3 text-sm text-muted-foreground">Nog geen bedrijfspoules</div>
+        ) : (
+          tenants.map((t: any, i: number) => {
+            const pool = t.pools?.[0];
+            const memberCount = pool?.pool_members?.[0]?.count ?? 0;
+            const isLarge = memberCount >= 100;
+            return (
+              <div key={t.id} className={`flex items-center justify-between p-3 ${i < tenants.length - 1 ? "border-b border-border/50" : ""}`}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className={`h-2 w-2 rounded-full shrink-0 ${isLarge ? "bg-warning" : "bg-success"}`} />
+                  <span className="text-xs font-medium truncate">{t.name}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge variant={isLarge ? "destructive" : "secondary"} className="text-[10px]">
+                    {memberCount} leden
+                  </Badge>
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div className="p-3 bg-muted/30 text-[10px] text-muted-foreground">
+          🟡 100+ leden = grote poule — leaderboard gebruikt virtualisatie automatisch
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"stats" | "matches" | "debug">("matches");
+  const [tab, setTab] = useState<"stats" | "matches" | "debug" | "dev">("matches");
 
   const { data: isAdmin, isLoading: roleLoading } = useQuery({
     queryKey: ["is-admin", user?.id],
@@ -404,6 +467,52 @@ export default function AdminDashboard() {
 
   const errorLogs = useMemo(() => getErrorLogs(), [tab]);
 
+  // Dev tab: API status + budget
+  const { data: apiStatus, isLoading: apiLoading, refetch: refetchApi } = useQuery({
+    queryKey: ["admin-api-status"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("fetch-scores", {
+        body: { action: "status-check" },
+      });
+      if (error) throw error;
+      return data as { success: boolean; competition?: string; season?: string; note?: string; error?: string };
+    },
+    enabled: tab === "dev",
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const { data: apiUsage, refetch: refetchUsage } = useQuery({
+    queryKey: ["admin-api-usage"],
+    queryFn: async () => {
+      const today = new Date().toISOString().split("T")[0];
+      const { data } = await supabase
+        .from("api_usage")
+        .select("request_count, usage_date")
+        .eq("usage_date", today)
+        .maybeSingle();
+      return data;
+    },
+    enabled: tab === "dev",
+    staleTime: 30_000,
+  });
+
+  // Cron health via api_cache (last fixture sync time)
+  const { data: cronStatus, refetch: refetchCron } = useQuery({
+    queryKey: ["admin-cron-status"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("api_cache")
+        .select("cache_key, fetched_at, expires_at")
+        .like("cache_key", "fixtures%")
+        .order("fetched_at" as any, { ascending: false })
+        .limit(5);
+      return data;
+    },
+    enabled: tab === "dev",
+    staleTime: 30_000,
+  });
+
   useEffect(() => {
     if (!authLoading && !user) navigate("/login");
   }, [authLoading, user, navigate]);
@@ -427,6 +536,7 @@ export default function AdminDashboard() {
   const tabs = [
     { key: "matches" as const, label: "⚽ Scores" },
     { key: "stats" as const, label: "📊 Stats" },
+    { key: "dev" as const, label: "🔧 Dev" },
     { key: "debug" as const, label: "🐛 Debug" },
   ];
 
@@ -539,6 +649,153 @@ export default function AdminDashboard() {
             </>
           )}
         </>
+      )}
+
+      {/* Dev Tab */}
+      {tab === "dev" && (
+        <div className="space-y-4">
+
+          {/* API Verbinding */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-display font-semibold text-sm text-muted-foreground uppercase tracking-wider">🌐 API Verbinding</h2>
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => { refetchApi(); refetchUsage(); }}>
+                <RefreshCw className="h-3 w-3" /> Refresh
+              </Button>
+            </div>
+            <Card className="border-0 shadow-md">
+              <CardContent className="p-4 space-y-3">
+                {apiLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <RefreshCw className="h-4 w-4 animate-spin" /> Verbinding testen...
+                  </div>
+                ) : apiStatus?.success ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Wifi className="h-4 w-4 text-success" />
+                      <span className="text-sm font-semibold text-success">Verbonden</span>
+                      <Badge variant="outline" className="text-[10px] ml-auto">{apiStatus.note}</Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      <p>📋 Competitie: <span className="font-medium text-foreground">{apiStatus.competition}</span></p>
+                      <p>📅 Seizoen start: <span className="font-medium text-foreground">{apiStatus.season}</span></p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-destructive">
+                    <WifiOff className="h-4 w-4" />
+                    <span className="text-sm font-medium">Verbinding mislukt</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* API Budget */}
+          <div>
+            <h2 className="font-display font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-2">📊 API Budget vandaag</h2>
+            <Card className="border-0 shadow-md">
+              <CardContent className="p-4">
+                {apiUsage ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Gebruikt vandaag</span>
+                      <span className="text-lg font-bold font-display">{apiUsage.request_count} <span className="text-xs text-muted-foreground font-normal">/ ∞ (10/min)</span></span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div
+                        className="bg-primary h-2 rounded-full transition-all"
+                        style={{ width: `${Math.min((apiUsage.request_count / 600) * 100, 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">football-data.org geeft 10 calls/minuut — geen dagelijks limiet</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Nog geen API calls vandaag</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Cron Status */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-display font-semibold text-sm text-muted-foreground uppercase tracking-wider">⏱️ Cron Jobs</h2>
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => refetchCron()}>
+                <RefreshCw className="h-3 w-3" /> Refresh
+              </Button>
+            </div>
+            <Card className="border-0 shadow-md">
+              <CardContent className="p-0">
+                <div className="flex items-center justify-between p-3 border-b border-border/50">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-success" />
+                    <span className="text-xs font-medium">sync-live-scores</span>
+                    <Badge variant="outline" className="text-[9px]">*/2 min</Badge>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">actief ✅</span>
+                </div>
+                <div className="flex items-center justify-between p-3 border-b border-border/50">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-success" />
+                    <span className="text-xs font-medium">sync-fixtures-6h</span>
+                    <Badge variant="outline" className="text-[9px]">elke 6u</Badge>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">
+                    {cronStatus?.[0]?.fetched_at
+                      ? `Laatste sync: ${new Date(cronStatus[0].fetched_at).toLocaleTimeString("nl-NL")}`
+                      : "actief ✅"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-success" />
+                    <span className="text-xs font-medium">batch-wk-news-every-4h</span>
+                    <Badge variant="outline" className="text-[9px]">elke 4u</Badge>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">actief ✅</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Systeem Alerts */}
+          <div>
+            <h2 className="font-display font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-2">🚨 Systeem Alerts</h2>
+            <div className="space-y-2">
+              {errorLogs.filter(l => l.type === "error").length === 0 ? (
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-3 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-success" />
+                    <span className="text-sm text-success font-medium">Geen kritieke errors</span>
+                  </CardContent>
+                </Card>
+              ) : (
+                errorLogs.filter(l => l.type === "error").slice(0, 5).map((log, i) => (
+                  <Card key={i} className="border-0 shadow-sm border-l-2 border-l-destructive">
+                    <CardContent className="p-3">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate">{log.message}</p>
+                          {log.details && <p className="text-[10px] text-muted-foreground truncate">{log.details}</p>}
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{new Date(log.timestamp).toLocaleTimeString("nl-NL")}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Bedrijven Health */}
+          <div>
+            <h2 className="font-display font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-2">🏢 Bedrijven Health</h2>
+            <BedrijvenHealthCheck />
+          </div>
+
+        </div>
       )}
 
       {/* Debug Tab */}

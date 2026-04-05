@@ -27,7 +27,8 @@
       "WebFetch(domain:worldcupapi.com)",
       "WebFetch(domain:www.wc2026api.com)",
       "WebFetch(domain:publicapi.dev)",
-      "Bash(/c/Users/rober/AppData/Local/Temp/supabase.exe --output json projects list)"
+      "Bash(/c/Users/rober/AppData/Local/Temp/supabase.exe --output json projects list)",
+      "Bash(curl -s -X POST https://api.supabase.com/v1/projects/piahvmeitbcibtsjagur/database/query -H 'Authorization: Bearer sbp_f02058f49d8b2e51fe55f1947521dad4fa4bc49f' -H 'Content-Type: application/json' -d '{:*)"
     ]
   }
 }
