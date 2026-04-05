@@ -149,7 +149,7 @@ function LeaderboardRow({
     : {};
 
   return (
-    <Wrapper {...(wrapperProps as any)} className="pb-2">
+    <Wrapper {...(wrapperProps as Record<string, unknown>)} className="pb-2">
       <Card className={cn(
         "border-0 transition-all duration-300 overflow-hidden",
         isMe ? "shadow-glow-primary ring-1 ring-primary/20" : "shadow-elevation-1",

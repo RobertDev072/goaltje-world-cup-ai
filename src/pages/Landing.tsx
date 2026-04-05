@@ -46,7 +46,14 @@ export default function Landing() {
 
   useEffect(() => {
     supabase.rpc('get_public_stats').then(({ data }) => {
-      if (data) setLiveStats(data as any);
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        const stats = data as { total_users?: number; total_pools?: number; total_predictions?: number };
+        setLiveStats({
+          total_users: stats.total_users ?? 0,
+          total_pools: stats.total_pools ?? 0,
+          total_predictions: stats.total_predictions ?? 0,
+        });
+      }
     });
   }, []);
 

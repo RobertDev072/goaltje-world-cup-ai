@@ -102,7 +102,7 @@ export default function MatchDetail() {
 
   const isLocked = useMemo(() => {
     if (!match) return true;
-    return !isPredictionAllowed(match.status, (match as any).prediction_deadline_utc);
+    return !isPredictionAllowed(match.status, match.prediction_deadline_utc);
   }, [match]);
 
   const showPredictionForm = useMemo(() => {
@@ -327,8 +327,8 @@ export default function MatchDetail() {
               </div>
 
               {/* Deadline countdown */}
-              {showPredictionForm && !isLocked && (match as any).prediction_deadline_utc && (
-                <CountdownTimer kickoffUtc={(match as any).prediction_deadline_utc} />
+              {showPredictionForm && !isLocked && match?.prediction_deadline_utc && (
+                <CountdownTimer kickoffUtc={match.prediction_deadline_utc} />
               )}
               {/* Pool selector */}
               {myPools.length > 1 && (

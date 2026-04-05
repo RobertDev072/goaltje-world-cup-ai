@@ -1,4 +1,25 @@
 import { useEffect, useState, useMemo } from "react";
+
+interface AdminStats {
+  total_users: number;
+  users_today: number;
+  users_7d: number;
+  users_30d: number;
+  logins_today: number;
+  logins_7d: number;
+  logins_30d: number;
+  total_pools: number;
+  avg_members_per_pool: number;
+  pools_today: number;
+  pools_7d: number;
+  total_predictions: number;
+  predictions_today: number;
+  predictions_7d: number;
+  predictions_30d: number;
+  predictors_7d: number;
+  predictors_30d: number;
+  top_pools: { name: string; member_count: number }[];
+}
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -375,7 +396,7 @@ export default function AdminDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_admin_stats");
       if (error) throw error;
-      return data as any;
+      return data as unknown as AdminStats;
     },
     enabled: isAdmin === true,
     refetchInterval: 60000,
@@ -502,7 +523,7 @@ export default function AdminDashboard() {
                   <h2 className="font-display font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-2">📊 Top 10 Poules</h2>
                   <Card className="border-0 shadow-md">
                     <CardContent className="p-0">
-                      {stats.top_pools.map((pool: any, i: number) => (
+                      {stats.top_pools.map((pool, i) => (
                         <div key={i} className={`flex items-center justify-between p-3 ${i < stats.top_pools.length - 1 ? "border-b border-border" : ""}`}>
                           <div className="flex items-center gap-3">
                             <span className="text-sm font-bold text-muted-foreground w-6">{i + 1}</span>

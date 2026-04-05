@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import React, { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthGate } from "@/components/AuthGate";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { CookieConsent } from "@/components/CookieConsent";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -44,8 +45,24 @@ const PoolMakenVrienden = lazy(() => import("./pages/seo/PoolMakenVrienden"));
 const BedrijfspouleKantoor = lazy(() => import("./pages/seo/BedrijfspouleKantoor"));
 const PouleRegels = lazy(() => import("./pages/seo/PouleRegels"));
 const PouleTips = lazy(() => import("./pages/seo/PouleTips"));
+
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Templates = lazy(() => import("./pages/Templates"));
+
+const SEO_ROUTES: { path: string; element: React.ReactElement }[] = [
+  { path: "/wk-2026-poule-maken-met-vrienden", element: <PoolMakenVrienden /> },
+  { path: "/bedrijfspoule-wk-2026-kantoor", element: <BedrijfspouleKantoor /> },
+  { path: "/voetbalpoule-regels-puntentelling", element: <PouleRegels /> },
+  { path: "/wk-poule-tips-voorspellingen", element: <PouleTips /> },
+  { path: "/make-wk-2026-pool-with-friends", element: <PoolMakenVrienden /> },
+  { path: "/company-wk-2026-pool-office", element: <BedrijfspouleKantoor /> },
+  { path: "/football-pool-rules-scoring", element: <PouleRegels /> },
+  { path: "/wk-pool-prediction-tips", element: <PouleTips /> },
+  { path: "/leaderboard", element: <Leaderboard /> },
+  { path: "/en/leaderboard", element: <Leaderboard /> },
+  { path: "/templates", element: <Templates /> },
+  { path: "/en/templates", element: <Templates /> },
+];
 const Sitemap = lazy(() => import("./pages/Sitemap"));
 
 const AppSplashLoader = lazy(() => import("@/components/AppSplashLoader").then(m => ({ default: m.AppSplashLoader })));
@@ -80,6 +97,7 @@ const App = () => (
         <InstallPrompt />
         <CookieConsent />
         <BrowserRouter>
+          <ErrorBoundary>
           <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public marketing pages */}
@@ -90,22 +108,11 @@ const App = () => (
               <Route path="/blog/:slug" element={<BlogArticle />} />
               <Route path="/privacy" element={<Privacy />} />
               
-              {/* SEO pages - NL */}
-              <Route path="/wk-2026-poule-maken-met-vrienden" element={<PoolMakenVrienden />} />
-              <Route path="/bedrijfspoule-wk-2026-kantoor" element={<BedrijfspouleKantoor />} />
-              <Route path="/voetbalpoule-regels-puntentelling" element={<PouleRegels />} />
-              <Route path="/wk-poule-tips-voorspellingen" element={<PouleTips />} />
-              {/* SEO pages - EN */}
-              <Route path="/make-wk-2026-pool-with-friends" element={<PoolMakenVrienden />} />
-              <Route path="/company-wk-2026-pool-office" element={<BedrijfspouleKantoor />} />
-              <Route path="/football-pool-rules-scoring" element={<PouleRegels />} />
-              <Route path="/wk-pool-prediction-tips" element={<PouleTips />} />
+              {/* SEO pages */}
+              {SEO_ROUTES.map(({ path, element }) => (
+                <Route key={path} path={path} element={element} />
+              ))}
               
-              {/* Public leaderboard */}
-              <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/en/leaderboard" element={<Leaderboard />} />
-              <Route path="/templates" element={<Templates />} />
-              <Route path="/en/templates" element={<Templates />} />
               <Route path="/sitemap" element={<Sitemap />} />
               {/* Auth */}
               <Route path="/login" element={<Auth />} />
@@ -128,6 +135,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
+          </ErrorBoundary>
         </BrowserRouter>
         <Analytics />
         <SpeedInsights />

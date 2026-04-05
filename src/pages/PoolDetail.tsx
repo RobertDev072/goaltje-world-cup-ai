@@ -219,7 +219,7 @@ export default function PoolDetail() {
     prevPositionRef.current = myPosition;
   }, [myPosition, leaderboard]);
 
-  const scoringRules = pool?.scoring_rules_json as any;
+  const scoringRules = pool?.scoring_rules_json as { exact?: number; result?: number; goal_diff?: number } | null;
   const exactPts = scoringRules?.exact ?? 6;
   const resultPts = scoringRules?.result ?? 3;
   const goalDiffPts = scoringRules?.goal_diff ?? 4;
