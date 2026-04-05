@@ -102,11 +102,12 @@ export default function Pool() {
         .select()
         .single();
       if (error) throw error;
-      await supabase.from("pool_members").insert({
+      const { error: memberError } = await supabase.from("pool_members").insert({
         pool_id: pool.id,
         user_id: user.id,
         role: "admin",
       });
+      if (memberError) throw memberError;
       return pool;
     },
     onSuccess: () => {

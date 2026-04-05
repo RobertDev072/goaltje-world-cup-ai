@@ -57,25 +57,25 @@ export default function Index() {
 
   const matchIds = upcomingMatches?.map((m: any) => m.id) || [];
   const { data: myPredictions } = useQuery({
-    queryKey: queryKeys.homePredictions(user?.id || "", matchIds),
+    queryKey: queryKeys.homePredictions(user?.id || "", matchIds, selectedPoolId || undefined),
     queryFn: async () => {
       if (!user || matchIds.length === 0) return [];
-      const { data } = await supabase
+      let query = supabase
         .from("predictions")
         .select("match_id, home_pred, away_pred, points_awarded, pool_id")
         .eq("user_id", user.id)
         .in("match_id", matchIds);
+      if (selectedPoolId) query = query.eq("pool_id", selectedPoolId);
+      const { data } = await query;
       return data || [];
     },
     enabled: !!user && matchIds.length > 0,
     staleTime: staleTimes.predictions,
   });
 
-  // Build prediction map filtered by selected pool
+  // Build prediction map (already filtered server-side when pool is selected)
   const predictionMap = new Map(
-    myPredictions
-      ?.filter((p: any) => !selectedPoolId || p.pool_id === selectedPoolId)
-      .map((p: any) => [p.match_id, p]) || []
+    myPredictions?.map((p: any) => [p.match_id, p]) || []
   );
 
   const { data: pools } = useQuery({

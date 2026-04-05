@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatNLDateTime } from "@/lib/timezone";
-import { calculatePoints, explainPoints, DEFAULT_RULES, STATUS_CONFIG, type MatchStatus, isPredictionAllowed, isMatchCounted } from "@/lib/scoring";
+import { calculatePoints, explainPoints, DEFAULT_RULES, STATUS_CONFIG, type MatchStatus, isPredictionAllowed, isMatchCounted, type ScoringRules } from "@/lib/scoring";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,6 +79,14 @@ export default function MatchDetail() {
 
   // Derive activePool early so we can use it in the query key
   const activePool = selectedPoolId || (myPools && myPools.length > 0 ? myPools[0].id : "");
+
+  // Derive scoring rules from the active pool (falls back to defaults)
+  const poolRules: ScoringRules = useMemo(() => {
+    const activePoolData = myPools?.find((p: any) => p.id === activePool);
+    const custom = activePoolData?.scoring_rules_json as Partial<ScoringRules> | null;
+    if (!custom) return DEFAULT_RULES;
+    return { ...DEFAULT_RULES, ...custom };
+  }, [myPools, activePool]);
 
   // Get prediction for this match for the ACTIVE pool only
   const { data: prediction } = useQuery({
@@ -231,6 +239,7 @@ export default function MatchDetail() {
       existingPred.away_pred,
       match.home_score,
       match.away_score,
+      poolRules,
     );
   }, [match, existingPred]);
 
@@ -309,6 +318,20 @@ export default function MatchDetail() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* No pools message */}
+      {user && myPools && myPools.length === 0 && showPredictionForm && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <Card className="border-0 shadow-md bg-muted/30">
+            <CardContent className="p-5 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">Je bent nog geen lid van een poule.</p>
+              <Button asChild size="sm" variant="default">
+                <a href="/app/pool">Poule aanmaken of joinen</a>
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Prediction Section */}
       {user && myPools && myPools.length > 0 && (showPredictionForm || (isMatchCounted(match.status) && existingPred)) && (
@@ -487,15 +510,15 @@ export default function MatchDetail() {
             <h4 className="font-display font-semibold text-xs mb-2 text-muted-foreground">Puntentelling</h4>
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="bg-primary/10 rounded-lg p-2">
-                <p className="text-lg font-bold font-display text-primary">{DEFAULT_RULES.exact}</p>
+                <p className="text-lg font-bold font-display text-primary">{poolRules.exact}</p>
                 <p className="text-[10px] text-muted-foreground">Exact</p>
               </div>
               <div className="bg-secondary/10 rounded-lg p-2">
-                <p className="text-lg font-bold font-display text-secondary">{DEFAULT_RULES.goal_diff}</p>
+                <p className="text-lg font-bold font-display text-secondary">{poolRules.goal_diff}</p>
                 <p className="text-[10px] text-muted-foreground">Doelsaldo</p>
               </div>
               <div className="bg-accent/10 rounded-lg p-2">
-                <p className="text-lg font-bold font-display text-accent">{DEFAULT_RULES.result}</p>
+                <p className="text-lg font-bold font-display text-accent">{poolRules.result}</p>
                 <p className="text-[10px] text-muted-foreground">Uitslag</p>
               </div>
             </div>

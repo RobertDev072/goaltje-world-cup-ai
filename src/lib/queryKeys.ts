@@ -7,9 +7,9 @@ export const queryKeys = {
   myPredictions: (matchId: string, userId: string, poolId: string) =>
     ["my-predictions", matchId, userId, poolId] as const,
 
-  // Home page predictions (per user, stable matchIds signature)
-  homePredictions: (userId: string, matchIds: string[]) =>
-    ["home-predictions", userId, matchIds.slice().sort().join(",")] as const,
+  // Home page predictions (per user, per pool, stable matchIds signature)
+  homePredictions: (userId: string, matchIds: string[], poolId?: string) =>
+    ["home-predictions", userId, matchIds.slice().sort().join(","), poolId ?? ""] as const,
 
   // Matches list page predictions (per user, optionally filtered by pool)
   matchPredictions: (userId: string, poolId: string) =>

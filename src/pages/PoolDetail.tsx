@@ -28,6 +28,7 @@ import { ShareCard } from "@/components/ShareCard";
 import { VirtualizedLeaderboard } from "@/components/VirtualizedLeaderboard";
 import { TiebreakerInfo } from "@/components/TiebreakerInfo";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 
 interface LeaderboardEntry {
@@ -532,19 +533,35 @@ export default function PoolDetail() {
 
           {/* Leave Pool Button */}
           {user && myMembership && myMembership.role !== "admin" && (
-            <Button
-              variant="outline"
-              className="w-full mt-4 gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
-              onClick={() => {
-                if (window.confirm("Weet je zeker dat je deze poule wilt verlaten? Je voorspellingen worden verwijderd.")) {
-                  leavePool.mutate();
-                }
-              }}
-              disabled={leavePool.isPending}
-            >
-              <LogOut className="h-4 w-4" />
-              {leavePool.isPending ? "Verlaten..." : "Poule verlaten"}
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full mt-4 gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                  disabled={leavePool.isPending}
+                >
+                  <LogOut className="h-4 w-4" />
+                  {leavePool.isPending ? "Verlaten..." : "Poule verlaten"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Poule verlaten?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Weet je zeker dat je deze poule wilt verlaten? Je voorspellingen worden verwijderd en je kunt niet meer meedoen tenzij je opnieuw joinet.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => leavePool.mutate()}
+                  >
+                    Verlaten
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
         </TabsContent>
 

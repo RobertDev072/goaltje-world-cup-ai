@@ -53,13 +53,13 @@ export function useRealtimeMatches(onGoal?: (matchId: string, team: "home" | "aw
 
     // Detect goals
     if (onGoal && newRow.status === "live") {
-      const prevHome = oldRow?.home_score ?? prevScoresRef.current[newRow.id]?.home ?? null;
-      const prevAway = oldRow?.away_score ?? prevScoresRef.current[newRow.id]?.away ?? null;
-      
-      if (newRow.home_score != null && prevHome != null && newRow.home_score > prevHome) {
+      const prevHome = oldRow?.home_score ?? prevScoresRef.current[newRow.id]?.home ?? 0;
+      const prevAway = oldRow?.away_score ?? prevScoresRef.current[newRow.id]?.away ?? 0;
+
+      if (newRow.home_score != null && newRow.home_score > prevHome) {
         onGoal(newRow.id, "home");
       }
-      if (newRow.away_score != null && prevAway != null && newRow.away_score > prevAway) {
+      if (newRow.away_score != null && newRow.away_score > prevAway) {
         onGoal(newRow.id, "away");
       }
     }
