@@ -100,7 +100,7 @@ export function SocialShareSheet({ poolName, inviteCode, poolLink, shareText, te
         animate={{ scale: 1, opacity: 1 }}
         className="flex flex-col items-center"
       >
-        <div className="relative bg-white p-5 rounded-3xl shadow-elevation-3 ring-1 ring-border/10">
+        <div className="bg-white p-5 rounded-3xl shadow-elevation-3 ring-1 ring-border/10">
           <QRCodeSVG
             value={poolLink}
             size={200}
@@ -113,31 +113,6 @@ export function SocialShareSheet({ poolName, inviteCode, poolLink, shareText, te
               excavate: true,
             }}
           />
-          {/* Invite code badge overlapping bottom of QR */}
-          <motion.button
-            onClick={copyCode}
-            whileTap={{ scale: 0.95 }}
-            className={cn(
-              "absolute -bottom-4 left-1/2 -translate-x-1/2",
-              "flex items-center gap-2 px-5 py-2.5 rounded-2xl shadow-elevation-3 border border-border/50",
-              "transition-all duration-300",
-              codeCopied
-                ? "bg-success text-white"
-                : "gradient-navy text-white hover:shadow-glow-primary"
-            )}
-            style={!codeCopied && tenant?.primary_color ? {
-              background: `linear-gradient(135deg, ${tenant.primary_color}, ${tenant.secondary_color || tenant.primary_color})`
-            } : undefined}
-          >
-            {codeCopied ? (
-              <Check className="h-4 w-4" />
-            ) : (
-              <Copy className="h-3.5 w-3.5 opacity-60" />
-            )}
-            <code className="text-lg font-mono font-bold tracking-[0.3em]">
-              {inviteCode}
-            </code>
-          </motion.button>
         </div>
       </motion.div>
 
@@ -146,10 +121,35 @@ export function SocialShareSheet({ poolName, inviteCode, poolLink, shareText, te
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.15 }}
-        className="text-center text-xs text-muted-foreground mt-6"
+        className="text-center text-xs text-muted-foreground"
       >
-        Scan de QR-code of deel de uitnodigingscode
+        Scan de QR-code of gebruik de code hieronder
       </motion.p>
+
+      {/* Invite code — below QR, not overlapping */}
+      <motion.button
+        onClick={copyCode}
+        whileTap={{ scale: 0.95 }}
+        className={cn(
+          "flex items-center gap-2 px-6 py-3 rounded-2xl shadow-elevation-3 border border-border/50",
+          "transition-all duration-300 mx-auto",
+          codeCopied
+            ? "bg-success text-white"
+            : "gradient-navy text-white hover:shadow-glow-primary"
+        )}
+        style={!codeCopied && tenant?.primary_color ? {
+          background: `linear-gradient(135deg, ${tenant.primary_color}, ${tenant.secondary_color || tenant.primary_color})`
+        } : undefined}
+      >
+        {codeCopied ? (
+          <Check className="h-4 w-4" />
+        ) : (
+          <Copy className="h-3.5 w-3.5 opacity-60" />
+        )}
+        <code className="text-lg font-mono font-bold tracking-[0.3em]">
+          {inviteCode}
+        </code>
+      </motion.button>
 
       {/* Social Buttons */}
       <motion.div

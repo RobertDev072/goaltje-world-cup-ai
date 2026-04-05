@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git config:*)",
+      "Bash(git push:*)",
+      "Bash(npm install:*)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -r \"get_pool_leaderboard\\\\|get_public_leaderboard\" /c/Users/rober/Desktop/goaltje-world-cup-ai/supabase/migrations/*.sql)",
+      "Bash(supabase --version)",
+      "Bash(powershell -Command \"Invoke-WebRequest -Uri 'https://github.com/supabase/cli/releases/latest/download/supabase_windows_amd64.tar.gz' -OutFile 'C:\\\\Users\\\\rober\\\\AppData\\\\Local\\\\Temp\\\\supabase.tar.gz'\")",
+      "Bash(powershell -Command \"cd 'C:\\\\Users\\\\rober\\\\AppData\\\\Local\\\\Temp'; tar -xzf supabase.tar.gz; ls supabase*\")",
+      "Bash(/c/Users/rober/AppData/Local/Temp/supabase.exe --version)",
+      "Bash(SUPABASE_ACCESS_TOKEN=\"sbp_f02058f49d8b2e51fe55f1947521dad4fa4bc49f\" /c/Users/rober/AppData/Local/Temp/supabase.exe login --token sbp_f02058f49d8b2e51fe55f1947521dad4fa4bc49f)",
+      "Bash(/c/Users/rober/AppData/Local/Temp/supabase.exe link:*)",
+      "Bash(/c/Users/rober/AppData/Local/Temp/supabase.exe db:*)",
+      "Bash(grep -l \"matches\" /c/Users/rober/Desktop/goaltje-world-cup-ai/supabase/migrations/*.sql)",
+      "Bash(grep -l \"api_cache\\\\|api_usage\" /c/Users/rober/Desktop/goaltje-world-cup-ai/supabase/migrations/*.sql)",
+      "Bash(grep -l \"wk_news_cache\\\\|bonus_questions\\\\|bonus_predictions\" /c/Users/rober/Desktop/goaltje-world-cup-ai/supabase/migrations/*.sql)",
+      "WebSearch",
+      "WebFetch(domain:www.football-data.org)",
+      "WebFetch(domain:www.thesportsdb.com)",
+      "WebFetch(domain:www.api-football.com)",
+      "WebFetch(domain:worldcupapi.com)",
+      "WebFetch(domain:www.wc2026api.com)",
+      "WebFetch(domain:publicapi.dev)",
+      "Bash(/c/Users/rober/AppData/Local/Temp/supabase.exe --output json projects list)"
+    ]
+  }
+}
