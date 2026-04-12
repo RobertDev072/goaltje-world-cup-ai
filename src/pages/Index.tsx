@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Users, ChevronRight, TrendingUp, Newspaper, Zap, History, Users as UsersIcon, ShieldCheck } from "lucide-react";
+import { Trophy, Users, ChevronRight, TrendingUp, Target, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,38 @@ export default function Index() {
 
   const activePoolId = selectedPoolId || pools?.[0]?.id || "";
 
+  // Leaderboard for ranking display
+  const { data: leaderboard } = useQuery({
+    queryKey: queryKeys.leaderboard(activePoolId),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_pool_leaderboard", { _pool_id: activePoolId });
+      if (error) throw error;
+      return (data as any[]) || [];
+    },
+    enabled: !!activePoolId,
+    staleTime: staleTimes.leaderboard,
+  });
+
+  const myRank = useMemo(() => {
+    if (!user || !leaderboard) return null;
+    const idx = leaderboard.findIndex((e: any) => e.userId === user.id);
+    if (idx < 0) return null;
+    return { position: idx + 1, total: leaderboard.length, points: leaderboard[idx].points, exactCount: leaderboard[idx].exactCount };
+  }, [user, leaderboard]);
+
+  // Count open predictions
+  const { data: remainingMatches } = useQuery({
+    queryKey: ["remaining-matches"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("matches")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "scheduled");
+      return count || 0;
+    },
+    staleTime: staleTimes.matches,
+  });
+
   const { data: myPredictions } = useQuery({
     queryKey: queryKeys.homePredictions(user?.id || "", matchIds, activePoolId),
     queryFn: async () => {
@@ -132,20 +164,6 @@ export default function Index() {
     });
   }, [user, activePoolId, missingTodayMatches]);
 
-  // Fetch cached WK news from database
-  const { data: cachedNews, isLoading: newsLoading } = useQuery({
-    queryKey: ["wk-news-cache"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("wk_news_cache")
-        .select("id, title, summary, category, match_id, home_team_name, away_team_name")
-        .gt("expires_at", new Date().toISOString())
-        .order("generated_at", { ascending: false })
-        .limit(4);
-      return data || [];
-    },
-    staleTime: staleTimes.news,
-  });
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-5">
@@ -181,35 +199,70 @@ export default function Index() {
         />
       )}
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link to="/app/pool">
-          <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all gradient-navy text-white overflow-hidden group">
-            <CardContent className="p-4 flex items-center gap-3 relative">
-              <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+      {/* Ranking + Points + Open */}
+      {user && myRank && (
+        <div className="grid grid-cols-3 gap-2">
+          <Link to={`/app/pool/${activePoolId}`}>
+            <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all gradient-navy text-white overflow-hidden">
+              <CardContent className="p-3 text-center">
+                <Trophy className="h-4 w-4 mx-auto mb-1 opacity-70" />
+                <p className="text-xl font-bold font-display">#{myRank.position}</p>
+                <p className="text-[10px] opacity-70">van {myRank.total}</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Card className="border-0 shadow-elevation-2 overflow-hidden">
+            <CardContent className="p-3 text-center">
+              <Target className="h-4 w-4 mx-auto mb-1 text-primary" />
+              <p className="text-xl font-bold font-display">{myRank.points}</p>
+              <p className="text-[10px] text-muted-foreground">{myRank.exactCount} exact</p>
+            </CardContent>
+          </Card>
+          <Link to="/app/matches">
+            <Card className={`border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all overflow-hidden ${
+              missingTodayMatches.length > 0 ? "border-l-2 border-l-amber-500" : ""
+            }`}>
+              <CardContent className="p-3 text-center">
+                {missingTodayMatches.length > 0 ? (
+                  <AlertTriangle className="h-4 w-4 mx-auto mb-1 text-amber-500" />
+                ) : (
+                  <Users className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                )}
+                <p className="text-xl font-bold font-display">{remainingMatches ?? "..."}</p>
+                <p className="text-[10px] text-muted-foreground">open</p>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      )}
+
+      {/* Pool navigation for users without ranking */}
+      {user && !myRank && pools && pools.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          <Link to="/app/pool">
+            <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all gradient-navy text-white overflow-hidden">
+              <CardContent className="p-4 flex items-center gap-3">
                 <Users className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold font-display">{pools?.length || 0}</p>
-                <p className="text-xs opacity-70">Poules</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link to="/app/matches">
-          <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all bg-secondary text-secondary-foreground overflow-hidden group">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-black/10 flex items-center justify-center group-hover:bg-black/15 transition-colors">
+                <div>
+                  <p className="text-2xl font-bold font-display">{pools.length}</p>
+                  <p className="text-xs opacity-70">Poules</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link to="/app/matches">
+            <Card className="border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all bg-secondary text-secondary-foreground overflow-hidden">
+              <CardContent className="p-4 flex items-center gap-3">
                 <Trophy className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold font-display">WK '26</p>
-                <p className="text-xs opacity-70">Toernooi</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
+                <div>
+                  <p className="text-2xl font-bold font-display">WK '26</p>
+                  <p className="text-xs opacity-70">Toernooi</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      )}
 
 
       {/* Recent results */}
@@ -299,59 +352,6 @@ export default function Index() {
               </Link>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* WK Nieuws Feed */}
-      {(newsLoading || (cachedNews && cachedNews.length > 0)) && (
-        <div>
-          <h2 className="font-display font-semibold text-lg flex items-center gap-2 mb-3">
-            <Newspaper className="h-5 w-5 text-primary" /> WK Nieuws
-          </h2>
-
-          {newsLoading ? (
-            <div className="space-y-2">
-              {[1, 2].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {cachedNews?.map((item: any, i: number) => {
-                const categoryIcon: Record<string, React.ReactNode> = {
-                  vorm: <Zap className="h-3.5 w-3.5" />,
-                  historie: <History className="h-3.5 w-3.5" />,
-                  spelers: <UsersIcon className="h-3.5 w-3.5" />,
-                  tactiek: <ShieldCheck className="h-3.5 w-3.5" />,
-                };
-                const categoryColor: Record<string, string> = {
-                  vorm: 'bg-emerald-500/10 text-emerald-700',
-                  historie: 'bg-amber-500/10 text-amber-700',
-                  spelers: 'bg-blue-500/10 text-blue-700',
-                  tactiek: 'bg-purple-500/10 text-purple-700',
-                };
-
-                return (
-                  <Link key={item.id || i} to={`/app/matches/${item.match_id}`}>
-                    <Card className="border-0 shadow-sm hover:shadow-md transition-all group">
-                      <CardContent className="p-3 flex items-start gap-3">
-                        <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${categoryColor[item.category] || 'bg-muted text-muted-foreground'}`}>
-                          {categoryIcon[item.category] || <Newspaper className="h-3.5 w-3.5" />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <Badge variant="outline" className="text-[9px] capitalize px-1.5 py-0">{item.category}</Badge>
-                            <span className="text-[9px] text-muted-foreground">{item.home_team_name} vs {item.away_team_name}</span>
-                          </div>
-                          <p className="text-sm font-semibold leading-tight line-clamp-1">{item.title}</p>
-                          <p className="text-[11px] text-muted-foreground leading-snug line-clamp-2 mt-0.5">{item.summary}</p>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1 group-hover:text-primary transition-colors" />
-                      </CardContent>
-                    </Card>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
         </div>
       )}
 

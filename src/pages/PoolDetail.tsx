@@ -152,7 +152,29 @@ export default function PoolDetail() {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_pool_leaderboard", { _pool_id: id! });
       if (error) throw error;
-      return (data as unknown as LeaderboardEntry[]) || [];
+      const entries = (data as unknown as LeaderboardEntry[]) || [];
+
+      // Fetch early bird bonuses for this pool
+      const { data: bonuses } = await supabase
+        .from("pool_members")
+        .select("user_id, early_bird_bonus")
+        .eq("pool_id", id!)
+        .gt("early_bird_bonus", 0);
+
+      if (bonuses && bonuses.length > 0) {
+        const bonusMap = new Map(bonuses.map((b: any) => [b.user_id, b.early_bird_bonus || 0]));
+        for (const entry of entries) {
+          const bonus = bonusMap.get(entry.userId) || 0;
+          if (bonus > 0) {
+            entry.points += bonus;
+            (entry as any).earlyBirdBonus = bonus;
+          }
+        }
+        // Re-sort after adding bonuses
+        entries.sort((a, b) => b.points - a.points || b.exactCount - a.exactCount);
+      }
+
+      return entries;
     },
     enabled: !!id,
     staleTime: staleTimes.leaderboard,

@@ -7,7 +7,7 @@ import { formatNLDate, formatNLTime } from "@/lib/timezone";
 import { cn } from "@/lib/utils";
 import { STATUS_CONFIG, type MatchStatus, isPredictionAllowed } from "@/lib/scoring";
 import { CountdownTimer } from "@/components/CountdownTimer";
-import { getPredictionState } from "@/lib/predictionStatus";
+import { getPredictionState, isDeadlineApproaching } from "@/lib/predictionStatus";
 
 interface MatchCardProps {
   match: any;
@@ -31,8 +31,10 @@ export function MatchCard({ match, prediction, index = 0, rankingImpact, streak,
   const canPredict = isPredictionAllowed(status, match.prediction_deadline_utc || match.kickoff_utc);
   const gotPoints = points != null && points > 0;
   const predictionState = getPredictionState(match, prediction);
-  const isOpenMissing = predictionState === "open_missing";
+  const isOpen = predictionState === "open";
+  const isFilled = predictionState === "filled";
   const isMissed = predictionState === "missed";
+  const isDeadlineSoon = (isOpen || isFilled) && isDeadlineApproaching(match);
 
   return (
     <motion.div
@@ -196,36 +198,38 @@ export function MatchCard({ match, prediction, index = 0, rankingImpact, streak,
               </div>
             )}
 
-            {isOpenMissing && (
-              <div className="mt-2 flex items-center justify-center gap-2 text-xs text-amber-700">
+            {isOpen && !isDeadlineSoon && (
+              <div className="mt-2 flex items-center justify-center gap-2 text-xs text-primary">
+                <Clock className="h-3.5 w-3.5" />
+                <span className="font-medium">Voorspelling invullen</span>
+              </div>
+            )}
+
+            {isOpen && isDeadlineSoon && (
+              <div className="mt-2 flex items-center justify-center gap-2 text-xs text-amber-600">
                 <AlertTriangle className="h-3.5 w-3.5" />
-                <span className="font-medium">Nog niet ingevuld</span>
+                <span className="font-medium">Deadline nadert!</span>
+              </div>
+            )}
+
+            {isFilled && isDeadlineSoon && (
+              <div className="mt-2 flex items-center justify-center gap-2 text-xs text-amber-600">
+                <Clock className="h-3.5 w-3.5" />
+                <span className="font-medium">Deadline nadert - nog wijzigbaar</span>
               </div>
             )}
 
             {isMissed && (
               <div className="mt-2 flex items-center justify-center gap-2 text-xs text-destructive">
                 <X className="h-3.5 w-3.5" />
-                <span className="font-medium">Niet ingevuld</span>
+                <span className="font-medium">Niet ingevuld (0-0)</span>
               </div>
             )}
 
-            {canPredict && (
+            {(isOpen || isFilled) && (
               <div className="mt-2 flex justify-center">
                 <CountdownTimer kickoffUtc={match.prediction_deadline_utc || match.kickoff_utc} compact />
               </div>
-            )}
-
-            {isOpenMissing && (
-              <p className="text-[10px] text-muted-foreground text-center mt-1 group-hover:text-primary transition-colors">
-                Voorspelling invullen
-              </p>
-            )}
-
-            {isMissed && (
-              <p className="text-[10px] text-muted-foreground text-center mt-1">
-                Geen voorspelling opgeslagen voor deze wedstrijd
-              </p>
             )}
 
             {isCancelled && (
