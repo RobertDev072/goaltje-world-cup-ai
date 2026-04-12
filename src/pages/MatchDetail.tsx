@@ -116,7 +116,7 @@ export default function MatchDetail() {
 
   const displayHomePred = homePred !== null ? homePred : (existingPred?.home_pred != null ? String(existingPred.home_pred) : "");
   const displayAwayPred = awayPred !== null ? awayPred : (existingPred?.away_pred != null ? String(existingPred.away_pred) : "");
-  const predictionState = match ? getPredictionState(match, existingPred) : "open_missing";
+  const predictionState = match ? getPredictionState(match, existingPred) : "open";
 
   const savePrediction = useMutation({
     mutationFn: async () => {

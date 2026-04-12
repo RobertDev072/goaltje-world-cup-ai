@@ -24,14 +24,14 @@ export const STATUS_CONFIG: Record<MatchStatus, { label: string; emoji: string; 
 };
 
 export function isPredictionAllowed(status: string, deadlineUtc?: string | null): boolean {
-  // Block cancelled/void matches
-  if (status === 'cancelled' || status === 'void') return false;
+  // Block cancelled/void/finished/live matches
+  if (status === 'cancelled' || status === 'void' || status === 'finished' || status === 'live') return false;
   // If deadline is provided, use it as the source of truth
   if (deadlineUtc) {
     return new Date() < new Date(deadlineUtc);
   }
-  // Fallback: only allow if scheduled
-  return status === 'scheduled';
+  // Fallback: only allow if scheduled or postponed
+  return status === 'scheduled' || status === 'postponed';
 }
 
 export function isMatchCounted(status: string): boolean {
