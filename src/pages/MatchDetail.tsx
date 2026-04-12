@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { useState, useMemo, lazy, Suspense } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,11 +20,6 @@ import { ExactScoreConfetti, useExactScoreConfetti } from "@/components/ExactSco
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { getPredictionState } from "@/lib/predictionStatus";
 
-// Lazy-loaded heavy sections
-const MatchStatsSection = lazy(() => import("@/components/MatchStatsSection"));
-const MatchNewsSection = lazy(() => import("@/components/MatchNewsSection"));
-
-const SectionSkeleton = () => <Skeleton className="h-32 rounded-xl" />;
 
 export default function MatchDetail() {
   const { id } = useParams();
@@ -489,29 +484,6 @@ export default function MatchDetail() {
             </CardContent>
           </Card>
         </motion.div>
-      )}
-
-      {/* Lazy-loaded: Stats & H2H */}
-      {match?.home_team?.name && match?.away_team?.name && (
-        <Suspense fallback={<SectionSkeleton />}>
-          <MatchStatsSection
-            homeTeamName={match.home_team.name}
-            awayTeamName={match.away_team.name}
-          />
-        </Suspense>
-      )}
-
-      {/* Lazy-loaded: AI News */}
-      {match?.home_team?.name && match?.away_team?.name && (
-        <Suspense fallback={<SectionSkeleton />}>
-          <MatchNewsSection
-            homeTeamName={match.home_team.name}
-            awayTeamName={match.away_team.name}
-            matchDate={match.kickoff_utc}
-            stage={match.stage}
-            group={match.group}
-          />
-        </Suspense>
       )}
 
       {/* Scoring Rules */}

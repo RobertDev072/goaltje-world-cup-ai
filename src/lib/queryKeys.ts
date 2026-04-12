@@ -58,22 +58,3 @@ export const staleTimes = {
   static: 10 * 60_000,
 } as const;
 
-/**
- * Safely normalize a "form" value (W/L/D string) from match-stats API.
- * Handles string, array of strings, array of objects ({result:"W"}), null, undefined — never crashes.
- */
-export function normalizeForm(raw: unknown): string[] {
-  if (typeof raw === "string" && raw.length > 0) {
-    return raw.split("");
-  }
-  if (Array.isArray(raw)) {
-    return raw
-      .map((v) => {
-        if (typeof v === "string") return v;
-        if (v && typeof v === "object" && "result" in v) return String((v as any).result);
-        return "";
-      })
-      .filter(Boolean);
-  }
-  return [];
-}
