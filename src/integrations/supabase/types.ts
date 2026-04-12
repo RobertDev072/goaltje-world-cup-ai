@@ -198,7 +198,7 @@ export type Database = {
           last_updated: string | null
           needs_recalc: boolean
           points_calculated_at: string | null
-          prediction_deadline_utc: string
+          prediction_deadline_utc: string | null
           stage: string
           status: string
           venue: string | null
@@ -215,7 +215,7 @@ export type Database = {
           last_updated?: string | null
           needs_recalc?: boolean
           points_calculated_at?: string | null
-          prediction_deadline_utc?: string
+          prediction_deadline_utc?: string | null
           stage?: string
           status?: string
           venue?: string | null
@@ -232,7 +232,7 @@ export type Database = {
           last_updated?: string | null
           needs_recalc?: boolean
           points_calculated_at?: string | null
-          prediction_deadline_utc?: string
+          prediction_deadline_utc?: string | null
           stage?: string
           status?: string
           venue?: string | null
@@ -620,6 +620,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_pool: { Args: { p_pool_id: string }; Returns: undefined }
+      admin_delete_user_data: { Args: { p_user_id: string }; Returns: undefined }
+      fill_default_predictions_for_range: {
+        Args: { p_pool_id: string; p_from: string; p_to: string }
+        Returns: { inserted_count: number }[]
+      }
       get_admin_stats: { Args: never; Returns: Json }
       get_pool_leaderboard: { Args: { _pool_id: string }; Returns: Json }
       get_public_leaderboard: { Args: never; Returns: Json }

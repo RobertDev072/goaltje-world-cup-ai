@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft, Users, Trophy, Target, Activity, Clock, CheckCircle2,
-  Search, AlertCircle, Download, RefreshCw, UserCheck, Database,
+  Search, AlertCircle, Download, RefreshCw, UserCheck, Trash2,
   AlertTriangle, FileJson,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -428,7 +428,12 @@ export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<"overview" | "scores" | "stats">("overview");
+  const [tab, setTab] = useState<"overview" | "scores" | "stats" | "beheer">("overview");
+  const [defaultPoolId, setDefaultPoolId] = useState<string>("");
+  const [defaultsFrom, setDefaultsFrom] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [defaultsTo, setDefaultsTo] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [userSearch, setUserSearch] = useState("");
+  const [poolSearch, setPoolSearch] = useState("");
 
   const { data: isAdmin, isLoading: roleLoading } = useQuery({
     queryKey: ["is-admin", user?.id],
@@ -450,6 +455,33 @@ export default function AdminDashboard() {
     },
     enabled: isAdmin === true,
     refetchInterval: 60000,
+  });
+
+  const { data: pools } = useQuery({
+    queryKey: ["admin-pools"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pools")
+        .select("id, name")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin === true,
+    staleTime: 60_000,
+  });
+
+  const { data: adminUsers, isLoading: usersLoading, refetch: refetchUsers } = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "list", limit: 500, offset: 0 },
+      });
+      if (error) throw error;
+      return (data?.users || []) as any[];
+    },
+    enabled: isAdmin === true,
+    staleTime: 60_000,
   });
 
   // Warnings: matches today without results
@@ -479,7 +511,21 @@ export default function AdminDashboard() {
   // Admin actions
   const fillDefaults = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.rpc("fill_default_predictions");
+      if (!defaultPoolId) throw new Error("Kies een pool");
+      const fromUtc = `${defaultsFrom}T00:00:00Z`;
+      const toUtc = `${defaultsTo}T23:59:59Z`;
+      if (new Date(fromUtc) > new Date(toUtc)) {
+        throw new Error("Van-datum moet voor de t/m datum liggen");
+      }
+      const dayDiff = Math.ceil((new Date(toUtc).getTime() - new Date(fromUtc).getTime()) / (1000 * 60 * 60 * 24));
+      if (dayDiff > 2) {
+        throw new Error("Maximaal 2 dagen bereik toegestaan");
+      }
+      const { data, error } = await supabase.rpc("fill_default_predictions_for_range", {
+        p_pool_id: defaultPoolId,
+        p_from: fromUtc,
+        p_to: toUtc,
+      });
       if (error) throw error;
       return data;
     },
@@ -539,6 +585,37 @@ export default function AdminDashboard() {
     onError: (err: any) => toast({ title: "Restore fout", description: err.message, variant: "destructive" }),
   });
 
+  const deletePool = useMutation({
+    mutationFn: async (poolId: string) => {
+      const { error } = await supabase.rpc("admin_delete_pool", { p_pool_id: poolId });
+      if (error) throw error;
+      return poolId;
+    },
+    onSuccess: () => {
+      toast({ title: "Pool verwijderd" });
+      queryClient.invalidateQueries({ queryKey: ["admin-pools"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+    },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "delete", user_id: userId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return userId;
+    },
+    onSuccess: () => {
+      toast({ title: "Gebruiker verwijderd" });
+      refetchUsers();
+      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+    },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+  });
+
   useEffect(() => {
     if (!authLoading && !user) navigate("/login");
   }, [authLoading, user, navigate]);
@@ -562,7 +639,32 @@ export default function AdminDashboard() {
     { key: "overview" as const, label: "Overzicht" },
     { key: "scores" as const, label: "Resultaten" },
     { key: "stats" as const, label: "Stats" },
+    { key: "beheer" as const, label: "Beheer" },
   ];
+
+  const filteredUsers = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    const list = adminUsers || [];
+    if (!q) return list;
+    return list.filter((u: any) =>
+      u.email?.toLowerCase().includes(q) ||
+      u.name?.toLowerCase().includes(q) ||
+      u.id?.toLowerCase().includes(q)
+    );
+  }, [adminUsers, userSearch]);
+
+  const filteredPools = useMemo(() => {
+    const q = poolSearch.trim().toLowerCase();
+    const list = pools || [];
+    if (!q) return list;
+    return list.filter((p: any) => p.name?.toLowerCase().includes(q) || p.id?.toLowerCase().includes(q));
+  }, [pools, poolSearch]);
+
+  const topLogins = useMemo(() => {
+    return [...(adminUsers || [])]
+      .sort((a: any, b: any) => (b.login_count || 0) - (a.login_count || 0))
+      .slice(0, 5);
+  }, [adminUsers]);
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 space-y-5 pb-8">
@@ -680,14 +782,81 @@ export default function AdminDashboard() {
                 isPending={recalcAll.isPending}
               />
 
-              <ConfirmedAction
-                label="Standaard 0-0 invullen"
-                description="Vul 0-0 in voor gemiste voorspellingen."
-                icon={Database}
-                onConfirm={() => fillDefaults.mutate()}
-                isPending={fillDefaults.isPending}
-                variant="warning"
-              />
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-4 space-y-3">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Standaard 0-0 invullen</p>
+                    <p className="text-[10px] text-muted-foreground">Alleen voor gemiste voorspellingen in een gekozen periode.</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Pool</p>
+                    <Select value={defaultPoolId} onValueChange={setDefaultPoolId}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Kies een pool" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(pools || []).map((p: any) => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Van</p>
+                      <Input type="date" value={defaultsFrom} onChange={(e) => setDefaultsFrom(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Tot</p>
+                      <Input type="date" value={defaultsTo} onChange={(e) => setDefaultsTo(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const today = new Date().toISOString().slice(0, 10);
+                        setDefaultsFrom(today);
+                        setDefaultsTo(today);
+                      }}
+                    >
+                      Vandaag
+                    </Button>
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          className="gradient-primary text-primary-foreground"
+                          disabled={!defaultPoolId || fillDefaults.isPending}
+                        >
+                          {fillDefaults.isPending ? "Bezig..." : "0-0 invullen"}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Standaard 0-0 invullen</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Pool: {pools?.find((p: any) => p.id === defaultPoolId)?.name || "Onbekend"}
+                            <br />
+                            Periode: {defaultsFrom} t/m {defaultsTo}
+                            <br />
+                            Weet je het zeker? (max 2 dagen)
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => fillDefaults.mutate()}>Bevestigen</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </CardContent>
+              </Card>
 
               <ConfirmedAction
                 label="Check Early Bird"
@@ -856,6 +1025,169 @@ export default function AdminDashboard() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* ==================== BEHEER TAB ==================== */}
+      {tab === "beheer" && (
+        <div className="space-y-5">
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-3">Gebruikers</h2>
+            <div className="relative mb-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Zoek op naam, email of id..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="pl-9 h-9"
+              />
+            </div>
+
+            {usersLoading ? (
+              <Skeleton className="h-24 rounded-xl" />
+            ) : (
+              <div className="space-y-2">
+                {filteredUsers.length === 0 ? (
+                  <Card className="border-0 shadow-sm">
+                    <CardContent className="p-4 text-center text-sm text-muted-foreground">
+                      Geen gebruikers gevonden.
+                    </CardContent>
+                  </Card>
+                ) : (
+                  filteredUsers.map((u: any) => {
+                    const lastLogin = u.last_login_at ? new Date(u.last_login_at) : null;
+                    const isActive = lastLogin ? (Date.now() - lastLogin.getTime()) <= 7 * 24 * 60 * 60 * 1000 : false;
+                    const isSelf = user?.id === u.id;
+                    return (
+                      <Card key={u.id} className="border-0 shadow-sm">
+                        <CardContent className="p-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{u.name || u.email || "Onbekend"}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{u.email || u.id}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant={isActive ? "secondary" : "outline"} className="text-[9px] px-1.5 py-0">
+                                {isActive ? "Actief (7d)" : "Inactief"}
+                              </Badge>
+                              <span className="text-[10px] text-muted-foreground">Logins: {u.login_count ?? 0}</span>
+                              <span className="text-[10px] text-muted-foreground">Pools: {u.pool_count ?? 0}</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              Laatste login: {u.last_login_at ? formatNLDateTime(u.last_login_at) : "—"}
+                            </p>
+                            {u.last_device && (
+                              <p className="text-[10px] text-muted-foreground truncate">
+                                Device: {u.last_device}
+                              </p>
+                            )}
+                          </div>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="shrink-0"
+                                disabled={deleteUser.isPending || isSelf}
+                                title={isSelf ? "Je kunt jezelf niet verwijderen" : "Gebruiker verwijderen"}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Gebruiker verwijderen?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Dit verwijdert alle data van deze gebruiker (predictions, pools en berichten).
+                                  Weet je het zeker?
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteUser.mutate(u.id)}>Verwijderen</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {topLogins.length > 0 && (
+              <Card className="border-0 shadow-sm mt-3">
+                <CardContent className="p-3">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">Meest ingelogd</p>
+                  <div className="space-y-1">
+                    {topLogins.map((u: any, i: number) => (
+                      <div key={u.id} className="flex items-center justify-between text-xs">
+                        <span className="truncate">{i + 1}. {u.name || u.email || "Onbekend"}</span>
+                        <span className="text-muted-foreground">{u.login_count ?? 0} logins</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-3">Pools</h2>
+            <div className="relative mb-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Zoek pool..."
+                value={poolSearch}
+                onChange={(e) => setPoolSearch(e.target.value)}
+                className="pl-9 h-9"
+              />
+            </div>
+
+            {filteredPools.length === 0 ? (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-4 text-center text-sm text-muted-foreground">
+                  Geen pools gevonden.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {filteredPools.map((p: any) => (
+                  <Card key={p.id} className="border-0 shadow-sm">
+                    <CardContent className="p-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{p.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{p.id}</p>
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="shrink-0"
+                            disabled={deletePool.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Pool verwijderen?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Dit verwijdert de pool en alle bijbehorende data. Weet je het zeker?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deletePool.mutate(p.id)}>Verwijderen</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
