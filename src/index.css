@@ -48,6 +48,16 @@
     --goaltje-navy: 224 86% 10%;
     --goaltje-darkblue: 219 80% 19%;
 
+    --lp-bg: 224 62% 7%;
+    --lp-surface-dark: 223 63% 11%;
+    --lp-surface: 222 48% 16%;
+    --lp-text: 210 40% 96%;
+    --lp-radius-lg: 1.5rem;
+    --lp-radius-xl: 2rem;
+    --lp-shadow-soft: 0 20px 60px hsl(224 85% 4% / 0.45);
+    --lp-motion-fast: 220ms;
+    --lp-motion-base: 420ms;
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 224 86% 10%;
     --sidebar-primary: 211 93% 44%;
@@ -100,6 +110,12 @@
     --sidebar-accent-foreground: 210 40% 96%;
     --sidebar-border: 224 30% 18%;
     --sidebar-ring: 211 93% 50%;
+
+    --lp-bg: 224 62% 7%;
+    --lp-surface-dark: 223 63% 11%;
+    --lp-surface: 222 48% 16%;
+    --lp-text: 210 40% 96%;
+    --lp-shadow-soft: 0 20px 60px hsl(224 85% 2% / 0.6);
   }
 }
 
