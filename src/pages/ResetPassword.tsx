@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Eye, EyeOff, ArrowLeft, Check, AlertCircle, Loader2 } from "lucide-react";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
@@ -21,24 +21,41 @@ export default function ResetPassword() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event) => {
-        if (event === "PASSWORD_RECOVERY") {
+    // Listen for PASSWORD_RECOVERY event (fires when Supabase processes the link)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" && session) {
+        setStatus("ready");
+      }
+    });
+
+    // Also check if a session already exists — the AuthContext may have already
+    // processed the recovery token before this component mounted (race condition).
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        // A session exists; if the URL contains type=recovery we're in recovery mode
+        const hash = window.location.hash + window.location.search;
+        if (hash.includes("type=recovery") || hash.includes("access_token")) {
+          setStatus("ready");
+        } else {
+          // Active session but not a recovery flow — still show form so the user
+          // can set a password (e.g. they arrived here while already logged in).
           setStatus("ready");
         }
+      } else {
+        // No session yet — wait for PASSWORD_RECOVERY event or timeout
+        const hash = window.location.hash + window.location.search;
+        if (!hash.includes("access_token") && !hash.includes("type=recovery")) {
+          // No token at all in the URL — definitely expired/invalid
+          setStatus("expired");
+        } else {
+          // Token present in URL; give Supabase time to process it
+          const timer = setTimeout(() => {
+            setStatus((prev) => (prev === "loading" ? "expired" : prev));
+          }, 8000);
+          return () => clearTimeout(timer);
+        }
       }
-    );
-
-    // Check if we already have a recovery session from URL hash
-    const hash = window.location.hash;
-    if (hash.includes("type=recovery") || hash.includes("access_token")) {
-      // Supabase will fire PASSWORD_RECOVERY event shortly
-      setTimeout(() => {
-        setStatus((prev) => (prev === "loading" ? "expired" : prev));
-      }, 5000);
-    } else {
-      setStatus("expired");
-    }
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -106,7 +123,7 @@ export default function ResetPassword() {
                   <Check className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Wachtwoord gewijzigd!</p>
+                  <p className="text-sm font-medium">Wachtwoord gewijzigd! 🎉</p>
                   <p className="text-xs text-muted-foreground mt-1">Je wordt doorgestuurd naar login...</p>
                 </div>
               </div>
