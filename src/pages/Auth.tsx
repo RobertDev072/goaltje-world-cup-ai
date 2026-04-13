@@ -49,10 +49,9 @@ export default function Auth() {
       if (mode === "login") {
         const { error } = await signIn(email, password);
         if (error) throw error;
-        // Show branded splash before navigating
         setShowSplash(true);
         setTimeout(() => navigateAfterLogin(), 500);
-        return; // skip finally setLoading
+        return;
       } else if (mode === "register") {
         const { error } = await signUp(email, password, name);
         if (error) throw error;
