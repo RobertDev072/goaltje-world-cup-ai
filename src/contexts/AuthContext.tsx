@@ -12,8 +12,6 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (password: string) => Promise<{ error: Error | null }>;
-  signInWithGoogle: () => Promise<void>;
-  signInWithApple: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,39 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const sessionKey = session.access_token?.substring(0, 16);
         if (sessionKey && !sessionTracked.current.has(sessionKey)) {
           sessionTracked.current.add(sessionKey);
-
-          setTimeout(async () => {
-            // Track login session
+          setTimeout(() => {
             supabase.from("user_sessions").insert({
               user_id: session.user.id,
               device_info: navigator.userAgent?.substring(0, 200) || null,
             }).then(() => {});
-
-            // Auto-create profile for OAuth users (Google/Apple)
-            // who bypass the normal signUp flow
-            if (session.user.app_metadata?.provider &&
-                session.user.app_metadata.provider !== "email") {
-              const { data: existing } = await supabase
-                .from("profiles")
-                .select("user_id")
-                .eq("user_id", session.user.id)
-                .maybeSingle();
-
-              if (!existing) {
-                const meta = session.user.user_metadata || {};
-                const name =
-                  meta.full_name ||
-                  meta.name ||
-                  session.user.email?.split("@")[0] ||
-                  "Voetbalfan";
-                await supabase.from("profiles").insert({
-                  user_id: session.user.id,
-                  name,
-                  avatar_url: meta.avatar_url || meta.picture || null,
-                });
-                trackSignUp();
-              }
-            }
           }, 0);
         }
       }
@@ -115,30 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const signInWithGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: "https://goaltje.nl/app",
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
-        },
-      },
-    });
-  };
-
-  const signInWithApple = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "apple",
-      options: {
-        redirectTo: "https://goaltje.nl/app",
-      },
-    });
-  };
-
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, resetPassword, updatePassword, signInWithGoogle, signInWithApple }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, resetPassword, updatePassword }}>
       {children}
     </AuthContext.Provider>
   );
