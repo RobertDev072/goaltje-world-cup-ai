@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Trophy, Users, ChevronRight, TrendingUp, Target, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -43,16 +42,16 @@ export default function Index() {
     staleTime: staleTimes.profile,
   });
 
-  // Fetch both upcoming AND recent finished matches
+  // Fetch only upcoming + live matches (no past results on home)
   const { data: upcomingMatches, isLoading: matchesLoading } = useQuery({
     queryKey: queryKeys.upcomingMatches(),
     queryFn: async () => {
       const { data } = await supabase
         .from("matches")
         .select("id, kickoff_utc, status, stage, group, venue, home_score, away_score, prediction_deadline_utc, home_team:teams!matches_home_team_id_fkey(id, name, short_name, flag_url), away_team:teams!matches_away_team_id_fkey(id, name, short_name, flag_url)")
-        .gte("kickoff_utc", new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString())
+        .in("status", ["scheduled", "live"])
         .order("kickoff_utc", { ascending: true })
-        .limit(8);
+        .limit(6);
       return data || [];
     },
     staleTime: staleTimes.matches,
@@ -134,9 +133,8 @@ export default function Index() {
     return "Goedenavond";
   };
 
-  // Split matches
+  // Split matches (only live + scheduled, no finished on home)
   const liveMatches = upcomingMatches?.filter((m: any) => m.status === "live") || [];
-  const recentFinished = upcomingMatches?.filter((m: any) => m.status === "finished").slice(-3) || [];
   const upcoming = upcomingMatches?.filter((m: any) => m.status === "scheduled").slice(0, 5) || [];
 
   const missingTodayMatches = useMemo(
@@ -265,34 +263,14 @@ export default function Index() {
       )}
 
 
-      {/* Recent results */}
-      {recentFinished.length > 0 && (
-        <div>
-          <h2 className="font-display font-semibold text-lg flex items-center gap-2 mb-3">
-            <TrendingUp className="h-5 w-5 text-success" /> Laatste uitslagen
-          </h2>
-          <div className="space-y-3">
-            {recentFinished.map((match: any, i: number) => (
-              <MatchCard
-                key={match.id}
-                match={match}
-                prediction={predictionMap.get(match.id)}
-                index={i}
-                compact
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Upcoming Matches */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-display font-semibold text-lg flex items-center gap-2">
-            🟡 Voorspellingen
+            🟡 Aankomende wedstrijden
           </h2>
           <Link to="/app/matches" className="text-sm text-primary font-medium flex items-center gap-1">
-            Alles <ChevronRight className="h-4 w-4" />
+            Schema <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
 

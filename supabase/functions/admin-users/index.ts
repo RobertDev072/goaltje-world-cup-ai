@@ -37,12 +37,33 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Missing user_id" }), { status: 400, headers: corsHeaders });
       }
 
-      // Clean public data first (including pools created by user)
-      const { error: cleanErr } = await supabase.rpc("admin_delete_user_data", { p_user_id: body.user_id });
-      if (cleanErr) throw cleanErr;
+      const uid = body.user_id;
 
-      // Delete auth user
-      const { error: delErr } = await supabase.auth.admin.deleteUser(body.user_id);
+      // 1. Delete all pools created by this user (with their related data)
+      const { data: userPools } = await supabase
+        .from("pools")
+        .select("id")
+        .eq("created_by", uid);
+
+      for (const pool of userPools || []) {
+        await supabase.from("pool_messages").delete().eq("pool_id", pool.id);
+        await supabase.from("bonus_predictions").delete().eq("pool_id", pool.id);
+        await supabase.from("predictions").delete().eq("pool_id", pool.id);
+        await supabase.from("pool_members").delete().eq("pool_id", pool.id);
+        await supabase.from("pools").delete().eq("id", pool.id);
+      }
+
+      // 2. Delete remaining user data
+      await supabase.from("pool_messages").delete().eq("user_id", uid);
+      await supabase.from("bonus_predictions").delete().eq("user_id", uid);
+      await supabase.from("predictions").delete().eq("user_id", uid);
+      await supabase.from("pool_members").delete().eq("user_id", uid);
+      await supabase.from("user_sessions").delete().eq("user_id", uid);
+      await supabase.from("user_roles").delete().eq("user_id", uid);
+      await supabase.from("profiles").delete().eq("user_id", uid);
+
+      // 3. Delete auth user
+      const { error: delErr } = await supabase.auth.admin.deleteUser(uid);
       if (delErr) throw delErr;
 
       return new Response(JSON.stringify({ success: true }), {
