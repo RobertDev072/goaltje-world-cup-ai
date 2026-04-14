@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
-import { Building2, Users, Smartphone, Shield, Zap, CheckCircle2, ArrowRight, AlertTriangle, Image, Link2, BarChart3, HeadphonesIcon, Lock, Loader2 } from "lucide-react";
+import {
+  Building2, Users, Smartphone, Shield, Zap, CheckCircle2,
+  ArrowRight, AlertTriangle, Image, Link2, BarChart3, HeadphonesIcon,
+  Lock, Loader2, Menu, X,
+} from "lucide-react";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
 import promoPool2 from "@/assets/promo-pool2.png";
 import promoLanding from "@/assets/promo-landing.png";
@@ -65,7 +68,6 @@ function CompanyOnboardingForm() {
 
     setLoading(true);
     try {
-      // Create tenant
       const { data: tenant, error: tenantError } = await supabase
         .from("tenants")
         .insert({ name: companyName.trim(), created_by: user.id })
@@ -73,7 +75,6 @@ function CompanyOnboardingForm() {
         .single();
       if (tenantError) throw tenantError;
 
-      // Create pool linked to tenant
       const { data: pool, error: poolError } = await supabase
         .from("pools")
         .insert({
@@ -87,7 +88,6 @@ function CompanyOnboardingForm() {
         .single();
       if (poolError) throw poolError;
 
-      // Auto-join as admin
       await supabase.from("pool_members").insert({
         pool_id: pool.id,
         user_id: user.id,
@@ -106,59 +106,59 @@ function CompanyOnboardingForm() {
   const appOrigin = import.meta.env.PROD ? "https://goaltje.nl" : window.location.origin;
   const poolLink = createdPool ? `${appOrigin}/join/${createdPool.invite_code}` : "";
 
+  const inputClass = "h-11 border-white/20 bg-white/[0.08] text-white placeholder:text-white/35 focus-visible:border-secondary focus-visible:ring-secondary/30";
+  const labelClass = "text-xs font-semibold text-white/80";
+
   return (
     <>
       <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-        <Card className="border-0 shadow-elevation-3 max-w-md mx-auto">
-          <CardContent className="p-6 space-y-4">
-            <div className="text-center mb-2">
-              <h3 className="font-display font-bold text-lg">Start bedrijfspoule</h3>
-              <p className="text-xs text-muted-foreground">In 2 minuten klaar</p>
+        <div className="mx-auto max-w-md rounded-2xl border border-white/10 bg-[hsl(var(--lp-surface-dark))/0.85] p-6 shadow-[var(--lp-shadow-soft)] backdrop-blur-xl">
+          <div className="mb-4 text-center">
+            <h3 className="font-display text-lg font-bold text-white">Start bedrijfspoule</h3>
+            <p className="text-xs text-white/60">In 2 minuten klaar</p>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <Label htmlFor="companyName" className={labelClass}>Bedrijfsnaam *</Label>
+              <Input id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Bijv. Acme B.V." required maxLength={100} className={inputClass} />
             </div>
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <div>
-                <Label htmlFor="companyName" className="text-xs font-semibold">Bedrijfsnaam *</Label>
-                <Input id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Bijv. Acme B.V." required maxLength={100} />
-              </div>
-              <div>
-                <Label htmlFor="contactName" className="text-xs font-semibold">Contactpersoon *</Label>
-                <Input id="contactName" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Jouw naam" required maxLength={100} />
-              </div>
-              <div>
-                <Label htmlFor="contactEmail" className="text-xs font-semibold">E-mailadres *</Label>
-                <Input id="contactEmail" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="hr@bedrijf.nl" required maxLength={255} />
-              </div>
-              <div>
-                <Label htmlFor="employeeCount" className="text-xs font-semibold">Aantal medewerkers (optioneel)</Label>
-                <Input id="employeeCount" type="number" min={1} max={10000} value={employeeCount} onChange={(e) => setEmployeeCount(e.target.value)} placeholder="Bijv. 100" />
-              </div>
-              <Button type="submit" className="w-full h-12 font-bold text-base" disabled={loading}>
-                {loading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Aanmaken...</> : "🏆 Maak bedrijfspoule aan"}
-              </Button>
-            </form>
-            {!user && (
-              <p className="text-xs text-center text-muted-foreground">
-                Je moet <Link to="/login" className="text-primary font-semibold hover:underline">ingelogd</Link> zijn om een poule aan te maken.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+            <div>
+              <Label htmlFor="contactName" className={labelClass}>Contactpersoon *</Label>
+              <Input id="contactName" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Jouw naam" required maxLength={100} className={inputClass} />
+            </div>
+            <div>
+              <Label htmlFor="contactEmail" className={labelClass}>E-mailadres *</Label>
+              <Input id="contactEmail" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="hr@bedrijf.nl" required maxLength={255} className={inputClass} />
+            </div>
+            <div>
+              <Label htmlFor="employeeCount" className={labelClass}>Aantal medewerkers (optioneel)</Label>
+              <Input id="employeeCount" type="number" min={1} max={10000} value={employeeCount} onChange={(e) => setEmployeeCount(e.target.value)} placeholder="Bijv. 100" className={inputClass} />
+            </div>
+            <Button type="submit" className="h-12 w-full bg-secondary text-base font-bold text-secondary-foreground hover:-translate-y-0.5 hover:bg-secondary/90 transition-all" disabled={loading}>
+              {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Aanmaken...</> : "🏆 Maak bedrijfspoule aan"}
+            </Button>
+          </form>
+          {!user && (
+            <p className="mt-3 text-center text-xs text-white/50">
+              Je moet <Link to="/login" className="font-semibold text-secondary hover:underline">ingelogd</Link> zijn om een poule aan te maken.
+            </p>
+          )}
+        </div>
       </motion.div>
 
-      {/* Success dialog with share options */}
       <Dialog open={!!createdPool} onOpenChange={() => setCreatedPool(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-center font-display">
-              <CheckCircle2 className="h-10 w-10 text-primary mx-auto mb-2" />
+              <CheckCircle2 className="mx-auto mb-2 h-10 w-10 text-primary" />
               Bedrijfspoule aangemaakt! 🎉
             </DialogTitle>
           </DialogHeader>
           {createdPool && (
             <div className="space-y-4 pt-2">
               <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-2">Deel deze link met je collega's:</p>
-                <div className="bg-muted rounded-xl p-3 font-mono text-sm font-bold tracking-wider text-center">
+                <p className="mb-2 text-sm text-muted-foreground">Deel deze link met je collega's:</p>
+                <div className="rounded-xl bg-muted p-3 text-center font-mono text-sm font-bold tracking-wider">
                   {createdPool.invite_code}
                 </div>
               </div>
@@ -180,15 +180,22 @@ function CompanyOnboardingForm() {
 }
 
 export default function Bedrijven() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   useSEO({
     title: "Bedrijfspoule WK 2026 — Goaltje voor Bedrijven & Organisaties",
     description: "Organiseer eenvoudig een professionele WK 2026 bedrijfspoule met eigen branding. Ideaal voor HR, teambuilding en kantoorcompetitie. Gratis starten.",
     canonical: "https://goaltje.nl/bedrijven",
   });
 
+  const navLinks = [
+    { label: "Home", to: "/" },
+    { label: "Blog", to: "/blog/wk-2026-speelschema" },
+  ];
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* JSON-LD: Service + FAQ */}
+    <div className="relative min-h-screen overflow-x-clip bg-[hsl(var(--lp-bg))] text-white">
+      {/* JSON-LD */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -207,111 +214,136 @@ export default function Bedrijven() {
               {
                 "@type": "FAQPage",
                 "mainEntity": [
-                  {
-                    "@type": "Question",
-                    "name": "Wat kost een bedrijfspoule bij Goaltje?",
-                    "acceptedAnswer": { "@type": "Answer", "text": "Een bedrijfspoule bij Goaltje is volledig gratis. Geen verborgen kosten." },
-                  },
-                  {
-                    "@type": "Question",
-                    "name": "Kan ik ons bedrijfslogo toevoegen?",
-                    "acceptedAnswer": { "@type": "Answer", "text": "Ja, je kunt je bedrijfslogo en naam uploaden voor een white-label ervaring." },
-                  },
-                  {
-                    "@type": "Question",
-                    "name": "Hoe delen medewerkers de poule?",
-                    "acceptedAnswer": { "@type": "Answer", "text": "Deel de invite link via Microsoft Teams, Slack, e-mail of een QR-code. Geen app download nodig." },
-                  },
+                  { "@type": "Question", "name": "Wat kost een bedrijfspoule bij Goaltje?", "acceptedAnswer": { "@type": "Answer", "text": "Een bedrijfspoule bij Goaltje is volledig gratis. Geen verborgen kosten." } },
+                  { "@type": "Question", "name": "Kan ik ons bedrijfslogo toevoegen?", "acceptedAnswer": { "@type": "Answer", "text": "Ja, je kunt je bedrijfslogo en naam uploaden voor een white-label ervaring." } },
+                  { "@type": "Question", "name": "Hoe delen medewerkers de poule?", "acceptedAnswer": { "@type": "Answer", "text": "Deel de invite link via Microsoft Teams, Slack, e-mail of een QR-code. Geen app download nodig." } },
                 ],
               },
             ],
           }),
         }}
       />
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+
+      {/* Ambient orbs */}
+      <div className="pointer-events-none absolute -top-40 -left-20 h-96 w-96 rounded-full bg-primary/25 blur-[120px]" />
+      <div className="pointer-events-none absolute top-[35%] -right-40 h-[26rem] w-[26rem] rounded-full bg-secondary/15 blur-[120px]" />
+
+      {/* Header — matches MarketingHome */}
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[hsl(var(--lp-surface-dark))/0.76] backdrop-blur-xl">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2">
-            <img src={goaltjeLogo} alt="Goaltje" className="w-8 h-8" />
-            <span className="font-display font-bold text-lg">GOALTJE</span>
+            <img src={goaltjeLogo} alt="Goaltje" className="h-9 w-9" />
+            <span className="font-display text-lg font-bold tracking-wide">GOALTJE</span>
           </Link>
-          <div className="flex items-center gap-2">
-            <Link to="/">
-              <Button variant="ghost" size="sm" className="text-xs font-medium hidden sm:inline-flex">
-                ← Terug naar home
-              </Button>
-            </Link>
+
+          <nav className="hidden items-center gap-2 md:flex">
+            {navLinks.map((link) => (
+              <Link key={link.to} to={link.to} className="rounded-xl px-3 py-2 text-sm text-white/80 transition hover:bg-white/10 hover:text-white">
+                {link.label}
+              </Link>
+            ))}
             <Link to="/login">
-              <Button size="sm" className="h-8 text-xs font-semibold bg-primary text-primary-foreground">
-                Inloggen
-              </Button>
+              <Button className="ml-2 bg-secondary text-secondary-foreground hover:-translate-y-0.5 hover:bg-secondary/90">Inloggen</Button>
             </Link>
+          </nav>
+
+          <div className="flex items-center gap-2 md:hidden">
+            <Link to="/login">
+              <Button size="sm" className="bg-secondary text-secondary-foreground">Inloggen</Button>
+            </Link>
+            <button onClick={() => setMobileMenuOpen((v) => !v)} className="rounded-lg p-2 hover:bg-white/10" aria-label="Open menu">
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="border-t border-white/10 px-4 py-3 md:hidden">
+            <div className="space-y-1">
+              {navLinks.map((link) => (
+                <Link key={link.to} to={link.to} onClick={() => setMobileMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white">
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-goaltje-navy via-[hsl(220,60%,12%)] to-goaltje-darkblue">
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
-          backgroundSize: "40px 40px",
-        }} />
-        <div className="max-w-6xl mx-auto px-4 py-16 md:py-28 relative">
-          <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16">
-            <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="flex-1 text-center md:text-left">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 text-white/80 text-xs font-medium mb-6">
-                <Building2 className="h-3.5 w-3.5" /> Voor bedrijven & organisaties
+      <section className="relative border-b border-white/10 py-16 md:py-28">
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="flex flex-col items-center gap-10 md:flex-row md:gap-16">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7 }}
+              className="flex-1 text-center md:text-left"
+            >
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-medium text-white/80">
+                <Building2 className="h-3.5 w-3.5" /> Voor bedrijven &amp; organisaties
               </div>
-              <h1 className="text-3xl md:text-5xl lg:text-6xl font-display font-bold mb-5 leading-tight text-white max-w-4xl">
+              <h1 className="mb-5 max-w-4xl font-display text-3xl font-bold leading-tight md:text-5xl lg:text-6xl">
                 Maak van WK 2026 hét{" "}
                 <span className="text-secondary">kantoor evenement</span> ⚽
               </h1>
-              <p className="text-lg md:text-xl text-white/60 max-w-xl mb-10">
+              <p className="mb-10 max-w-xl text-lg text-white/60 md:text-xl">
                 Organiseer eenvoudig een professionele bedrijfspoule. Een bedrijfsprofiel met logo en branding mag, maar is niet verplicht.
               </p>
-              <div className="flex flex-col sm:flex-row items-center md:items-start gap-3">
+              <div className="flex flex-col items-center gap-3 sm:flex-row md:items-start">
                 <a href="#start-form">
-                  <Button size="lg" className="bg-secondary text-secondary-foreground h-14 px-10 text-base font-bold shadow-lg hover:bg-secondary/90 transition-all w-full sm:w-auto">
+                  <Button size="lg" className="h-14 w-full bg-secondary px-10 text-base font-bold text-secondary-foreground shadow-lg hover:-translate-y-0.5 hover:bg-secondary/90 transition-all sm:w-auto">
                     Start nu — gratis
                   </Button>
                 </a>
                 <a href="mailto:info@goaltje.nl?subject=Demo%20bedrijfspoule">
-                  <Button size="lg" variant="outline" className="h-14 px-8 text-base font-semibold border-white/25 text-white bg-white/5 hover:bg-white/10 w-full sm:w-auto">
+                  <Button size="lg" variant="outline" className="h-14 w-full border-white/25 bg-white/5 px-8 text-base font-semibold text-white hover:bg-white/15 sm:w-auto">
                     Plan gratis demo <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </a>
               </div>
             </motion.div>
+
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="flex-shrink-0 w-56 md:w-72"
+              className="w-56 flex-shrink-0 md:w-72"
             >
-              <img src={promoPool2} alt="Goaltje bedrijfspoule" className="w-full h-auto rounded-3xl shadow-2xl" loading="eager" />
+              <div className="rounded-[2rem] border border-white/15 bg-[hsl(var(--lp-surface-dark))/0.9] p-3 shadow-[var(--lp-shadow-soft)]">
+                <img src={promoPool2} alt="Goaltje bedrijfspoule" className="h-auto w-full rounded-[1.5rem]" loading="eager" />
+              </div>
             </motion.div>
           </div>
         </div>
       </section>
 
+      {/* Stats bar */}
+      <section className="border-b border-white/10 bg-[hsl(var(--lp-surface-dark))/0.55]">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-3 px-4 py-10 md:grid-cols-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center text-sm"><Shield className="mx-auto mb-2 h-4 w-4 text-secondary" />100% gratis</div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center text-sm"><Users className="mx-auto mb-2 h-4 w-4 text-primary" />Onbeperkt deelnemers</div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center text-sm"><Zap className="mx-auto mb-2 h-4 w-4 text-secondary" />In 2 minuten klaar</div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center text-sm"><Link2 className="mx-auto mb-2 h-4 w-4 text-primary" />Geen download nodig</div>
+        </div>
+      </section>
+
       {/* Problems */}
       <section className="py-16 md:py-24">
-        <div className="max-w-4xl mx-auto px-4">
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
-            <h2 className="text-2xl md:text-3xl font-display font-bold text-center mb-3">Herkenbaar?</h2>
-            <p className="text-muted-foreground text-center text-sm max-w-md mx-auto mb-12">Elke WK-editie dezelfde problemen op kantoor.</p>
+        <div className="mx-auto max-w-4xl px-4">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-12 text-center">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/60">Herkenbaar?</p>
+            <h2 className="font-display text-2xl font-bold md:text-3xl">Elke WK-editie dezelfde problemen op kantoor.</h2>
           </motion.div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {problems.map((p, i) => (
               <motion.div key={p.text} initial={{ opacity: 0, x: i % 2 === 0 ? -16 : 16 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-                <Card className="border-0 shadow-elevation-2 border-l-4 border-l-destructive/30">
-                  <CardContent className="p-5 flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
-                      <p.icon className={`h-5 w-5 ${p.color}`} />
-                    </div>
-                    <p className="font-display font-semibold text-sm">{p.text}</p>
-                  </CardContent>
-                </Card>
+                <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10">
+                    <p.icon className={`h-5 w-5 ${p.color}`} />
+                  </div>
+                  <p className="font-display text-sm font-semibold">{p.text}</p>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -319,24 +351,22 @@ export default function Bedrijven() {
       </section>
 
       {/* Solution Steps */}
-      <section className="py-16 md:py-24 bg-muted/30">
-        <div className="max-w-4xl mx-auto px-4">
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
-            <h2 className="text-2xl md:text-3xl font-display font-bold text-center mb-3">De oplossing: Goaltje</h2>
-            <p className="text-muted-foreground text-center text-sm max-w-md mx-auto mb-12">In 5 stappen een professionele bedrijfspoule.</p>
+      <section className="border-y border-white/10 bg-[hsl(var(--lp-surface-dark))/0.55] py-16 md:py-24">
+        <div className="mx-auto max-w-4xl px-4">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-12 text-center">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/60">De oplossing</p>
+            <h2 className="font-display text-2xl font-bold md:text-3xl">In 5 stappen een professionele bedrijfspoule.</h2>
           </motion.div>
           <div className="space-y-4">
             {solutionSteps.map((step, i) => (
               <motion.div key={step.num} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
-                <Card className="border-0 shadow-elevation-1">
-                  <CardContent className="p-4 md:p-5 flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl gradient-navy flex items-center justify-center shrink-0 text-2xl">{step.emoji}</div>
-                    <div className="flex items-center gap-3 flex-1">
-                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0">{step.num}</span>
-                      <p className="font-display font-semibold text-sm md:text-base">{step.title}</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4 md:p-5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/20 text-2xl">{step.emoji}</div>
+                  <div className="flex flex-1 items-center gap-3">
+                    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">{step.num}</span>
+                    <p className="font-display text-sm font-semibold md:text-base">{step.title}</p>
+                  </div>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -344,24 +374,27 @@ export default function Bedrijven() {
       </section>
 
       {/* Onboarding Form */}
-      <section id="start-form" className="py-16 md:py-24 scroll-mt-16">
-        <div className="max-w-4xl mx-auto px-4">
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-8">
-            <h2 className="text-2xl md:text-3xl font-display font-bold mb-2">Start direct 🚀</h2>
-            <p className="text-muted-foreground text-sm">Maak in 2 minuten een bedrijfspoule aan. Gratis.</p>
+      <section id="start-form" className="scroll-mt-16 py-16 md:py-24">
+        <div className="mx-auto max-w-4xl px-4">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-8 text-center">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/60">Direct starten</p>
+            <h2 className="font-display text-2xl font-bold md:text-3xl">Start jouw bedrijfspoule 🚀</h2>
+            <p className="mt-2 text-sm text-white/60">Maak in 2 minuten een bedrijfspoule aan. Gratis.</p>
           </motion.div>
           <CompanyOnboardingForm />
         </div>
       </section>
 
       {/* App Preview */}
-      <section className="py-12 md:py-16">
-        <div className="max-w-3xl mx-auto px-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="flex flex-col md:flex-row items-center gap-8">
-            <img src={promoLanding} alt="Goaltje landing pagina op mobiel" className="w-48 md:w-56 rounded-2xl shadow-elevation-3" loading="lazy" />
+      <section className="border-y border-white/10 bg-[hsl(var(--lp-surface-dark))/0.55] py-12 md:py-16">
+        <div className="mx-auto max-w-3xl px-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="flex flex-col items-center gap-8 md:flex-row">
+            <div className="rounded-[2rem] border border-white/15 bg-[hsl(var(--lp-surface-dark))/0.9] p-3 shadow-[var(--lp-shadow-soft)]">
+              <img src={promoLanding} alt="Goaltje landing pagina op mobiel" className="w-44 rounded-[1.5rem] md:w-52" loading="lazy" />
+            </div>
             <div>
-              <h3 className="font-display font-bold text-lg md:text-xl mb-2">Direct aan de slag</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
+              <h3 className="font-display text-lg font-bold md:text-xl">Direct aan de slag</h3>
+              <p className="mt-2 text-sm leading-relaxed text-white/65">
                 Medewerkers openen gewoon de link in hun browser — geen app download, geen account van de IT-afdeling nodig.
               </p>
             </div>
@@ -371,25 +404,24 @@ export default function Bedrijven() {
 
       {/* Features */}
       <section className="py-16 md:py-24">
-        <div className="max-w-5xl mx-auto px-4">
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
-            <h2 className="text-2xl md:text-3xl font-display font-bold text-center mb-3">Features voor bedrijven</h2>
-            <p className="text-muted-foreground text-center text-sm max-w-md mx-auto mb-12">Alles wat HR nodig heeft, zonder gedoe.</p>
+        <div className="mx-auto max-w-5xl px-4">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-12 text-center">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/60">App showcase</p>
+            <h2 className="font-display text-2xl font-bold md:text-3xl">Features voor bedrijven</h2>
+            <p className="mt-2 text-sm text-white/60">Alles wat HR nodig heeft, zonder gedoe.</p>
           </motion.div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 md:gap-6">
             {features.map((f, i) => (
               <motion.div key={f.title} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
-                <Card className="border-0 shadow-elevation-1 h-full hover:shadow-elevation-2 transition-shadow">
-                  <CardContent className="p-5 flex items-start gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                      <f.icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-display font-bold text-sm mb-1">{f.title}</h3>
-                      <p className="text-muted-foreground text-xs leading-relaxed">{f.desc}</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="flex h-full items-start gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition-all hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.07]">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/20">
+                    <f.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-sm font-bold">{f.title}</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-white/60">{f.desc}</p>
+                  </div>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -397,39 +429,38 @@ export default function Bedrijven() {
       </section>
 
       {/* Bottom CTA */}
-      <section className="py-20 md:py-28 bg-gradient-to-br from-goaltje-navy via-goaltje-darkblue to-primary text-white text-center">
-        <div className="max-w-2xl mx-auto px-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}>
-            <h2 className="text-2xl md:text-4xl font-display font-bold mb-4">Klaar om jullie bedrijfspoule te starten?</h2>
-            <p className="text-white/60 text-sm md:text-base mb-8">Plan een korte demo van 15 minuten of start direct.</p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <a href="#start-form">
-                <Button size="lg" className="bg-secondary text-secondary-foreground h-14 px-10 text-base font-bold shadow-xl hover:bg-secondary/90 transition-all w-full sm:w-auto">
-                  Start bedrijfspoule
-                </Button>
-              </a>
-              <a href="mailto:info@goaltje.nl?subject=Demo%20bedrijfspoule">
-                <Button size="lg" variant="outline" className="h-14 px-8 text-base font-semibold border-white/25 text-white bg-white/5 hover:bg-white/10 w-full sm:w-auto">
-                  Plan gratis demo <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </a>
-            </div>
-            <p className="mt-6 text-white/40 text-xs">100% gratis · Geen creditcard nodig</p>
-          </motion.div>
+      <section className="mx-auto w-full max-w-4xl px-4 py-20 text-center">
+        <div className="rounded-3xl border border-white/15 bg-gradient-to-br from-primary/25 via-[hsl(var(--lp-surface-dark))/0.9] to-secondary/15 px-6 py-12 shadow-[var(--lp-shadow-soft)]">
+          <p className="text-xs uppercase tracking-[0.18em] text-white/70">Klaar om te starten?</p>
+          <h2 className="mt-4 font-display text-2xl font-bold md:text-4xl">Klaar om jullie bedrijfspoule te starten?</h2>
+          <p className="mx-auto mt-4 max-w-xl text-sm text-white/60 md:text-base">Plan een korte demo van 15 minuten of start direct.</p>
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <a href="#start-form">
+              <Button size="lg" className="h-12 w-full bg-secondary px-8 text-base font-bold text-secondary-foreground shadow-xl hover:-translate-y-0.5 hover:bg-secondary/90 transition-all sm:w-auto">
+                Start bedrijfspoule
+              </Button>
+            </a>
+            <a href="mailto:info@goaltje.nl?subject=Demo%20bedrijfspoule">
+              <Button size="lg" variant="outline" className="h-12 w-full border-white/25 bg-white/5 px-8 text-base font-semibold text-white hover:bg-white/15 sm:w-auto">
+                Plan gratis demo <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </a>
+          </div>
+          <p className="mt-6 text-xs text-white/40">100% gratis · Geen creditcard nodig</p>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-6 border-t bg-background">
-        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+      {/* Footer — matches MarketingHome */}
+      <footer className="border-t border-white/10 py-8 text-sm text-white/60">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-4 sm:flex-row">
           <div className="flex items-center gap-2">
-            <img src={goaltjeLogo} alt="Goaltje" className="w-5 h-5" />
-            <span>© 2026 Goaltje · RobertDev.nl</span>
+            <img src={goaltjeLogo} alt="Goaltje" className="h-5 w-5" />
+            <p>© 2026 Goaltje</p>
           </div>
           <div className="flex items-center gap-4">
-            <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-            <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
-            <Link to="/login" className="hover:text-foreground transition-colors">Inloggen</Link>
+            <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+            <Link to="/" className="hover:text-white transition-colors">Home</Link>
+            <Link to="/login" className="hover:text-white transition-colors">Inloggen</Link>
           </div>
         </div>
       </footer>
