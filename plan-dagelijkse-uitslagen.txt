@@ -1,0 +1,186 @@
+PLAN: AUTOMATISCH DAGELIJKSE UITSLAGEN INVOEREN (DRAFT-SYSTEEM)
+================================================================
+
+CONTEXT
+-------
+De admin wil dagelijks wedstrijduitslagen in Goaltje zetten zonder een betaalde WK-API te gebruiken.
+Een extern script zoekt de uitslagen automatisch op (via Claude AI + websearch), stuurt die naar
+Goaltje als concept, en de admin bevestigt ze met één klik. Pas na bevestiging wordt de wedstrijd
+op "Gespeeld" gezet en worden punten herberekend.
+
+WORKFLOW
+--------
+Script (dagelijks)
+  --> POST ingest-results Edge Function
+      --> match_result_drafts tabel
+          --> Admin ziet concepten in dashboard
+              --> Admin klikt "Bevestigen"
+                  --> match status = finished + punten herberekend
+
+
+================================================================
+BESTANDEN DIE AANGEMAAKT WORDEN
+================================================================
+
+1. supabase/migrations/20260414000002_match_result_drafts.sql
+-------------------------------------------------------------
+Nieuwe staging-tabel voor concept-uitslagen:
+
+  CREATE TABLE public.match_result_drafts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    match_id UUID REFERENCES public.matches(id) ON DELETE CASCADE,
+    home_score INTEGER NOT NULL,
+    away_score INTEGER NOT NULL,
+    source TEXT DEFAULT 'script',     -- 'script' | 'manual'
+    note TEXT,                        -- bijv. "bron: ESPN, betrouwbaarheid: hoog"
+    created_at TIMESTAMPTZ DEFAULT now(),
+    status TEXT NOT NULL DEFAULT 'pending'  -- 'pending' | 'confirmed' | 'rejected'
+  );
+
+  -- RLS: alleen admins kunnen lezen/schrijven
+  ALTER TABLE public.match_result_drafts ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "Admin only" ON public.match_result_drafts
+    USING (has_role(auth.uid(), 'admin'));
+
+  -- Uniek per match (één draft tegelijk)
+  CREATE UNIQUE INDEX match_result_drafts_match_id_pending
+    ON public.match_result_drafts(match_id)
+    WHERE status = 'pending';
+
+
+2. supabase/functions/ingest-results/index.ts
+---------------------------------------------
+Edge Function die het externe script aanroept.
+Authenticatie via gedeeld secret (geen user JWT nodig).
+
+  Accepteert: POST { results: [{ match_id, home_score, away_score, note }] }
+  Header:     X-Ingest-Secret: <INGEST_SECRET env var>
+  Config:     verify_jwt = false in config.toml
+
+  Logica:
+  - Controleert het geheime token in de header
+  - Upsert naar match_result_drafts
+  - Overschrijft bestaand pending concept voor dezelfde wedstrijd
+
+
+3. scripts/fetch-daily-results.mjs
+-----------------------------------
+Extern Node.js script. Vereist alleen: node + @anthropic-ai/sdk
+
+Stappen:
+  1. Haal vandaag's wedstrijden op uit Supabase (publieke REST, geen auth)
+  2. Filter: status != "finished" EN kickoff is verleden tijd
+  3. Per wedstrijd: vraag Claude Sonnet via web_search naar de uitslag
+  4. POST alle gevonden scores naar de ingest-results Edge Function
+
+Uitvoeren:
+  node scripts/fetch-daily-results.mjs
+
+Als cron (dagelijks om 23:00):
+  0 23 * * * cd /pad/naar/goaltje && node scripts/fetch-daily-results.mjs >> logs/results.log 2>&1
+
+Dry-run zonder Claude en zonder POST:
+  DRY_RUN=true node scripts/fetch-daily-results.mjs
+
+Benodigde omgevingsvariabelen (.env of .env.script):
+  SUPABASE_URL=https://piahvmeitbcibtsjagur.supabase.co
+  SUPABASE_ANON_KEY=<public anon key>
+  INGEST_SECRET=<zelfde secret als in Supabase env vars>
+  ANTHROPIC_API_KEY=<claude api key>
+
+
+================================================================
+BESTANDEN DIE AANGEPAST WORDEN
+================================================================
+
+4. supabase/config.toml
+-----------------------
+Toevoegen:
+
+  [functions.ingest-results]
+  verify_jwt = false
+
+
+5. src/pages/AdminDashboard.tsx
+--------------------------------
+Concepten-sectie toevoegen BOVEN de bestaande AdminMatchEditor in het Resultaten tab.
+
+Toont per concept-kaart:
+  - Wedstrijd naam + datum
+  - Voorgestelde score (bijv. Nederland 2 - 1 Argentinie)
+  - Bron / note van het script
+  - Tijdstip ingediend
+  - Knop "Bevestigen" --> update match (score + status finished) + draft status = confirmed
+  - Knop "Afwijzen"   --> draft status = rejected
+
+Badge op het tabblad: "[N concepten]" als er pending concepten zijn.
+
+Mutatie bij Bevestigen:
+  // 1. Update wedstrijd
+  supabase.from("matches").update({
+    home_score: draft.home_score,
+    away_score: draft.away_score,
+    status: "finished",
+    last_updated: new Date().toISOString(),
+    needs_recalc: true,
+  }).eq("id", draft.match_id);
+
+  // 2. Markeer concept als bevestigd
+  supabase.from("match_result_drafts")
+    .update({ status: "confirmed" })
+    .eq("id", draft.id);
+
+  De bestaande DB trigger recalculate_points_on_match_update
+  zorgt automatisch voor puntenherberekening.
+
+
+================================================================
+OVERZICHT KRITIEKE BESTANDEN
+================================================================
+
+  supabase/migrations/20260414000002_match_result_drafts.sql  --> Nieuw (staging tabel)
+  supabase/functions/ingest-results/index.ts                  --> Nieuw (ontvangst endpoint)
+  scripts/fetch-daily-results.mjs                             --> Nieuw (extern dagelijks script)
+  supabase/config.toml                                        --> Aanpassen (verify_jwt = false)
+  src/pages/AdminDashboard.tsx                                --> Aanpassen (Concepten UI)
+
+
+================================================================
+VERIFICATIE
+================================================================
+
+1. Script testen (zonder Claude, droog):
+   DRY_RUN=true node scripts/fetch-daily-results.mjs
+
+2. Edge Function testen via curl:
+   curl -X POST https://piahvmeitbcibtsjagur.supabase.co/functions/v1/ingest-results \
+     -H "X-Ingest-Secret: testgeheim" \
+     -H "Content-Type: application/json" \
+     -d '{"results": [{"match_id": "<uuid>", "home_score": 2, "away_score": 1, "note": "test"}]}'
+
+3. Admin dashboard:
+   Open /app/admin --> Resultaten tab --> concept zichtbaar
+   --> klik Bevestigen --> controleer match status + punten herberekend
+
+4. Cron instellen:
+   Via crontab of GitHub Actions workflow
+
+
+================================================================
+AANDACHTSPUNTEN
+================================================================
+
+- INGEST_SECRET instellen in Supabase project environment variables
+  (Supabase dashboard --> Settings --> Edge Functions)
+
+- Script vereist eenmalig: npm install @anthropic-ai/sdk
+  (buiten de app installeren, bijv. in scripts/)
+
+- Claude model voor websearch: claude-sonnet-4-6
+  (heeft ingebouwde web_search tool)
+
+- Het script doet UPSERT op match_id --> veilig om meerdere keren
+  per dag te draaien, overschrijft het vorige concept
+
+- Geen betaalde voetbal-API nodig -- Claude zoekt uitslagen
+  op via normale websearch (nieuws, Google, ESPN, etc.)
