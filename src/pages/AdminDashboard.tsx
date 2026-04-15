@@ -428,7 +428,8 @@ export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<"overview" | "scores" | "stats" | "beheer">("overview");
+  const [tab, setTab] = useState<"overview" | "scores" | "stats" | "beheer" | "poules">("overview");
+  const [expandedPool, setExpandedPool] = useState<string | null>(null);
   const [defaultPoolId, setDefaultPoolId] = useState<string>("");
   const [defaultsFrom, setDefaultsFrom] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [defaultsTo, setDefaultsTo] = useState<string>(() => new Date().toISOString().slice(0, 10));
@@ -468,6 +469,34 @@ export default function AdminDashboard() {
       return data || [];
     },
     enabled: isAdmin === true,
+    staleTime: 60_000,
+  });
+
+  const { data: allPools, isLoading: allPoolsLoading } = useQuery({
+    queryKey: ["admin-all-pools"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pools")
+        .select("id, name, created_at, privacy, invite_code, created_by, pool_members(count)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin === true,
+    staleTime: 60_000,
+  });
+
+  const { data: expandedPoolMembers, isLoading: expandedPoolMembersLoading } = useQuery({
+    queryKey: ["admin-pool-members", expandedPool],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pool_members")
+        .select("user_id, role, joined_at, profiles(name, avatar_url)")
+        .eq("pool_id", expandedPool!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin === true && !!expandedPool,
     staleTime: 60_000,
   });
 
@@ -640,6 +669,7 @@ export default function AdminDashboard() {
     { key: "scores" as const, label: "Resultaten" },
     { key: "stats" as const, label: "Stats" },
     { key: "beheer" as const, label: "Beheer" },
+    { key: "poules" as const, label: "Poules" },
   ];
 
   const filteredUsers = useMemo(() => {
@@ -1024,6 +1054,90 @@ export default function AdminDashboard() {
                 )}
               </div>
             </>
+          )}
+        </div>
+      )}
+
+      {/* ==================== POULES TAB ==================== */}
+      {tab === "poules" && (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            {allPools?.length ?? 0} poule{(allPools?.length ?? 0) !== 1 ? "s" : ""}
+          </p>
+          {allPoolsLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
+            </div>
+          ) : (allPools || []).length === 0 ? (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 text-center text-sm text-muted-foreground">
+                Geen poules gevonden.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {(allPools || []).map((p: any) => {
+                const memberCount = p.pool_members?.[0]?.count ?? 0;
+                const isExpanded = expandedPool === p.id;
+                return (
+                  <Card key={p.id} className="border-0 shadow-sm">
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium truncate">{p.name}</p>
+                            <Badge variant={p.privacy === "public" ? "secondary" : "outline"} className="text-[9px] px-1.5 py-0 shrink-0">
+                              {p.privacy === "public" ? "Publiek" : "Privé"}
+                            </Badge>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            Aangemaakt: {formatNLDate(p.created_at)} · {memberCount} {memberCount === 1 ? "lid" : "leden"}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 h-7 text-xs"
+                          onClick={() => setExpandedPool(isExpanded ? null : p.id)}
+                        >
+                          {isExpanded ? "Inklappen" : "Leden"}
+                        </Button>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="pt-1 border-t border-border/50">
+                          {expandedPoolMembersLoading ? (
+                            <div className="space-y-1">
+                              {[1, 2].map(i => <Skeleton key={i} className="h-6 rounded-lg" />)}
+                            </div>
+                          ) : (expandedPoolMembers || []).length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-1">Geen leden gevonden.</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {(expandedPoolMembers || []).map((m: any) => (
+                                <div key={m.user_id} className="flex items-center justify-between gap-2 text-xs">
+                                  <span className="truncate font-medium">
+                                    {m.profiles?.name || m.user_id.slice(0, 8) + "..."}
+                                  </span>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <Badge variant={m.role === "admin" ? "default" : "outline"} className="text-[9px] px-1.5 py-0">
+                                      {m.role}
+                                    </Badge>
+                                    <span className="text-muted-foreground text-[10px]">
+                                      {m.joined_at ? formatNLDate(m.joined_at) : "—"}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

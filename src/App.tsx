@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthGate } from "@/components/AuthGate";
@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { hasAnalyticsConsent } from "@/lib/consent";
+import { AnimatePresence, motion } from "framer-motion";
 
 // Lazy load all pages for lighter initial bundle
 const MarketingHome = lazy(() => import("./pages/MarketingHome"));
@@ -41,6 +42,7 @@ const PouleRegels = lazy(() => import("./pages/seo/PouleRegels"));
 const PouleTips = lazy(() => import("./pages/seo/PouleTips"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Templates = lazy(() => import("./pages/Templates"));
+const HelpPage = lazy(() => import("./pages/HelpPage"));
 
 const SEO_ROUTES: { path: string; element: React.ReactElement }[] = [
   { path: "/wk-2026-poule-maken-met-vrienden", element: <PoolMakenVrienden /> },
@@ -77,6 +79,57 @@ const queryClient = new QueryClient({
   },
 });
 
+function AnimatedRoutes() {
+  const location = useLocation();
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
+      >
+        <Routes>
+          {/* Public marketing pages */}
+          <Route path="/" element={<MarketingHome />} />
+          <Route path="/bedrijven" element={<Bedrijven />} />
+          <Route path="/blog/:slug" element={<BlogArticle />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/sitemap" element={<Sitemap />} />
+
+          {/* SEO & public pages */}
+          {SEO_ROUTES.map(({ path, element }) => (
+            <Route key={path} path={path} element={element} />
+          ))}
+
+          {/* Auth */}
+          <Route path="/login" element={<Auth />} />
+          <Route path="/auth" element={<Navigate to="/login" replace />} />
+          <Route path="/landing" element={<Navigate to="/" replace />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/join/:code" element={<JoinPool />} />
+
+          {/* App routes - auth required */}
+          <Route element={<AuthGate><AppLayout /></AuthGate>}>
+            <Route path="/app" element={<Index />} />
+            <Route path="/app/matches" element={<Matches />} />
+            <Route path="/app/matches/:id" element={<MatchDetail />} />
+            <Route path="/app/pool" element={<Pool />} />
+            <Route path="/app/pool/:id" element={<PoolDetail />} />
+            <Route path="/app/bracket" element={<Bracket />} />
+            <Route path="/app/profile" element={<Profile />} />
+            <Route path="/app/admin" element={<AdminDashboard />} />
+            <Route path="/app/help" element={<HelpPage />} />
+          </Route>
+
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 const App = () => {
   const [analyticsEnabled, setAnalyticsEnabled] = useState(() => hasAnalyticsConsent());
 
@@ -101,40 +154,7 @@ const App = () => {
             <BrowserRouter>
               <ErrorBoundary>
                 <Suspense fallback={<PageLoader />}>
-                  <Routes>
-                    {/* Public marketing pages */}
-                    <Route path="/" element={<MarketingHome />} />
-                    <Route path="/bedrijven" element={<Bedrijven />} />
-                    <Route path="/blog/:slug" element={<BlogArticle />} />
-                    <Route path="/privacy" element={<Privacy />} />
-                    <Route path="/sitemap" element={<Sitemap />} />
-
-                    {/* SEO & public pages */}
-                    {SEO_ROUTES.map(({ path, element }) => (
-                      <Route key={path} path={path} element={element} />
-                    ))}
-
-                    {/* Auth */}
-                    <Route path="/login" element={<Auth />} />
-                    <Route path="/auth" element={<Navigate to="/login" replace />} />
-                    <Route path="/landing" element={<Navigate to="/" replace />} />
-                    <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/join/:code" element={<JoinPool />} />
-
-                    {/* App routes - auth required */}
-                    <Route element={<AuthGate><AppLayout /></AuthGate>}>
-                      <Route path="/app" element={<Index />} />
-                      <Route path="/app/matches" element={<Matches />} />
-                      <Route path="/app/matches/:id" element={<MatchDetail />} />
-                      <Route path="/app/pool" element={<Pool />} />
-                      <Route path="/app/pool/:id" element={<PoolDetail />} />
-                      <Route path="/app/bracket" element={<Bracket />} />
-                      <Route path="/app/profile" element={<Profile />} />
-                      <Route path="/app/admin" element={<AdminDashboard />} />
-                    </Route>
-
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
+                  <AnimatedRoutes />
                 </Suspense>
               </ErrorBoundary>
             </BrowserRouter>

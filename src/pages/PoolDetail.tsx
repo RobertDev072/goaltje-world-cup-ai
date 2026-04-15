@@ -64,7 +64,7 @@ export default function PoolDetail() {
   const { data: pool, isLoading } = useQuery({
     queryKey: ["pool", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("pools").select("*").eq("id", id!).single();
+      const { data, error } = await supabase.from("pools").select("*, tenant_id, tenants(logo_url, name)").eq("id", id!).single();
       if (error) throw error;
       return data;
     },
@@ -327,7 +327,16 @@ export default function PoolDetail() {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h1 className="text-xl font-bold font-display truncate">{pool.name}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold font-display truncate">{pool.name}</h1>
+                  {(pool as any).tenants?.logo_url && (
+                    <img
+                      src={(pool as any).tenants.logo_url}
+                      alt={(pool as any).tenants.name ?? "Bedrijfslogo"}
+                      className="h-8 w-8 rounded-lg object-contain border border-white/10"
+                    />
+                  )}
+                </div>
                 {tenant && (
                   <p className="text-[10px] font-semibold uppercase tracking-wider mt-0.5" style={{ color: tenant.primary_color || undefined }}>
                     {tenant.name}

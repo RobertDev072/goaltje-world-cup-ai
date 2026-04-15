@@ -1,6 +1,6 @@
 import { useParams, Link, Navigate } from "react-router-dom";
 import { useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, useScroll } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Calendar, MapPin, Trophy, Target, Lightbulb, Flag, TrendingUp, Share2 } from "lucide-react";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
@@ -238,7 +238,7 @@ export default function BlogArticle() {
     }
   }, [article]);
 
-  if (!article) return <Navigate to="/landing" replace />;
+  if (!article) return <Navigate to="/" replace />;
 
   const Icon = article.icon;
 
@@ -251,7 +251,7 @@ export default function BlogArticle() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen overflow-x-clip bg-[hsl(var(--lp-bg))] text-white">
       {/* JSON-LD Article */}
       <script
         type="application/ld+json"
@@ -275,12 +275,16 @@ export default function BlogArticle() {
         }}
       />
 
+      {/* Ambient orbs */}
+      <div className="pointer-events-none absolute -top-40 -left-20 h-96 w-96 rounded-full bg-primary/25 blur-[120px]" />
+      <div className="pointer-events-none absolute top-[35%] -right-40 h-[26rem] w-[26rem] rounded-full bg-secondary/15 blur-[120px]" />
+
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-primary border-b border-primary-foreground/10">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[hsl(var(--lp-surface-dark))/0.76] backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link to="/landing" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <img src={goaltjeLogo} alt="Goaltje" className="w-8 h-8" />
-            <span className="font-display font-bold text-primary-foreground">GOALTJE</span>
+            <span className="font-display text-lg font-bold tracking-wide text-white">GOALTJE</span>
           </Link>
           <div className="flex items-center gap-2">
             <button onClick={handleShare} className="p-2 rounded-full hover:bg-primary-foreground/10 text-primary-foreground transition-colors">
@@ -322,8 +326,8 @@ export default function BlogArticle() {
               viewport={{ once: true }}
               transition={{ delay: i * 0.05 }}
             >
-              <h2 className="text-xl md:text-2xl font-display font-bold mb-3">{section.heading}</h2>
-              <p className="text-muted-foreground leading-relaxed text-sm md:text-base">{section.content}</p>
+              <h2 className="text-xl md:text-2xl font-display font-bold text-white mb-3">{section.heading}</h2>
+              <p className="text-white/70 leading-relaxed text-sm md:text-base">{section.content}</p>
             </motion.section>
           ))}
         </div>
@@ -333,7 +337,7 @@ export default function BlogArticle() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mt-16 p-8 rounded-2xl bg-gradient-to-br from-primary/10 to-secondary/10 border text-center"
+          className="mt-16 rounded-3xl border border-white/15 bg-gradient-to-br from-primary/25 via-[hsl(var(--lp-surface-dark))/0.9] to-secondary/15 p-8 text-center shadow-[var(--lp-shadow-soft)]"
         >
           <Trophy className="h-10 w-10 text-secondary mx-auto mb-3" />
           <h3 className="text-xl font-display font-bold mb-2">Start je eigen WK-poule</h3>
@@ -376,19 +380,23 @@ export default function BlogArticle() {
 
       {/* Back */}
       <div className="max-w-3xl mx-auto px-4 pb-12">
-        <Link to="/landing" className="inline-flex items-center gap-2 text-primary text-sm font-semibold hover:underline">
+        <Link to="/" className="inline-flex items-center gap-2 text-secondary text-sm font-semibold hover:underline">
           <ArrowLeft className="h-4 w-4" /> Terug naar Goaltje
         </Link>
       </div>
 
       {/* Footer */}
-      <footer className="py-6 border-t">
-        <div className="max-w-4xl mx-auto px-4 flex items-center justify-between">
+      <footer className="border-t border-white/10 py-8 text-sm text-white/60">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-4 sm:flex-row">
           <div className="flex items-center gap-2">
-            <img src={goaltjeLogo} alt="Goaltje" className="w-5 h-5" />
-            <span className="text-xs text-muted-foreground">© 2026 RobertDev.nl – GOALTJE</span>
+            <img src={goaltjeLogo} alt="Goaltje" className="h-5 w-5" />
+            <p>© 2026 Goaltje</p>
           </div>
-          <Link to="/landing" className="text-xs text-muted-foreground hover:text-foreground">Home</Link>
+          <div className="flex items-center gap-4">
+            <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+            <Link to="/" className="hover:text-white transition-colors">Home</Link>
+            <Link to="/login" className="hover:text-white transition-colors">Inloggen</Link>
+          </div>
         </div>
       </footer>
     </div>
