@@ -273,39 +273,6 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      {/* Video / Demo section */}
-      <section className="mx-auto w-full max-w-6xl px-4 py-16">
-        <div className="mb-8 text-center">
-          <p className="text-xs uppercase tracking-[0.16em] text-white/60">Live demo</p>
-          <h2 className="mt-2 font-display text-3xl font-bold md:text-4xl">Zie hoe het werkt</h2>
-          <p className="mx-auto mt-3 max-w-lg text-white/65 text-sm">Voorspel, volg en win — in één vloeiende ervaring op elk apparaat.</p>
-        </div>
-        <motion.div
-          initial={reduceMotion ? false : { opacity: 0, y: 40, scale: 0.97 }}
-          whileInView={{ opacity: 1, y: 0, scale: 1 }}
-          viewport={{ once: true, amount: 0.3 }}
-          transition={{ duration: 0.7 }}
-          className="relative overflow-hidden rounded-3xl border border-white/10 bg-[hsl(var(--lp-surface-dark))/0.7] shadow-[var(--lp-shadow-soft)]"
-        >
-          {/* Video placeholder — drop an <video> or iframe here when ready */}
-          <div className="aspect-video w-full flex flex-col items-center justify-center gap-5 bg-gradient-to-br from-primary/20 via-[hsl(var(--lp-surface-dark))/0.9] to-secondary/10">
-            <motion.div
-              animate={reduceMotion ? undefined : { scale: [1, 1.1, 1] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-              className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-secondary/60 bg-secondary/20 cursor-pointer hover:bg-secondary/30 transition-colors"
-            >
-              <svg className="h-8 w-8 text-secondary ml-1" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </motion.div>
-            <div className="text-center">
-              <p className="text-sm font-semibold text-white/80">Product video — binnenkort beschikbaar</p>
-              <p className="mt-1 text-xs text-white/40">Vervang dit blok met een &lt;video&gt; of YouTube embed</p>
-            </div>
-          </div>
-        </motion.div>
-      </section>
-
       <section className="border-y border-white/10 bg-[hsl(var(--lp-surface-dark))/0.55]">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-3 px-4 py-10 md:grid-cols-4">
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center text-sm"><ShieldCheck className="mx-auto mb-2 h-4 w-4 text-secondary" />Gratis starten</div>
