@@ -185,6 +185,7 @@ export default function MarketingHome() {
               key={chip.text}
               animate={reduceMotion ? undefined : { y: [0, -10, 0], x: [0, i % 2 ? -4 : 4, 0] }}
               transition={{ duration: 3 + i, repeat: Infinity, ease: "easeInOut" }}
+              whileHover={{ scale: 1.05 }}
               className={`absolute ${chip.cls} rounded-xl border border-white/15 bg-[hsl(var(--lp-surface))/0.95] px-3 py-2 text-xs font-semibold ${chip.tint}`}
             >
               {chip.text}
@@ -197,7 +198,7 @@ export default function MarketingHome() {
         <div className="mx-auto grid max-w-6xl gap-10 px-4 lg:grid-cols-2 lg:items-start">
           <div className="lg:sticky lg:top-24 lg:h-[70vh]">
             <div className="mb-6 h-1 rounded-full bg-white/10">
-              <motion.div className="h-full rounded-full bg-gradient-to-r from-primary via-secondary to-primary" style={{ scaleX: useTransform(storyProgress, [0, 1], [0.25, 1]), transformOrigin: "left" }} />
+              <motion.div className="h-full rounded-full bg-gradient-to-r from-primary via-secondary to-primary" style={{ scaleX: useTransform(storyProgress, [0, 1], [0.25, 1]), transformOrigin: "left" }} transition={{ ease: "easeOut", duration: 0.3 }} />
             </div>
             <div className="space-y-4">
               {storyBeats.map((beat, i) => (
@@ -258,6 +259,7 @@ export default function MarketingHome() {
               whileInView={{ y: 0, opacity: 1, scale: 1 }}
               viewport={{ once: true, amount: 0.25 }}
               transition={{ duration: 0.65, delay: i * 0.08 }}
+              whileHover={{ scale: 1.02 }}
               className="group relative overflow-hidden rounded-3xl border border-white/10 bg-[hsl(var(--lp-surface-dark))/0.7] p-4 shadow-[var(--lp-shadow-soft)] transition-transform duration-300 hover:-translate-y-1"
               style={{ transform: `rotate(${i === 1 ? "-1.2deg" : i === 2 ? "1.4deg" : "0deg"})` }}
             >
@@ -269,6 +271,39 @@ export default function MarketingHome() {
             </motion.article>
           ))}
         </div>
+      </section>
+
+      {/* Video / Demo section */}
+      <section className="mx-auto w-full max-w-6xl px-4 py-16">
+        <div className="mb-8 text-center">
+          <p className="text-xs uppercase tracking-[0.16em] text-white/60">Live demo</p>
+          <h2 className="mt-2 font-display text-3xl font-bold md:text-4xl">Zie hoe het werkt</h2>
+          <p className="mx-auto mt-3 max-w-lg text-white/65 text-sm">Voorspel, volg en win — in één vloeiende ervaring op elk apparaat.</p>
+        </div>
+        <motion.div
+          initial={reduceMotion ? false : { opacity: 0, y: 40, scale: 0.97 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.7 }}
+          className="relative overflow-hidden rounded-3xl border border-white/10 bg-[hsl(var(--lp-surface-dark))/0.7] shadow-[var(--lp-shadow-soft)]"
+        >
+          {/* Video placeholder — drop an <video> or iframe here when ready */}
+          <div className="aspect-video w-full flex flex-col items-center justify-center gap-5 bg-gradient-to-br from-primary/20 via-[hsl(var(--lp-surface-dark))/0.9] to-secondary/10">
+            <motion.div
+              animate={reduceMotion ? undefined : { scale: [1, 1.1, 1] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+              className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-secondary/60 bg-secondary/20 cursor-pointer hover:bg-secondary/30 transition-colors"
+            >
+              <svg className="h-8 w-8 text-secondary ml-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </motion.div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-white/80">Product video — binnenkort beschikbaar</p>
+              <p className="mt-1 text-xs text-white/40">Vervang dit blok met een &lt;video&gt; of YouTube embed</p>
+            </div>
+          </div>
+        </motion.div>
       </section>
 
       <section className="border-y border-white/10 bg-[hsl(var(--lp-surface-dark))/0.55]">

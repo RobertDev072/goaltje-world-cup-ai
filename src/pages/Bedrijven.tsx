@@ -50,6 +50,7 @@ function CompanyOnboardingForm() {
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [employeeCount, setEmployeeCount] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [createdPool, setCreatedPool] = useState<{ name: string; invite_code: string } | null>(null);
 
@@ -74,6 +75,18 @@ function CompanyOnboardingForm() {
         .select()
         .single();
       if (tenantError) throw tenantError;
+
+      if (logoFile) {
+        const ext = logoFile.name.split(".").pop();
+        const path = `tenant-logos/${tenant.id}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("public")
+          .upload(path, logoFile, { upsert: true });
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage.from("public").getPublicUrl(path);
+          await supabase.from("tenants").update({ logo_url: publicUrl }).eq("id", tenant.id);
+        }
+      }
 
       const { data: pool, error: poolError } = await supabase
         .from("pools")
@@ -133,6 +146,17 @@ function CompanyOnboardingForm() {
             <div>
               <Label htmlFor="employeeCount" className={labelClass}>Aantal medewerkers (optioneel)</Label>
               <Input id="employeeCount" type="number" min={1} max={10000} value={employeeCount} onChange={(e) => setEmployeeCount(e.target.value)} placeholder="Bijv. 100" className={inputClass} />
+            </div>
+            <div>
+              <Label htmlFor="logoFile" className={labelClass}>Bedrijfslogo (optioneel)</Label>
+              <input
+                id="logoFile"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
+                className="w-full rounded-xl border border-white/20 bg-white/[0.08] px-3 py-2 text-sm text-white/80 file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-1 file:text-xs file:font-semibold file:text-secondary-foreground cursor-pointer"
+              />
+              <p className="mt-1 text-xs text-white/40">PNG, JPG of SVG. Max 2MB.</p>
             </div>
             <Button type="submit" className="h-12 w-full bg-secondary text-base font-bold text-secondary-foreground hover:-translate-y-0.5 hover:bg-secondary/90 transition-all" disabled={loading}>
               {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Aanmaken...</> : "🏆 Maak bedrijfspoule aan"}

@@ -18,6 +18,7 @@ import goaltjeLogo from "@/assets/goaltje-logo.png";
 import { PredictionReminderBanner } from "@/components/PredictionReminderBanner";
 import { getPredictionState, isMissingToday } from "@/lib/predictionStatus";
 import { toast } from "@/hooks/use-toast";
+import { OnboardingModal } from "@/components/OnboardingModal";
 
 
 export default function Index() {
@@ -165,6 +166,7 @@ export default function Index() {
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-5">
+      <OnboardingModal />
       {/* Goal Celebration Overlay */}
       <GoalCelebration visible={showGoal} onComplete={hideGoal} />
       {/* Header */}
