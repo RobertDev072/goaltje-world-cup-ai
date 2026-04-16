@@ -751,7 +751,7 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       toast({ title: "Pool verwijderd" });
-      queryClient.invalidateQueries({ queryKey: ["admin-pools"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-all-pools"] });
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
     },
     onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
@@ -1247,7 +1247,6 @@ export default function AdminDashboard() {
             <div className="space-y-2">
               {filteredAllPools.map((p: any) => {
                 const memberCount = p.pool_members?.[0]?.count ?? 0;
-                const isExpanded = expandedPool === p.id;
                 return (
                   <Card key={p.id} className="border-0 shadow-sm">
                     <CardContent className="p-3 space-y-2">
@@ -1260,11 +1259,23 @@ export default function AdminDashboard() {
                             </Badge>
                           </div>
                           <p className="text-[10px] text-muted-foreground mt-0.5">
-                            Aangemaakt: {formatNLDate(p.created_at)} · {memberCount} {memberCount === 1 ? "lid" : "leden"}
-                            {p.profiles?.name && <span className="ml-1">· door {p.profiles.name}</span>}
+                            {formatNLDate(p.created_at)} · {memberCount} {memberCount === 1 ? "lid" : "leden"}
+                            {p.profiles?.name && <span> · door {p.profiles.name}</span>}
                           </p>
+                          {p.invite_code && (
+                            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                              Code: <span className="text-foreground">{p.invite_code}</span>
+                            </p>
+                          )}
                         </div>
-                        <div className="flex gap-1.5 shrink-0">
+                        <div className="flex gap-1 shrink-0 flex-wrap justify-end">
+                          <Button size="sm" variant="outline" className="h-7 text-xs px-2"
+                            title="Kopieer uitnodigingslink"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/join/${p.invite_code}`);
+                              toast({ title: "Link gekopieerd!" });
+                            }}
+                          ><Copy className="h-3 w-3" /></Button>
                           <Button size="sm" variant="outline" className="h-7 text-xs px-2"
                             onClick={() => {
                               setEditingPool(p);
@@ -1284,6 +1295,23 @@ export default function AdminDashboard() {
                           >
                             {poolMembersExpanded === p.id ? "Inklappen" : "Leden"}
                           </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="destructive" className="h-7 text-xs px-2">
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Poule verwijderen?</AlertDialogTitle>
+                                <AlertDialogDescription>Alle data van <strong>{p.name}</strong> gaat verloren. Weet je het zeker?</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deletePool.mutate(p.id)}>Verwijderen</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
 
@@ -1339,16 +1367,7 @@ export default function AdminDashboard() {
                       {/* Leden met punten */}
                       {poolMembersExpanded === p.id && (
                         <div className="pt-2 border-t border-border/50 space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Leden & Punten</p>
-                            <button
-                              className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1"
-                              onClick={() => { resetInviteCode.mutate(p.id); }}
-                              disabled={resetInviteCode.isPending}
-                            >
-                              <RotateCcw className="h-3 w-3" /> Reset invite
-                            </button>
-                          </div>
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Leden & Punten</p>
                           {poolMemberStatsLoading ? (
                             <div className="space-y-1">{[1,2].map(i => <Skeleton key={i} className="h-7 rounded-lg" />)}</div>
                           ) : (poolMemberStats || []).length === 0 ? (
@@ -1380,29 +1399,11 @@ export default function AdminDashboard() {
                               </div>
                             ))
                           )}
-                          <div className="flex gap-1.5 pt-1">
-                            <Button variant="outline" size="sm" className="h-7 text-[10px] flex-1"
-                              onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/join/${p.invite_code}`); toast({ title: "Link gekopieerd!" }); }}>
-                              <Copy className="h-3 w-3 mr-1" /> Invite link
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="sm" className="h-7 text-[10px]">
-                                  <Trash2 className="h-3 w-3 mr-1" /> Verwijder poule
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Poule verwijderen?</AlertDialogTitle>
-                                  <AlertDialogDescription>Alle data gaat verloren. Weet je het zeker?</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => deletePool.mutate(p.id)}>Verwijderen</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
+                          <Button variant="outline" size="sm" className="h-7 text-[10px] w-full mt-1"
+                            onClick={() => resetInviteCode.mutate(p.id)}
+                            disabled={resetInviteCode.isPending}>
+                            <RotateCcw className="h-3 w-3 mr-1" /> Reset invite code
+                          </Button>
                         </div>
                       )}
                     </CardContent>
