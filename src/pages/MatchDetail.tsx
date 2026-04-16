@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Lock, Check, Swords } from "lucide-react";
+import { ArrowLeft, Lock, Check, Swords, Trophy } from "lucide-react";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -508,6 +508,28 @@ export default function MatchDetail() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Ranglijst link */}
+      {activePool && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+          <Link to={`/app/pool/${activePool}/ranking`}>
+            <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Trophy className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">Bekijk ranglijst</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {myPools?.find((p: any) => p.id === activePool)?.name || "Jouw poule"}
+                  </p>
+                </div>
+                <ArrowLeft className="h-4 w-4 text-muted-foreground rotate-180 shrink-0" />
+              </CardContent>
+            </Card>
+          </Link>
+        </motion.div>
+      )}
     </div>
   );
 }
