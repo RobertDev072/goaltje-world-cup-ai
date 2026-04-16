@@ -491,12 +491,36 @@ export default function AdminDashboard() {
   const { data: allPools, isLoading: allPoolsLoading } = useQuery({
     queryKey: ["admin-all-pools"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Haal alle pools op (geen FK-joins die kunnen falen)
+      const { data: poolsData, error: poolsError } = await supabase
         .from("pools")
-        .select("id, name, created_at, privacy, invite_code, created_by, pool_members(count), profiles!pools_created_by_fkey(name)")
+        .select("id, name, created_at, privacy, invite_code, created_by, prize_text, scoring_rules_json")
         .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
+      if (poolsError) throw poolsError;
+      if (!poolsData || poolsData.length === 0) return [];
+
+      // Haal aanmaker-namen op via profiles.user_id
+      const creatorIds = [...new Set(poolsData.map((p: any) => p.created_by).filter(Boolean))];
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("user_id, name")
+        .in("user_id", creatorIds);
+      const profileMap = new Map((profilesData || []).map((p: any) => [p.user_id, p.name]));
+
+      // Haal ledenaantallen op per poule
+      const { data: membersData } = await supabase
+        .from("pool_members")
+        .select("pool_id");
+      const countMap = new Map<string, number>();
+      (membersData || []).forEach((m: any) => {
+        countMap.set(m.pool_id, (countMap.get(m.pool_id) || 0) + 1);
+      });
+
+      return poolsData.map((pool: any) => ({
+        ...pool,
+        profiles: { name: profileMap.get(pool.created_by) || null },
+        pool_members: [{ count: countMap.get(pool.id) || 0 }],
+      }));
     },
     enabled: isAdmin === true,
     staleTime: 60_000,
