@@ -17,7 +17,7 @@ import {
 import {
   ArrowLeft, Users, Trophy, Target, Activity, Clock, CheckCircle2,
   Search, AlertCircle, Download, RefreshCw, UserCheck, Trash2,
-  AlertTriangle, FileJson, Megaphone, BarChart2, MessageSquare,
+  AlertTriangle, FileJson, BarChart2, MessageSquare,
   Gift, Settings, Crown, LogOut, Copy, RotateCcw, Plus, Edit2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -440,10 +440,6 @@ export default function AdminDashboard() {
   const [analyticsMatchId, setAnalyticsMatchId] = useState<string>("");
   const [bonusAnswers, setBonusAnswers] = useState<Record<string, string>>({});
   const [msgPoolFilter, setMsgPoolFilter] = useState<string>("all");
-  // Aankondiging state
-  const [announcementText, setAnnouncementText] = useState("");
-  const [announcementType, setAnnouncementType] = useState<"info" | "warning" | "success">("info");
-  const [announcementActive, setAnnouncementActive] = useState(false);
   // Pool bewerken state
   const [editPoolName, setEditPoolName] = useState("");
   const [editPoolPrivacy, setEditPoolPrivacy] = useState("private");
@@ -591,24 +587,6 @@ export default function AdminDashboard() {
     enabled: isAdmin === true,
     staleTime: 120_000,
   });
-
-  // Aankondiging ophalen
-  const { data: announcementData, refetch: refetchAnnouncement } = useQuery({
-    queryKey: ["admin-announcement"],
-    queryFn: async () => {
-      const { data } = await supabase.from("system_settings").select("value").eq("key", "announcement").maybeSingle();
-      return data?.value as { text: string; active: boolean; type: string } | null;
-    },
-    enabled: isAdmin === true,
-  });
-
-  useEffect(() => {
-    if (announcementData) {
-      setAnnouncementText(announcementData.text || "");
-      setAnnouncementType(announcementData.type as any || "info");
-      setAnnouncementActive(announcementData.active || false);
-    }
-  }, [announcementData]);
 
   // Alle wedstrijden voor analytics dropdown
   const { data: allMatchesForAnalytics } = useQuery({
@@ -777,20 +755,6 @@ export default function AdminDashboard() {
       refetchUsers();
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
     },
-    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
-  });
-
-  // Aankondiging opslaan
-  const saveAnnouncement = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("system_settings").upsert({
-        key: "announcement",
-        value: { text: announcementText, active: announcementActive, type: announcementType },
-        updated_at: new Date().toISOString(),
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => { toast({ title: "Aankondiging opgeslagen" }); refetchAnnouncement(); },
     onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
   });
 
@@ -1048,47 +1012,6 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
           )}
-
-          {/* Systeemaankondiging */}
-          <div>
-            <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-              <Megaphone className="h-4 w-4" /> Systeemaankondiging
-            </h2>
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium">Actief</span>
-                  <button
-                    onClick={() => setAnnouncementActive(!announcementActive)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${announcementActive ? "bg-primary" : "bg-muted"}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${announcementActive ? "translate-x-6" : "translate-x-1"}`} />
-                  </button>
-                </div>
-                <Select value={announcementType} onValueChange={(v: any) => setAnnouncementType(v)}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="info">ℹ️ Info</SelectItem>
-                    <SelectItem value="warning">⚠️ Waarschuwing</SelectItem>
-                    <SelectItem value="success">✅ Succes</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input
-                  placeholder="Tekst van de aankondiging..."
-                  value={announcementText}
-                  onChange={(e) => setAnnouncementText(e.target.value)}
-                  className="h-9 text-sm"
-                />
-                <Button
-                  size="sm" className="w-full gradient-primary text-primary-foreground"
-                  onClick={() => saveAnnouncement.mutate()}
-                  disabled={saveAnnouncement.isPending}
-                >
-                  {saveAnnouncement.isPending ? "Opslaan..." : "Aankondiging opslaan"}
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
 
           {/* Quick Links */}
           <div>
