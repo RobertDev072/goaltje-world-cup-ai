@@ -87,8 +87,7 @@ function VirtualList({ leaderboard, currentUserId, rivalUserId }: VirtualizedLea
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="max-h-[70vh] overflow-y-auto scrollbar-thin"
-      style={{ contain: "strict" }}
+      className="h-[70vh] overflow-y-auto scrollbar-thin"
     >
       <div style={{ height: totalHeight, position: "relative" }}>
         {visibleItems.map(({ entry, index }) => (
