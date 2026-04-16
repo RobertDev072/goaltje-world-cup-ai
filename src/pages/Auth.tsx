@@ -18,6 +18,7 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
   const { user, signIn, signUp, resetPassword } = useAuth();
@@ -183,6 +184,21 @@ export default function Auth() {
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
+                </div>
+              )}
+
+              {mode === "login" && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 rounded border-white/30 bg-white/10 accent-secondary cursor-pointer"
+                  />
+                  <label htmlFor="rememberMe" className="text-sm text-white/70 cursor-pointer select-none">
+                    Onthoud mij
+                  </label>
                 </div>
               )}
 

@@ -428,10 +428,8 @@ export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<"overview" | "scores" | "stats" | "beheer">("overview");
-  const [defaultPoolId, setDefaultPoolId] = useState<string>("");
-  const [defaultsFrom, setDefaultsFrom] = useState<string>(() => new Date().toISOString().slice(0, 10));
-  const [defaultsTo, setDefaultsTo] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [tab, setTab] = useState<"overview" | "scores" | "stats" | "beheer" | "poules" | "ranglijst">("overview");
+  const [expandedPool, setExpandedPool] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState("");
   const [poolSearch, setPoolSearch] = useState("");
 
@@ -471,6 +469,34 @@ export default function AdminDashboard() {
     staleTime: 60_000,
   });
 
+  const { data: allPools, isLoading: allPoolsLoading } = useQuery({
+    queryKey: ["admin-all-pools"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pools")
+        .select("id, name, created_at, privacy, invite_code, created_by, pool_members(count), profiles!pools_created_by_fkey(name)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin === true,
+    staleTime: 60_000,
+  });
+
+  const { data: expandedPoolMembers, isLoading: expandedPoolMembersLoading } = useQuery({
+    queryKey: ["admin-pool-members", expandedPool],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pool_members")
+        .select("user_id, role, joined_at, profiles(name, avatar_url)")
+        .eq("pool_id", expandedPool!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin === true && !!expandedPool,
+    staleTime: 60_000,
+  });
+
   const { data: adminUsers, isLoading: usersLoading, refetch: refetchUsers } = useQuery({
     queryKey: ["admin-users"],
     queryFn: async () => {
@@ -506,37 +532,26 @@ export default function AdminDashboard() {
     staleTime: 30_000,
   });
 
+  const { data: globalRanking, isLoading: rankingLoading } = useQuery({
+    queryKey: ["admin-global-ranking"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_global_ranking", { limit_count: 10 });
+      if (error) throw error;
+      return (data || []).map((row: any) => ({
+        rank: Number(row.rank),
+        user_id: row.user_id,
+        total: Number(row.total_points),
+        name: row.name || "Onbekend",
+        avatar_url: row.avatar_url || null,
+      }));
+    },
+    enabled: isAdmin === true,
+    staleTime: 120_000,
+  });
+
   const errorLogs = useMemo(() => getErrorLogs(), [tab]);
 
   // Admin actions
-  const fillDefaults = useMutation({
-    mutationFn: async () => {
-      if (!defaultPoolId) throw new Error("Kies een pool");
-      const fromUtc = `${defaultsFrom}T00:00:00Z`;
-      const toUtc = `${defaultsTo}T23:59:59Z`;
-      if (new Date(fromUtc) > new Date(toUtc)) {
-        throw new Error("Van-datum moet voor de t/m datum liggen");
-      }
-      const dayDiff = Math.ceil((new Date(toUtc).getTime() - new Date(fromUtc).getTime()) / (1000 * 60 * 60 * 24));
-      if (dayDiff > 2) {
-        throw new Error("Maximaal 2 dagen bereik toegestaan");
-      }
-      const { data, error } = await supabase.rpc("fill_default_predictions_for_range", {
-        p_pool_id: defaultPoolId,
-        p_from: fromUtc,
-        p_to: toUtc,
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data: any) => {
-      const count = data?.[0]?.inserted_count ?? data?.inserted_count ?? 0;
-      toast({ title: "Standaard 0-0 ingevuld", description: `${count} voorspellingen aangemaakt.` });
-      queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
-    },
-    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
-  });
-
   const recalcAll = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke("recalc-all");
@@ -640,6 +655,8 @@ export default function AdminDashboard() {
     { key: "scores" as const, label: "Resultaten" },
     { key: "stats" as const, label: "Stats" },
     { key: "beheer" as const, label: "Beheer" },
+    { key: "poules" as const, label: "Poules" },
+    { key: "ranglijst" as const, label: "Ranglijst" },
   ];
 
   const filteredUsers = useMemo(() => {
@@ -659,6 +676,17 @@ export default function AdminDashboard() {
     if (!q) return list;
     return list.filter((p: any) => p.name?.toLowerCase().includes(q) || p.id?.toLowerCase().includes(q));
   }, [pools, poolSearch]);
+
+  const filteredAllPools = useMemo(() => {
+    const q = poolSearch.trim().toLowerCase();
+    const list = allPools || [];
+    if (!q) return list;
+    return list.filter((p: any) =>
+      p.name?.toLowerCase().includes(q) ||
+      p.id?.toLowerCase().includes(q) ||
+      p.profiles?.name?.toLowerCase().includes(q)
+    );
+  }, [allPools, poolSearch]);
 
   const topLogins = useMemo(() => {
     return [...(adminUsers || [])]
@@ -684,12 +712,12 @@ export default function AdminDashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+            className={`px-3 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap shrink-0 ${
               tab === t.key ? "gradient-primary text-primary-foreground shadow-md" : "bg-muted text-muted-foreground"
             }`}
           >
@@ -781,82 +809,6 @@ export default function AdminDashboard() {
                 onConfirm={() => recalcAll.mutate()}
                 isPending={recalcAll.isPending}
               />
-
-              <Card className="border-0 shadow-sm">
-                <CardContent className="p-4 space-y-3">
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground">Standaard 0-0 invullen</p>
-                    <p className="text-[10px] text-muted-foreground">Alleen voor gemiste voorspellingen in een gekozen periode.</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground">Pool</p>
-                    <Select value={defaultPoolId} onValueChange={setDefaultPoolId}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Kies een pool" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(pools || []).map((p: any) => (
-                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Van</p>
-                      <Input type="date" value={defaultsFrom} onChange={(e) => setDefaultsFrom(e.target.value)} />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Tot</p>
-                      <Input type="date" value={defaultsTo} onChange={(e) => setDefaultsTo(e.target.value)} />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const today = new Date().toISOString().slice(0, 10);
-                        setDefaultsFrom(today);
-                        setDefaultsTo(today);
-                      }}
-                    >
-                      Vandaag
-                    </Button>
-
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          className="gradient-primary text-primary-foreground"
-                          disabled={!defaultPoolId || fillDefaults.isPending}
-                        >
-                          {fillDefaults.isPending ? "Bezig..." : "0-0 invullen"}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Standaard 0-0 invullen</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Pool: {pools?.find((p: any) => p.id === defaultPoolId)?.name || "Onbekend"}
-                            <br />
-                            Periode: {defaultsFrom} t/m {defaultsTo}
-                            <br />
-                            Weet je het zeker? (max 2 dagen)
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => fillDefaults.mutate()}>Bevestigen</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </CardContent>
-              </Card>
 
               <ConfirmedAction
                 label="Check Early Bird"
@@ -1024,6 +976,145 @@ export default function AdminDashboard() {
                 )}
               </div>
             </>
+          )}
+        </div>
+      )}
+
+      {/* ==================== POULES TAB ==================== */}
+      {tab === "poules" && (
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Zoek poule of aanmaker..."
+              value={poolSearch}
+              onChange={(e) => setPoolSearch(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {filteredAllPools.length} van {allPools?.length ?? 0} poule{(allPools?.length ?? 0) !== 1 ? "s" : ""}
+          </p>
+          {allPoolsLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
+            </div>
+          ) : filteredAllPools.length === 0 ? (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 text-center text-sm text-muted-foreground">
+                Geen poules gevonden.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {filteredAllPools.map((p: any) => {
+                const memberCount = p.pool_members?.[0]?.count ?? 0;
+                const isExpanded = expandedPool === p.id;
+                return (
+                  <Card key={p.id} className="border-0 shadow-sm">
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium truncate">{p.name}</p>
+                            <Badge variant={p.privacy === "public" ? "secondary" : "outline"} className="text-[9px] px-1.5 py-0 shrink-0">
+                              {p.privacy === "public" ? "Publiek" : "Privé"}
+                            </Badge>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            Aangemaakt: {formatNLDate(p.created_at)} · {memberCount} {memberCount === 1 ? "lid" : "leden"}
+                            {p.profiles?.name && <span className="ml-1">· door {p.profiles.name}</span>}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 h-7 text-xs"
+                          onClick={() => setExpandedPool(isExpanded ? null : p.id)}
+                        >
+                          {isExpanded ? "Inklappen" : "Leden"}
+                        </Button>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="pt-1 border-t border-border/50">
+                          {expandedPoolMembersLoading ? (
+                            <div className="space-y-1">
+                              {[1, 2].map(i => <Skeleton key={i} className="h-6 rounded-lg" />)}
+                            </div>
+                          ) : (expandedPoolMembers || []).length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-1">Geen leden gevonden.</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {(expandedPoolMembers || []).map((m: any) => (
+                                <div key={m.user_id} className="flex items-center justify-between gap-2 text-xs">
+                                  <span className="truncate font-medium">
+                                    {m.profiles?.name || m.user_id.slice(0, 8) + "..."}
+                                  </span>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <Badge variant={m.role === "admin" ? "default" : "outline"} className="text-[9px] px-1.5 py-0">
+                                      {m.role}
+                                    </Badge>
+                                    <span className="text-muted-foreground text-[10px]">
+                                      {m.joined_at ? formatNLDate(m.joined_at) : "—"}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================== RANGLIJST TAB ==================== */}
+      {tab === "ranglijst" && (
+        <div className="space-y-3">
+          <Card className="border-0 shadow-sm bg-muted/50">
+            <CardContent className="p-3 text-xs text-muted-foreground">
+              Top 10 gebruikers op basis van totale punten over alle poules (één maal per wedstrijd, hoogste score telt).
+            </CardContent>
+          </Card>
+          {rankingLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-14 rounded-xl" />)}
+            </div>
+          ) : (globalRanking || []).length === 0 ? (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 text-center text-sm text-muted-foreground">
+                Nog geen punten beschikbaar.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {(globalRanking || []).map((entry: any) => {
+                const medal = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : null;
+                return (
+                  <Card key={entry.user_id} className={`border-0 shadow-sm ${entry.rank <= 3 ? "border-l-4 " + (entry.rank === 1 ? "border-l-yellow-400" : entry.rank === 2 ? "border-l-slate-400" : "border-l-amber-600") : ""}`}>
+                    <CardContent className="p-3 flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
+                        {medal || `#${entry.rank}`}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{entry.name}</p>
+                        <p className="text-[10px] text-muted-foreground">Rang #{entry.rank}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-base font-bold font-display text-primary">{entry.total}</p>
+                        <p className="text-[10px] text-muted-foreground">punten</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

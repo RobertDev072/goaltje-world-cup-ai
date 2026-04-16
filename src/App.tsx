@@ -41,6 +41,7 @@ const PouleRegels = lazy(() => import("./pages/seo/PouleRegels"));
 const PouleTips = lazy(() => import("./pages/seo/PouleTips"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Templates = lazy(() => import("./pages/Templates"));
+const HelpPage = lazy(() => import("./pages/HelpPage"));
 
 const SEO_ROUTES: { path: string; element: React.ReactElement }[] = [
   { path: "/wk-2026-poule-maken-met-vrienden", element: <PoolMakenVrienden /> },
@@ -76,6 +77,7 @@ const queryClient = new QueryClient({
     },
   },
 });
+
 
 const App = () => {
   const [analyticsEnabled, setAnalyticsEnabled] = useState(() => hasAnalyticsConsent());
@@ -131,6 +133,7 @@ const App = () => {
                       <Route path="/app/bracket" element={<Bracket />} />
                       <Route path="/app/profile" element={<Profile />} />
                       <Route path="/app/admin" element={<AdminDashboard />} />
+                      <Route path="/app/help" element={<HelpPage />} />
                     </Route>
 
                     <Route path="*" element={<NotFound />} />

@@ -185,6 +185,7 @@ export default function MarketingHome() {
               key={chip.text}
               animate={reduceMotion ? undefined : { y: [0, -10, 0], x: [0, i % 2 ? -4 : 4, 0] }}
               transition={{ duration: 3 + i, repeat: Infinity, ease: "easeInOut" }}
+              whileHover={{ scale: 1.05 }}
               className={`absolute ${chip.cls} rounded-xl border border-white/15 bg-[hsl(var(--lp-surface))/0.95] px-3 py-2 text-xs font-semibold ${chip.tint}`}
             >
               {chip.text}
@@ -197,7 +198,7 @@ export default function MarketingHome() {
         <div className="mx-auto grid max-w-6xl gap-10 px-4 lg:grid-cols-2 lg:items-start">
           <div className="lg:sticky lg:top-24 lg:h-[70vh]">
             <div className="mb-6 h-1 rounded-full bg-white/10">
-              <motion.div className="h-full rounded-full bg-gradient-to-r from-primary via-secondary to-primary" style={{ scaleX: useTransform(storyProgress, [0, 1], [0.25, 1]), transformOrigin: "left" }} />
+              <motion.div className="h-full rounded-full bg-gradient-to-r from-primary via-secondary to-primary" style={{ scaleX: useTransform(storyProgress, [0, 1], [0.25, 1]), transformOrigin: "left" }} transition={{ ease: "easeOut", duration: 0.3 }} />
             </div>
             <div className="space-y-4">
               {storyBeats.map((beat, i) => (
@@ -258,6 +259,7 @@ export default function MarketingHome() {
               whileInView={{ y: 0, opacity: 1, scale: 1 }}
               viewport={{ once: true, amount: 0.25 }}
               transition={{ duration: 0.65, delay: i * 0.08 }}
+              whileHover={{ scale: 1.02 }}
               className="group relative overflow-hidden rounded-3xl border border-white/10 bg-[hsl(var(--lp-surface-dark))/0.7] p-4 shadow-[var(--lp-shadow-soft)] transition-transform duration-300 hover:-translate-y-1"
               style={{ transform: `rotate(${i === 1 ? "-1.2deg" : i === 2 ? "1.4deg" : "0deg"})` }}
             >
