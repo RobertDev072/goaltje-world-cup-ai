@@ -13,12 +13,11 @@ export function SystemAnnouncement() {
       .select("value")
       .eq("key", "announcement")
       .maybeSingle()
-      .then(({ data }) => {
-        if (data?.value?.active && data.value.text) {
-          setText(data.value.text);
-          setType(data.value.type || "info");
-          setDismissed(false);
-        }
+      .then(({ data, error }) => {
+        if (error || !data?.value?.active || !data.value.text) return;
+        setText(data.value.text);
+        setType(data.value.type || "info");
+        setDismissed(false);
       });
   }, []);
 

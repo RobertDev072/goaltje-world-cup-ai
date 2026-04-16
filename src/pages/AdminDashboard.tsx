@@ -600,14 +600,15 @@ export default function AdminDashboard() {
       return data?.value as { text: string; active: boolean; type: string } | null;
     },
     enabled: isAdmin === true,
-    onSuccess: (d: any) => {
-      if (d) {
-        setAnnouncementText(d.text || "");
-        setAnnouncementType(d.type || "info");
-        setAnnouncementActive(d.active || false);
-      }
-    },
-  } as any);
+  });
+
+  useEffect(() => {
+    if (announcementData) {
+      setAnnouncementText(announcementData.text || "");
+      setAnnouncementType(announcementData.type as any || "info");
+      setAnnouncementActive(announcementData.active || false);
+    }
+  }, [announcementData]);
 
   // Alle wedstrijden voor analytics dropdown
   const { data: allMatchesForAnalytics } = useQuery({
