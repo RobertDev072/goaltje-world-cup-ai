@@ -17,7 +17,8 @@ import {
 import {
   ArrowLeft, Users, Trophy, Target, Activity, Clock, CheckCircle2,
   Search, AlertCircle, Download, RefreshCw, UserCheck, Trash2,
-  AlertTriangle, FileJson,
+  AlertTriangle, FileJson, Megaphone, BarChart2, MessageSquare,
+  Gift, Settings, Crown, LogOut, Copy, RotateCcw, Plus, Edit2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatNLDateTime, formatNLDate } from "@/lib/timezone";
@@ -428,10 +429,28 @@ export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<"overview" | "scores" | "stats" | "beheer" | "poules" | "ranglijst">("overview");
+  type TabKey = "overview" | "scores" | "stats" | "poules" | "beheer" | "analytics" | "bonus" | "berichten" | "systeem" | "ranglijst";
+  const [tab, setTab] = useState<TabKey>("overview");
   const [expandedPool, setExpandedPool] = useState<string | null>(null);
+  const [editingPool, setEditingPool] = useState<any | null>(null);
+  const [poolMembersExpanded, setPoolMembersExpanded] = useState<string | null>(null);
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState("");
   const [poolSearch, setPoolSearch] = useState("");
+  const [analyticsMatchId, setAnalyticsMatchId] = useState<string>("");
+  const [bonusAnswers, setBonusAnswers] = useState<Record<string, string>>({});
+  const [msgPoolFilter, setMsgPoolFilter] = useState<string>("all");
+  // Aankondiging state
+  const [announcementText, setAnnouncementText] = useState("");
+  const [announcementType, setAnnouncementType] = useState<"info" | "warning" | "success">("info");
+  const [announcementActive, setAnnouncementActive] = useState(false);
+  // Pool bewerken state
+  const [editPoolName, setEditPoolName] = useState("");
+  const [editPoolPrivacy, setEditPoolPrivacy] = useState("private");
+  const [editPoolPrize, setEditPoolPrize] = useState("");
+  const [editPoolExact, setEditPoolExact] = useState("6");
+  const [editPoolGoalDiff, setEditPoolGoalDiff] = useState("4");
+  const [editPoolResult, setEditPoolResult] = useState("3");
 
   const { data: isAdmin, isLoading: roleLoading } = useQuery({
     queryKey: ["is-admin", user?.id],
@@ -549,6 +568,106 @@ export default function AdminDashboard() {
     staleTime: 120_000,
   });
 
+  // Aankondiging ophalen
+  const { data: announcementData, refetch: refetchAnnouncement } = useQuery({
+    queryKey: ["admin-announcement"],
+    queryFn: async () => {
+      const { data } = await supabase.from("system_settings").select("value").eq("key", "announcement").maybeSingle();
+      return data?.value as { text: string; active: boolean; type: string } | null;
+    },
+    enabled: isAdmin === true,
+    onSuccess: (d: any) => {
+      if (d) {
+        setAnnouncementText(d.text || "");
+        setAnnouncementType(d.type || "info");
+        setAnnouncementActive(d.active || false);
+      }
+    },
+  } as any);
+
+  // Alle wedstrijden voor analytics dropdown
+  const { data: allMatchesForAnalytics } = useQuery({
+    queryKey: ["admin-all-matches-analytics"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("matches")
+        .select("id, kickoff_utc, status, home_score, away_score, home_team:teams!matches_home_team_id_fkey(short_name, flag_url), away_team:teams!matches_away_team_id_fkey(short_name, flag_url)")
+        .order("kickoff_utc", { ascending: false });
+      return data || [];
+    },
+    enabled: isAdmin === true && tab === "analytics",
+    staleTime: 120_000,
+  });
+
+  // Voorspellingsverdeling per wedstrijd
+  const { data: predDistribution, isLoading: distLoading } = useQuery({
+    queryKey: ["admin-pred-dist", analyticsMatchId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_match_prediction_distribution", { p_match_id: analyticsMatchId });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin === true && !!analyticsMatchId,
+    staleTime: 60_000,
+  });
+
+  // Pool leden + punten (bij expand)
+  const { data: poolMemberStats, isLoading: poolMemberStatsLoading } = useQuery({
+    queryKey: ["admin-pool-member-stats", poolMembersExpanded],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_pool_leaderboard_admin", { p_pool_id: poolMembersExpanded });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin === true && !!poolMembersExpanded,
+    staleTime: 60_000,
+  });
+
+  // Bonus vragen
+  const { data: bonusQuestions, isLoading: bonusLoading, refetch: refetchBonus } = useQuery({
+    queryKey: ["admin-bonus-questions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bonus_questions")
+        .select("*")
+        .order("closes_at", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin === true && tab === "bonus",
+    staleTime: 60_000,
+  });
+
+  // Berichten (alle poules)
+  const { data: allMessages, isLoading: messagesLoading, refetch: refetchMessages } = useQuery({
+    queryKey: ["admin-all-messages"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pool_messages")
+        .select("id, message, created_at, user_id, pool_id, profiles(name), pools(name)")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin === true && tab === "berichten",
+    staleTime: 30_000,
+  });
+
+  // User roles (voor promote/demote)
+  const { data: userRoles, refetch: refetchRoles } = useQuery({
+    queryKey: ["admin-user-roles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_roles").select("user_id, role");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin === true && tab === "beheer",
+    staleTime: 60_000,
+  });
+
+  const adminUserIds = useMemo(() => new Set((userRoles || []).filter((r: any) => r.role === "admin").map((r: any) => r.user_id)), [userRoles]);
+
   const errorLogs = useMemo(() => getErrorLogs(), [tab]);
 
   // Admin actions
@@ -631,6 +750,118 @@ export default function AdminDashboard() {
     onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
   });
 
+  // Aankondiging opslaan
+  const saveAnnouncement = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("system_settings").upsert({
+        key: "announcement",
+        value: { text: announcementText, active: announcementActive, type: announcementType },
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast({ title: "Aankondiging opgeslagen" }); refetchAnnouncement(); },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+  });
+
+  // Poule bewerken opslaan
+  const updatePool = useMutation({
+    mutationFn: async (poolId: string) => {
+      const { error } = await supabase.from("pools").update({
+        name: editPoolName,
+        privacy: editPoolPrivacy,
+        prize_text: editPoolPrize || null,
+        scoring_rules_json: {
+          exact: Number(editPoolExact),
+          goal_diff: Number(editPoolGoalDiff),
+          result: Number(editPoolResult),
+        },
+      }).eq("id", poolId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Poule bijgewerkt" });
+      setEditingPool(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-all-pools"] });
+    },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+  });
+
+  // Lid verwijderen uit poule
+  const kickMember = useMutation({
+    mutationFn: async ({ poolId, userId }: { poolId: string; userId: string }) => {
+      const { error } = await supabase.from("pool_members").delete().eq("pool_id", poolId).eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Lid verwijderd" });
+      queryClient.invalidateQueries({ queryKey: ["admin-pool-member-stats", poolMembersExpanded] });
+      queryClient.invalidateQueries({ queryKey: ["admin-all-pools"] });
+    },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+  });
+
+  // Invite code resetten
+  const resetInviteCode = useMutation({
+    mutationFn: async (poolId: string) => {
+      const { data, error } = await supabase.rpc("admin_reset_invite_code", { p_pool_id: poolId });
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: (newCode) => {
+      toast({ title: "Invite code gereset", description: `Nieuwe code: ${newCode}` });
+      queryClient.invalidateQueries({ queryKey: ["admin-all-pools"] });
+    },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+  });
+
+  // Gebruiker promoveren naar admin
+  const promoteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.from("user_roles").upsert({ user_id: userId, role: "admin" });
+      if (error) throw error;
+    },
+    onSuccess: () => { toast({ title: "Admin-rol toegekend" }); refetchRoles(); },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+  });
+
+  // Gebruiker degraderen
+  const demoteUser = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin");
+      if (error) throw error;
+    },
+    onSuccess: () => { toast({ title: "Admin-rol verwijderd" }); refetchRoles(); },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+  });
+
+  // Bonus punten toekennen
+  const awardBonus = useMutation({
+    mutationFn: async ({ questionId, answer }: { questionId: string; answer: string }) => {
+      const { data, error } = await supabase.rpc("admin_award_bonus_points", {
+        p_question_id: questionId,
+        p_correct_answer: answer,
+      });
+      if (error) throw error;
+      return data as number;
+    },
+    onSuccess: (count) => {
+      toast({ title: "Bonuspunten toegekend", description: `${count} voorspelling(en) beloond.` });
+      refetchBonus();
+    },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+  });
+
+  // Bericht verwijderen
+  const deleteMessage = useMutation({
+    mutationFn: async (msgId: string) => {
+      const { error } = await supabase.from("pool_messages").delete().eq("id", msgId);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast({ title: "Bericht verwijderd" }); refetchMessages(); },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+  });
+
   useEffect(() => {
     if (!authLoading && !user) navigate("/login");
   }, [authLoading, user, navigate]);
@@ -650,13 +881,17 @@ export default function AdminDashboard() {
     );
   }
 
-  const tabs = [
-    { key: "overview" as const, label: "Overzicht" },
-    { key: "scores" as const, label: "Resultaten" },
-    { key: "stats" as const, label: "Stats" },
-    { key: "beheer" as const, label: "Beheer" },
-    { key: "poules" as const, label: "Poules" },
-    { key: "ranglijst" as const, label: "Ranglijst" },
+  const tabs: { key: TabKey; label: string; icon?: any }[] = [
+    { key: "overview",   label: "Overzicht" },
+    { key: "scores",     label: "Wedstrijden" },
+    { key: "poules",     label: "Poules" },
+    { key: "beheer",     label: "Gebruikers" },
+    { key: "analytics",  label: "Analytics" },
+    { key: "bonus",      label: "Bonus" },
+    { key: "berichten",  label: "Berichten" },
+    { key: "ranglijst",  label: "Ranglijst" },
+    { key: "stats",      label: "Stats" },
+    { key: "systeem",    label: "Systeem" },
   ];
 
   const filteredUsers = useMemo(() => {
@@ -784,94 +1019,73 @@ export default function AdminDashboard() {
             </Card>
           )}
 
-          {/* Quick Actions */}
+          {/* Systeemaankondiging */}
           <div>
-            <h2 className="text-sm font-semibold text-muted-foreground mb-3">Snelle acties</h2>
-            <div className="space-y-2">
-              <Button
-                variant="outline"
-                className="h-auto py-3 px-4 flex items-center gap-3 w-full justify-start"
-                onClick={() => setTab("scores")}
-              >
-                <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="h-4 w-4" />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-medium">Resultaten invullen</p>
-                  <p className="text-[10px] text-muted-foreground">Scores handmatig invoeren</p>
-                </div>
-              </Button>
-
-              <ConfirmedAction
-                label="Punten herberekenen"
-                description="Herbereken points_awarded voor alle gebruikers."
-                icon={RefreshCw}
-                onConfirm={() => recalcAll.mutate()}
-                isPending={recalcAll.isPending}
-              />
-
-              <ConfirmedAction
-                label="Check Early Bird"
-                description="Ken +10 bonus toe aan gebruikers die alles ingevuld hebben."
-                icon={UserCheck}
-                onConfirm={() => checkEarlyBird.mutate()}
-                isPending={checkEarlyBird.isPending}
-              />
-
-              <Button
-                variant="outline"
-                className="h-auto py-3 px-4 flex items-center gap-3 w-full justify-start"
-                onClick={() => backupMutation.mutate()}
-                disabled={backupMutation.isPending}
-              >
-                <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                  <Download className="h-4 w-4" />
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-medium">{backupMutation.isPending ? "Downloaden..." : "Download backup"}</p>
-                  <p className="text-[10px] text-muted-foreground">Alle data als JSON downloaden</p>
-                </div>
-              </Button>
-            </div>
-          </div>
-
-          {/* Restore Backup */}
-          <div>
-            <h2 className="text-sm font-semibold text-muted-foreground mb-3">Backup herstellen</h2>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+              <Megaphone className="h-4 w-4" /> Systeemaankondiging
+            </h2>
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <FileJson className="h-4 w-4 text-muted-foreground" />
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={(e) => setRestoreFile(e.target.files?.[0] || null)}
-                    className="text-xs"
-                  />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium">Actief</span>
+                  <button
+                    onClick={() => setAnnouncementActive(!announcementActive)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${announcementActive ? "bg-primary" : "bg-muted"}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${announcementActive ? "translate-x-6" : "translate-x-1"}`} />
+                  </button>
                 </div>
-                {restoreFile && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm" className="w-full" disabled={restoreMutation.isPending}>
-                        {restoreMutation.isPending ? "Herstellen..." : `Herstel uit ${restoreFile.name}`}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Backup herstellen?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Dit overschrijft bestaande data. Weet je het zeker?
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => restoreMutation.mutate()}>Herstellen</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
+                <Select value={announcementType} onValueChange={(v: any) => setAnnouncementType(v)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="info">ℹ️ Info</SelectItem>
+                    <SelectItem value="warning">⚠️ Waarschuwing</SelectItem>
+                    <SelectItem value="success">✅ Succes</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="Tekst van de aankondiging..."
+                  value={announcementText}
+                  onChange={(e) => setAnnouncementText(e.target.value)}
+                  className="h-9 text-sm"
+                />
+                <Button
+                  size="sm" className="w-full gradient-primary text-primary-foreground"
+                  onClick={() => saveAnnouncement.mutate()}
+                  disabled={saveAnnouncement.isPending}
+                >
+                  {saveAnnouncement.isPending ? "Opslaan..." : "Aankondiging opslaan"}
+                </Button>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Quick Links */}
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-3">Snelle navigatie</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { key: "scores", icon: CheckCircle2, label: "Resultaten", sub: "Scores invoeren" },
+                { key: "poules", icon: Trophy, label: "Poules", sub: "Alle poules" },
+                { key: "beheer", icon: Users, label: "Gebruikers", sub: "Accounts beheren" },
+                { key: "systeem", icon: Settings, label: "Systeem", sub: "Tools & backup" },
+              ] as const).map(({ key, icon: Icon, label, sub }) => (
+                <Button
+                  key={key}
+                  variant="outline"
+                  className="h-auto py-3 px-3 flex items-center gap-2 justify-start"
+                  onClick={() => setTab(key)}
+                >
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-medium">{label}</p>
+                    <p className="text-[10px] text-muted-foreground">{sub}</p>
+                  </div>
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -1026,43 +1240,145 @@ export default function AdminDashboard() {
                             {p.profiles?.name && <span className="ml-1">· door {p.profiles.name}</span>}
                           </p>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="shrink-0 h-7 text-xs"
-                          onClick={() => setExpandedPool(isExpanded ? null : p.id)}
-                        >
-                          {isExpanded ? "Inklappen" : "Leden"}
-                        </Button>
+                        <div className="flex gap-1.5 shrink-0">
+                          <Button size="sm" variant="outline" className="h-7 text-xs px-2"
+                            onClick={() => {
+                              setEditingPool(p);
+                              setEditPoolName(p.name);
+                              setEditPoolPrivacy(p.privacy || "private");
+                              setEditPoolPrize(p.prize_text || "");
+                              const rules = p.scoring_rules_json || {};
+                              setEditPoolExact(String(rules.exact ?? 6));
+                              setEditPoolGoalDiff(String(rules.goal_diff ?? 4));
+                              setEditPoolResult(String(rules.result ?? 3));
+                            }}
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-7 text-xs px-2"
+                            onClick={() => setPoolMembersExpanded(poolMembersExpanded === p.id ? null : p.id)}
+                          >
+                            {poolMembersExpanded === p.id ? "Inklappen" : "Leden"}
+                          </Button>
+                        </div>
                       </div>
 
-                      {isExpanded && (
-                        <div className="pt-1 border-t border-border/50">
-                          {expandedPoolMembersLoading ? (
+                      {/* Pool bewerken dialog */}
+                      <Dialog open={editingPool?.id === p.id} onOpenChange={(open) => !open && setEditingPool(null)}>
+                        <DialogContent className="max-w-sm">
+                          <DialogHeader>
+                            <DialogTitle>Poule bewerken</DialogTitle>
+                            <DialogDescription>{p.name}</DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-3 pt-1">
                             <div className="space-y-1">
-                              {[1, 2].map(i => <Skeleton key={i} className="h-6 rounded-lg" />)}
+                              <label className="text-xs font-medium text-muted-foreground">Naam</label>
+                              <Input value={editPoolName} onChange={e => setEditPoolName(e.target.value)} className="h-9" />
                             </div>
-                          ) : (expandedPoolMembers || []).length === 0 ? (
-                            <p className="text-xs text-muted-foreground py-1">Geen leden gevonden.</p>
-                          ) : (
-                            <div className="space-y-1.5">
-                              {(expandedPoolMembers || []).map((m: any) => (
-                                <div key={m.user_id} className="flex items-center justify-between gap-2 text-xs">
-                                  <span className="truncate font-medium">
-                                    {m.profiles?.name || m.user_id.slice(0, 8) + "..."}
-                                  </span>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    <Badge variant={m.role === "admin" ? "default" : "outline"} className="text-[9px] px-1.5 py-0">
-                                      {m.role}
-                                    </Badge>
-                                    <span className="text-muted-foreground text-[10px]">
-                                      {m.joined_at ? formatNLDate(m.joined_at) : "—"}
-                                    </span>
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium text-muted-foreground">Zichtbaarheid</label>
+                              <Select value={editPoolPrivacy} onValueChange={setEditPoolPrivacy}>
+                                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="private">Privé</SelectItem>
+                                  <SelectItem value="public">Publiek</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium text-muted-foreground">Prijs omschrijving</label>
+                              <Input value={editPoolPrize} onChange={e => setEditPoolPrize(e.target.value)} className="h-9" placeholder="bijv. Fles wijn" />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium text-muted-foreground">Puntentelling</label>
+                              <div className="grid grid-cols-3 gap-2">
+                                {[
+                                  { label: "Exact", value: editPoolExact, set: setEditPoolExact },
+                                  { label: "Doelversch.", value: editPoolGoalDiff, set: setEditPoolGoalDiff },
+                                  { label: "Uitslag", value: editPoolResult, set: setEditPoolResult },
+                                ].map(({ label, value, set }) => (
+                                  <div key={label} className="space-y-0.5">
+                                    <label className="text-[10px] text-muted-foreground">{label}</label>
+                                    <Input type="number" min={0} max={20} value={value} onChange={e => set(e.target.value)} className="h-8 text-center text-sm" />
                                   </div>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
+                            <Button className="w-full gradient-primary text-primary-foreground"
+                              onClick={() => updatePool.mutate(p.id)} disabled={updatePool.isPending}>
+                              {updatePool.isPending ? "Opslaan..." : "Opslaan"}
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      {/* Leden met punten */}
+                      {poolMembersExpanded === p.id && (
+                        <div className="pt-2 border-t border-border/50 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Leden & Punten</p>
+                            <button
+                              className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1"
+                              onClick={() => { resetInviteCode.mutate(p.id); }}
+                              disabled={resetInviteCode.isPending}
+                            >
+                              <RotateCcw className="h-3 w-3" /> Reset invite
+                            </button>
+                          </div>
+                          {poolMemberStatsLoading ? (
+                            <div className="space-y-1">{[1,2].map(i => <Skeleton key={i} className="h-7 rounded-lg" />)}</div>
+                          ) : (poolMemberStats || []).length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-1">Geen leden.</p>
+                          ) : (
+                            (poolMemberStats as any[]).map((m: any, idx: number) => (
+                              <div key={m.user_id} className="flex items-center justify-between gap-2 text-xs py-1 border-b border-border/30 last:border-0">
+                                <span className="text-muted-foreground w-5 shrink-0">#{idx + 1}</span>
+                                <span className="truncate font-medium flex-1">{m.name || m.user_id.slice(0, 8)}</span>
+                                <span className="font-bold text-primary shrink-0">{m.total_points} pt</span>
+                                <Badge variant={m.role === "admin" ? "default" : "outline"} className="text-[9px] px-1.5 py-0 shrink-0">{m.role}</Badge>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <button className="text-destructive hover:opacity-70 shrink-0 ml-1">
+                                      <LogOut className="h-3.5 w-3.5" />
+                                    </button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Lid verwijderen?</AlertDialogTitle>
+                                      <AlertDialogDescription>{m.name} uit {p.name} verwijderen?</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => kickMember.mutate({ poolId: p.id, userId: m.user_id })}>Verwijderen</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            ))
                           )}
+                          <div className="flex gap-1.5 pt-1">
+                            <Button variant="outline" size="sm" className="h-7 text-[10px] flex-1"
+                              onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/join/${p.invite_code}`); toast({ title: "Link gekopieerd!" }); }}>
+                              <Copy className="h-3 w-3 mr-1" /> Invite link
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm" className="h-7 text-[10px]">
+                                  <Trash2 className="h-3 w-3 mr-1" /> Verwijder poule
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Poule verwijderen?</AlertDialogTitle>
+                                  <AlertDialogDescription>Alle data gaat verloren. Weet je het zeker?</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deletePool.mutate(p.id)}>Verwijderen</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </div>
                       )}
                     </CardContent>
@@ -1149,11 +1465,17 @@ export default function AdminDashboard() {
                     const lastLogin = u.last_login_at ? new Date(u.last_login_at) : null;
                     const isActive = lastLogin ? (Date.now() - lastLogin.getTime()) <= 7 * 24 * 60 * 60 * 1000 : false;
                     const isSelf = user?.id === u.id;
+                    const isUserAdmin = adminUserIds.has(u.id);
+                    const isExpanded = expandedUser === u.id;
                     return (
-                      <Card key={u.id} className="border-0 shadow-sm">
-                        <CardContent className="p-3 flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{u.name || u.email || "Onbekend"}</p>
+                      <Card key={u.id} className={`border-0 shadow-sm ${isUserAdmin ? "border-l-4 border-l-amber-400" : ""}`}>
+                        <CardContent className="p-3 space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1" onClick={() => setExpandedUser(isExpanded ? null : u.id)} style={{cursor:"pointer"}}>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium truncate">{u.name || u.email || "Onbekend"}</p>
+                              {isUserAdmin && <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
+                            </div>
                             <p className="text-[10px] text-muted-foreground truncate">{u.email || u.id}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <Badge variant={isActive ? "secondary" : "outline"} className="text-[9px] px-1.5 py-0">
@@ -1173,23 +1495,16 @@ export default function AdminDashboard() {
                           </div>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="shrink-0"
+                              <Button variant="destructive" size="sm" className="shrink-0"
                                 disabled={deleteUser.isPending || isSelf}
-                                title={isSelf ? "Je kunt jezelf niet verwijderen" : "Gebruiker verwijderen"}
-                              >
+                                title={isSelf ? "Je kunt jezelf niet verwijderen" : "Gebruiker verwijderen"}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Gebruiker verwijderen?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Dit verwijdert alle data van deze gebruiker (predictions, pools en berichten).
-                                  Weet je het zeker?
-                                </AlertDialogDescription>
+                                <AlertDialogDescription>Dit verwijdert alle data van deze gebruiker. Weet je het zeker?</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Annuleren</AlertDialogCancel>
@@ -1197,6 +1512,55 @@ export default function AdminDashboard() {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
+                          </div>
+
+                          {/* Uitgebreide gebruikersinfo */}
+                          {isExpanded && (
+                            <div className="pt-2 border-t border-border/50 space-y-2">
+                              <div className="flex gap-2">
+                                {!isSelf && (
+                                  isUserAdmin ? (
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="outline" size="sm" className="h-7 text-xs flex-1 border-amber-300 text-amber-700 hover:bg-amber-50">
+                                          <Crown className="h-3 w-3 mr-1" /> Admin verwijderen
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Admin-rol verwijderen?</AlertDialogTitle>
+                                          <AlertDialogDescription>Weet je zeker dat je {u.name || u.email} de adminrechten wil ontnemen?</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => demoteUser.mutate(u.id)}>Verwijderen</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  ) : (
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="outline" size="sm" className="h-7 text-xs flex-1">
+                                          <Crown className="h-3 w-3 mr-1" /> Admin maken
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>Admin maken?</AlertDialogTitle>
+                                          <AlertDialogDescription>{u.name || u.email} krijgt volledige admin-rechten.</AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => promoteUser.mutate(u.id)}>Bevestigen</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  )
+                                )}
+                              </div>
+                              <p className="text-[10px] text-muted-foreground">ID: {u.id}</p>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     );
@@ -1281,6 +1645,281 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* ==================== ANALYTICS TAB ==================== */}
+      {tab === "analytics" && (
+        <div className="space-y-4">
+          <Card className="border-0 shadow-sm bg-muted/50">
+            <CardContent className="p-3 text-xs text-muted-foreground">
+              Selecteer een wedstrijd om te zien hoe gebruikers hebben voorspeld.
+            </CardContent>
+          </Card>
+          <Select value={analyticsMatchId} onValueChange={setAnalyticsMatchId}>
+            <SelectTrigger className="h-10">
+              <SelectValue placeholder="Kies een wedstrijd..." />
+            </SelectTrigger>
+            <SelectContent>
+              {(allMatchesForAnalytics || []).map((m: any) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.home_team?.flag_url} {m.home_team?.short_name} vs {m.away_team?.flag_url} {m.away_team?.short_name}
+                  {m.home_score != null ? ` (${m.home_score}-${m.away_score})` : ""} · {formatNLDate(m.kickoff_utc)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {analyticsMatchId && (
+            <>
+              {distLoading ? (
+                <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-10 rounded-xl" />)}</div>
+              ) : (predDistribution || []).length === 0 ? (
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-4 text-center text-sm text-muted-foreground">Nog geen voorspellingen.</CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">
+                    {(predDistribution as any[]).reduce((s: number, r: any) => s + Number(r.cnt), 0)} unieke voorspellers
+                  </p>
+                  {(predDistribution as any[]).map((row: any, i: number) => {
+                    const selectedMatch = (allMatchesForAnalytics || []).find((m: any) => m.id === analyticsMatchId);
+                    const isExact = selectedMatch?.home_score === row.home_pred && selectedMatch?.away_score === row.away_pred;
+                    return (
+                      <Card key={i} className={`border-0 shadow-sm ${isExact ? "border-l-4 border-l-primary" : ""}`}>
+                        <CardContent className="p-3 flex items-center gap-3">
+                          <span className="text-sm font-bold font-display w-16 text-center shrink-0">
+                            {row.home_pred} – {row.away_pred}
+                          </span>
+                          <div className="flex-1">
+                            <div className="h-2 rounded-full bg-muted overflow-hidden">
+                              <div className="h-2 rounded-full gradient-primary" style={{ width: `${row.pct}%` }} />
+                            </div>
+                          </div>
+                          <span className="text-xs text-muted-foreground shrink-0 w-20 text-right">
+                            {row.cnt}× ({row.pct}%)
+                          </span>
+                          {isExact && <Badge className="gradient-primary text-primary-foreground text-[9px] shrink-0">Exact</Badge>}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ==================== BONUS TAB ==================== */}
+      {tab === "bonus" && (
+        <div className="space-y-4">
+          <Card className="border-0 shadow-sm bg-muted/50">
+            <CardContent className="p-3 text-xs text-muted-foreground">
+              Vul het correcte antwoord in en klik "Toekennen" om bonuspunten automatisch te verdelen.
+            </CardContent>
+          </Card>
+          {bonusLoading ? (
+            <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}</div>
+          ) : (bonusQuestions || []).length === 0 ? (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 text-center text-sm text-muted-foreground">Geen bonusvragen gevonden.</CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {(bonusQuestions || []).map((q: any) => {
+                const closed = new Date(q.closes_at) < new Date();
+                const answered = !!q.correct_answer;
+                return (
+                  <Card key={q.id} className={`border-0 shadow-sm ${answered ? "border-l-4 border-l-primary" : closed ? "border-l-4 border-l-amber-400" : ""}`}>
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-medium flex-1">{q.question}</p>
+                        <div className="flex gap-1 shrink-0">
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0">{q.points} pt</Badge>
+                          <Badge variant={answered ? "secondary" : closed ? "destructive" : "outline"} className="text-[9px] px-1.5 py-0">
+                            {answered ? "Beantwoord" : closed ? "Gesloten" : "Open"}
+                          </Badge>
+                        </div>
+                      </div>
+                      {q.correct_answer && (
+                        <p className="text-[10px] text-primary font-medium">✓ Antwoord: {q.correct_answer}</p>
+                      )}
+                      <p className="text-[10px] text-muted-foreground">Sluit: {formatNLDateTime(q.closes_at)}</p>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Correct antwoord..."
+                          value={bonusAnswers[q.id] ?? q.correct_answer ?? ""}
+                          onChange={(e) => setBonusAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                          className="h-8 text-xs flex-1"
+                        />
+                        <Button
+                          size="sm" className="h-8 text-xs gradient-primary text-primary-foreground shrink-0"
+                          disabled={awardBonus.isPending || !bonusAnswers[q.id]}
+                          onClick={() => awardBonus.mutate({ questionId: q.id, answer: bonusAnswers[q.id] })}
+                        >
+                          Toekennen
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================== BERICHTEN TAB ==================== */}
+      {tab === "berichten" && (
+        <div className="space-y-3">
+          <div className="flex gap-2 items-center">
+            <Select value={msgPoolFilter} onValueChange={setMsgPoolFilter}>
+              <SelectTrigger className="h-9 flex-1 text-xs">
+                <SelectValue placeholder="Alle poules" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle poules</SelectItem>
+                {[...new Map((allMessages || []).map((m: any) => [m.pool_id, m.pools?.name])).entries()].map(([pid, pname]) => (
+                  <SelectItem key={pid} value={pid}>{pname || pid}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" className="h-9" onClick={() => refetchMessages()}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">{(allMessages || []).length} recente berichten</p>
+          {messagesLoading ? (
+            <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-14 rounded-xl" />)}</div>
+          ) : (
+            <div className="space-y-2">
+              {(allMessages || [])
+                .filter((m: any) => msgPoolFilter === "all" || m.pool_id === msgPoolFilter)
+                .map((m: any) => (
+                  <Card key={m.id} className="border-0 shadow-sm">
+                    <CardContent className="p-3 flex items-start gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-medium">{(m.profiles as any)?.name || "?"}</span>
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0">{(m.pools as any)?.name}</Badge>
+                          <span className="text-[10px] text-muted-foreground">{formatNLDateTime(m.created_at)}</span>
+                        </div>
+                        <p className="text-sm mt-0.5 break-words">{m.message}</p>
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="shrink-0 h-7 w-7 p-0 text-destructive hover:bg-destructive/10">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Bericht verwijderen?</AlertDialogTitle>
+                            <AlertDialogDescription>Dit kan niet ongedaan worden gemaakt.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteMessage.mutate(m.id)}>Verwijderen</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================== SYSTEEM TAB ==================== */}
+      {tab === "systeem" && (
+        <div className="space-y-5">
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-3">Systeemtools</h2>
+            <div className="space-y-2">
+              <ConfirmedAction
+                label="Punten herberekenen"
+                description="Herbereken points_awarded voor alle gebruikers."
+                icon={RefreshCw}
+                onConfirm={() => recalcAll.mutate()}
+                isPending={recalcAll.isPending}
+              />
+              <ConfirmedAction
+                label="Check Early Bird"
+                description="Ken +10 bonus toe aan gebruikers die alles ingevuld hebben."
+                icon={UserCheck}
+                onConfirm={() => checkEarlyBird.mutate()}
+                isPending={checkEarlyBird.isPending}
+              />
+              <Button
+                variant="outline"
+                className="h-auto py-3 px-4 flex items-center gap-3 w-full justify-start"
+                onClick={() => backupMutation.mutate()}
+                disabled={backupMutation.isPending}
+              >
+                <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Download className="h-4 w-4" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium">{backupMutation.isPending ? "Downloaden..." : "Download backup"}</p>
+                  <p className="text-[10px] text-muted-foreground">Alle data als JSON downloaden</p>
+                </div>
+              </Button>
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-3">Backup herstellen</h2>
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <FileJson className="h-4 w-4 text-muted-foreground" />
+                  <input type="file" accept=".json" onChange={(e) => setRestoreFile(e.target.files?.[0] || null)} className="text-xs" />
+                </div>
+                {restoreFile && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm" className="w-full" disabled={restoreMutation.isPending}>
+                        {restoreMutation.isPending ? "Herstellen..." : `Herstel uit ${restoreFile.name}`}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Backup herstellen?</AlertDialogTitle>
+                        <AlertDialogDescription>Dit overschrijft bestaande data. Weet je het zeker?</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => restoreMutation.mutate()}>Herstellen</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Error logs */}
+          {errorLogs.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-muted-foreground mb-3">Client error logs</h2>
+              <div className="space-y-1">
+                {errorLogs.slice(0, 20).map((log: any, i: number) => (
+                  <Card key={i} className="border-0 shadow-sm">
+                    <CardContent className="p-2 flex items-center gap-2">
+                      <Badge variant={log.type === "error" ? "destructive" : "outline"} className="text-[9px] shrink-0">
+                        {log.type}
+                      </Badge>
+                      <p className="text-xs font-medium truncate">{log.message}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }
