@@ -474,7 +474,7 @@ export default function AdminDashboard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pools")
-        .select("id, name, created_at, privacy, invite_code, created_by, pool_members(count)")
+        .select("id, name, created_at, privacy, invite_code, created_by, pool_members(count), profiles!pools_created_by_fkey(name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data || [];
@@ -535,49 +535,14 @@ export default function AdminDashboard() {
   const { data: globalRanking, isLoading: rankingLoading } = useQuery({
     queryKey: ["admin-global-ranking"],
     queryFn: async () => {
-      // Fetch all predictions with points awarded
-      const { data, error } = await supabase
-        .from("predictions")
-        .select("user_id, match_id, points_awarded")
-        .not("points_awarded", "is", null);
+      const { data, error } = await supabase.rpc("get_global_ranking", { limit_count: 10 });
       if (error) throw error;
-
-      // Deduplicate by (user_id, match_id), keep max points per user per match
-      const perMatch = new Map<string, number>();
-      for (const row of (data || [])) {
-        const key = `${row.user_id}:${row.match_id}`;
-        const existing = perMatch.get(key) ?? 0;
-        if ((row.points_awarded || 0) > existing) {
-          perMatch.set(key, row.points_awarded || 0);
-        }
-      }
-
-      // Sum per user
-      const totals = new Map<string, number>();
-      for (const [key, pts] of perMatch.entries()) {
-        const uid = key.split(":")[0];
-        totals.set(uid, (totals.get(uid) ?? 0) + pts);
-      }
-
-      const sorted = [...totals.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10);
-
-      if (sorted.length === 0) return [];
-
-      const userIds = sorted.map(([id]) => id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, name, avatar_url")
-        .in("id", userIds);
-      const profileMap = Object.fromEntries((profiles || []).map((p: any) => [p.id, p]));
-
-      return sorted.map(([user_id, total], idx) => ({
-        rank: idx + 1,
-        user_id,
-        total,
-        name: profileMap[user_id]?.name || "Onbekend",
-        avatar_url: profileMap[user_id]?.avatar_url || null,
+      return (data || []).map((row: any) => ({
+        rank: Number(row.rank),
+        user_id: row.user_id,
+        total: Number(row.total_points),
+        name: row.name || "Onbekend",
+        avatar_url: row.avatar_url || null,
       }));
     },
     enabled: isAdmin === true,
@@ -711,6 +676,17 @@ export default function AdminDashboard() {
     if (!q) return list;
     return list.filter((p: any) => p.name?.toLowerCase().includes(q) || p.id?.toLowerCase().includes(q));
   }, [pools, poolSearch]);
+
+  const filteredAllPools = useMemo(() => {
+    const q = poolSearch.trim().toLowerCase();
+    const list = allPools || [];
+    if (!q) return list;
+    return list.filter((p: any) =>
+      p.name?.toLowerCase().includes(q) ||
+      p.id?.toLowerCase().includes(q) ||
+      p.profiles?.name?.toLowerCase().includes(q)
+    );
+  }, [allPools, poolSearch]);
 
   const topLogins = useMemo(() => {
     return [...(adminUsers || [])]
@@ -1007,14 +983,23 @@ export default function AdminDashboard() {
       {/* ==================== POULES TAB ==================== */}
       {tab === "poules" && (
         <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Zoek poule of aanmaker..."
+              value={poolSearch}
+              onChange={(e) => setPoolSearch(e.target.value)}
+              className="pl-9 h-9"
+            />
+          </div>
           <p className="text-xs text-muted-foreground">
-            {allPools?.length ?? 0} poule{(allPools?.length ?? 0) !== 1 ? "s" : ""}
+            {filteredAllPools.length} van {allPools?.length ?? 0} poule{(allPools?.length ?? 0) !== 1 ? "s" : ""}
           </p>
           {allPoolsLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
             </div>
-          ) : (allPools || []).length === 0 ? (
+          ) : filteredAllPools.length === 0 ? (
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4 text-center text-sm text-muted-foreground">
                 Geen poules gevonden.
@@ -1022,7 +1007,7 @@ export default function AdminDashboard() {
             </Card>
           ) : (
             <div className="space-y-2">
-              {(allPools || []).map((p: any) => {
+              {filteredAllPools.map((p: any) => {
                 const memberCount = p.pool_members?.[0]?.count ?? 0;
                 const isExpanded = expandedPool === p.id;
                 return (
@@ -1038,6 +1023,7 @@ export default function AdminDashboard() {
                           </div>
                           <p className="text-[10px] text-muted-foreground mt-0.5">
                             Aangemaakt: {formatNLDate(p.created_at)} · {memberCount} {memberCount === 1 ? "lid" : "leden"}
+                            {p.profiles?.name && <span className="ml-1">· door {p.profiles.name}</span>}
                           </p>
                         </div>
                         <Button
