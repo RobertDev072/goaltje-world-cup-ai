@@ -697,12 +697,17 @@ export default function AdminDashboard() {
   // Admin actions
   const recalcAll = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke("recalc-all");
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await supabase.functions.invoke("recalc-all");
+        if (error) throw new Error(error.message || "Recalc mislukt");
+        return data;
+      } catch (e: any) {
+        throw new Error(e?.message || "Onbekende fout bij herberekening");
+      }
     },
-    onSuccess: () => {
-      toast({ title: "Punten herberekend", description: "Alle punten zijn opnieuw berekend." });
+    onSuccess: (data: any) => {
+      const count = data?.matches_processed ?? "?";
+      toast({ title: "Punten herberekend", description: `${count} wedstrijd(en) verwerkt.` });
       queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
     },
