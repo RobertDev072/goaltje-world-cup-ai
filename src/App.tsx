@@ -25,6 +25,7 @@ const Matches = lazy(() => import("./pages/Matches"));
 const MatchDetail = lazy(() => import("./pages/MatchDetail"));
 const Pool = lazy(() => import("./pages/Pool"));
 const PoolDetail = lazy(() => import("./pages/PoolDetail"));
+const PoolRanking = lazy(() => import("./pages/PoolRanking"));
 const JoinPool = lazy(() => import("./pages/JoinPool"));
 const Bracket = lazy(() => import("./pages/Bracket"));
 const Profile = lazy(() => import("./pages/Profile"));
@@ -130,6 +131,7 @@ const App = () => {
                       <Route path="/app/matches/:id" element={<MatchDetail />} />
                       <Route path="/app/pool" element={<Pool />} />
                       <Route path="/app/pool/:id" element={<PoolDetail />} />
+                      <Route path="/app/pool/:id/ranking" element={<PoolRanking />} />
                       <Route path="/app/bracket" element={<Bracket />} />
                       <Route path="/app/profile" element={<Profile />} />
                       <Route path="/app/admin" element={<AdminDashboard />} />

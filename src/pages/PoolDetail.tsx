@@ -25,7 +25,6 @@ import { CatchUpCalculator } from "@/components/CatchUpCalculator";
 import { SocialShareSheet } from "@/components/SocialShareSheet";
 import { PoolChat } from "@/components/PoolChat";
 import { ShareCard } from "@/components/ShareCard";
-import { VirtualizedLeaderboard } from "@/components/VirtualizedLeaderboard";
 import { TiebreakerInfo } from "@/components/TiebreakerInfo";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -522,17 +521,43 @@ export default function PoolDetail() {
           <TabsTrigger value="members" className="text-xs rounded-lg data-[state=active]:shadow-elevation-1">👥 Leden</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="leaderboard" className="mt-4 space-y-2">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-muted-foreground">{leaderboard?.length || 0} deelnemers</span>
-            <TiebreakerInfo />
-          </div>
+        <TabsContent value="leaderboard" className="mt-4 space-y-3">
+          {/* Top 3 preview */}
           {leaderboard && leaderboard.length > 0 ? (
-            <VirtualizedLeaderboard
-              leaderboard={leaderboard}
-              currentUserId={user?.id}
-              rivalUserId={myMembership?.rival_user_id}
-            />
+            <div className="space-y-2">
+              {leaderboard.slice(0, 3).map((entry, i) => (
+                <Card key={entry.userId} className={cn(
+                  "border-0",
+                  i === 0 ? "shadow-glow-gold ring-1 ring-secondary/30" : "shadow-elevation-1"
+                )}>
+                  {i === 0 && <div className="bg-gradient-to-r from-secondary/20 to-transparent h-0.5" />}
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <span className="text-lg font-bold font-display w-8 text-center shrink-0">
+                      {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
+                    </span>
+                    <div className={cn(
+                      "h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden shrink-0",
+                      i === 0 ? "bg-secondary text-secondary-foreground" : "bg-primary text-primary-foreground"
+                    )}>
+                      {entry.avatar_url
+                        ? <img src={entry.avatar_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                        : entry.name[0]?.toUpperCase() || "?"}
+                    </div>
+                    <p className="flex-1 font-medium text-sm truncate">
+                      {entry.name}
+                      {entry.userId === user?.id && <span className="text-primary ml-1 text-xs">(jij)</span>}
+                    </p>
+                    <span className={cn("font-bold font-display", i === 0 ? "text-secondary" : "text-primary")}>
+                      {entry.points} <span className="text-xs font-normal text-muted-foreground">pt</span>
+                    </span>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {leaderboard.length > 3 && (
+                <p className="text-xs text-center text-muted-foreground">+{leaderboard.length - 3} andere deelnemers</p>
+              )}
+            </div>
           ) : (
             <Card className="border-0 shadow-elevation-1">
               <CardContent className="p-6 text-center text-muted-foreground text-sm">
@@ -541,9 +566,18 @@ export default function PoolDetail() {
             </Card>
           )}
 
+          {/* Naar volledige ranglijst */}
+          <Link to={`/app/pool/${id}/ranking`}>
+            <Button className="w-full gradient-primary text-primary-foreground gap-2">
+              <Trophy className="h-4 w-4" />
+              Bekijk volledige ranglijst
+              <ChevronRight className="h-4 w-4 ml-auto" />
+            </Button>
+          </Link>
+
           {/* Share Card */}
           {myEntry && myPosition && (
-            <div className="mt-4">
+            <div className="mt-2">
               <Card className="border-0 shadow-elevation-1 overflow-hidden">
                 <CardContent className="p-3">
                   <p className="text-xs font-semibold text-muted-foreground mb-2">📸 Deel je score</p>

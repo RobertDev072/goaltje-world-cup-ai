@@ -13,6 +13,7 @@ import { PredictionReminderBanner } from "@/components/PredictionReminderBanner"
 import { getPredictionState, isMissingToday } from "@/lib/predictionStatus";
 import { Calendar, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 type Tab = "aankomend" | "uitslagen";
 
@@ -210,8 +211,22 @@ export default function Matches() {
         <h1 className="text-2xl font-bold font-display">Wedstrijden</h1>
       </motion.div>
 
-      {/* Pool Selector */}
-      {user && <PoolSelector value={selectedPoolId} onChange={setSelectedPoolId} />}
+      {/* Pool Selector + Rang knop */}
+      {user && (
+        <div className="flex gap-2 items-center">
+          <div className="flex-1">
+            <PoolSelector value={selectedPoolId} onChange={setSelectedPoolId} />
+          </div>
+          {activePoolId && (
+            <Link to={`/app/pool/${activePoolId}/ranking`}>
+              <button className="flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap">
+                <Trophy className="h-4 w-4" />
+                Rang
+              </button>
+            </Link>
+          )}
+        </div>
+      )}
 
       {user && activePoolId && (
         <PredictionReminderBanner
