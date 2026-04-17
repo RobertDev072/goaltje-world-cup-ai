@@ -578,6 +578,8 @@ export default function AdminDashboard() {
       return profiles.map((p: any) => {
         const sess = sessionMap.get(p.user_id) || { login_count: 0, last_login_at: null, last_device: null, last_ip: null };
         const lastLogin = sess.last_login_at ? new Date(sess.last_login_at) : null;
+        const registeredAt = p.created_at ? new Date(p.created_at) : null;
+        const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
         return {
           id: p.user_id,
           name: p.name,
@@ -588,7 +590,8 @@ export default function AdminDashboard() {
           last_device: sess.last_device,
           last_ip: sess.last_ip,
           pool_count: poolCountMap.get(p.user_id) || 0,
-          is_active: lastLogin ? (Date.now() - lastLogin.getTime()) <= 7 * 24 * 60 * 60 * 1000 : false,
+          is_active: (lastLogin && (Date.now() - lastLogin.getTime()) <= SEVEN_DAYS)
+            || (registeredAt && (Date.now() - registeredAt.getTime()) <= SEVEN_DAYS),
         };
       });
     },

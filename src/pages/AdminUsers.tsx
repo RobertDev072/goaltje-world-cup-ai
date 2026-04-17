@@ -106,7 +106,10 @@ export default function AdminUsers() {
       return profiles.map((p: any) => {
         const s = sessionMap.get(p.user_id) || { count: 0, last_at: null, device: null, ip: null };
         const lastLogin = s.last_at ? new Date(s.last_at) : null;
-        const isActive = lastLogin ? (Date.now() - lastLogin.getTime()) <= 7 * 24 * 60 * 60 * 1000 : false;
+        const registeredAt = p.created_at ? new Date(p.created_at) : null;
+        const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+        const isActive = (lastLogin && (Date.now() - lastLogin.getTime()) <= SEVEN_DAYS)
+          || (registeredAt && (Date.now() - registeredAt.getTime()) <= SEVEN_DAYS);
         return {
           id: p.user_id,
           name: p.name || "—",
