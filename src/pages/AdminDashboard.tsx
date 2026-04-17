@@ -539,11 +539,9 @@ export default function AdminDashboard() {
   const { data: adminUsers, isLoading: usersLoading, refetch: refetchUsers } = useQuery({
     queryKey: ["admin-users"],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("admin-users", {
-        body: { action: "list", limit: 500, offset: 0 },
-      });
+      const { data, error } = await supabase.rpc("get_admin_users");
       if (error) throw error;
-      return (data?.users || []) as any[];
+      return (data || []) as any[];
     },
     enabled: isAdmin === true,
     staleTime: 60_000,
@@ -893,9 +891,9 @@ export default function AdminDashboard() {
     const list = adminUsers || [];
     if (!q) return list;
     return list.filter((u: any) =>
-      u.email?.toLowerCase().includes(q) ||
       u.name?.toLowerCase().includes(q) ||
-      u.id?.toLowerCase().includes(q)
+      u.id?.toLowerCase().includes(q) ||
+      u.last_ip?.toLowerCase().includes(q)
     );
   }, [adminUsers, userSearch]);
 
@@ -1392,11 +1390,13 @@ export default function AdminDashboard() {
       {tab === "beheer" && (
         <div className="space-y-5">
           <div>
-            <h2 className="text-sm font-semibold text-muted-foreground mb-3">Gebruikers</h2>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-3">
+              Gebruikers {adminUsers && <span className="font-normal">({adminUsers.length})</span>}
+            </h2>
             <div className="relative mb-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Zoek op naam, email of id..."
+                placeholder="Zoek op naam, ip of id..."
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
                 className="pl-9 h-9"
@@ -1426,23 +1426,28 @@ export default function AdminDashboard() {
                           <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0 flex-1" onClick={() => setExpandedUser(isExpanded ? null : u.id)} style={{cursor:"pointer"}}>
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium truncate">{u.name || u.email || "Onbekend"}</p>
+                              <p className="text-sm font-medium truncate">{u.name || "Onbekend"}</p>
                               {isUserAdmin && <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
                             </div>
-                            <p className="text-[10px] text-muted-foreground truncate">{u.email || u.id}</p>
-                            <div className="flex items-center gap-2 mt-1">
+                            <p className="text-[10px] text-muted-foreground truncate font-mono">{u.id}</p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
                               <Badge variant={isActive ? "secondary" : "outline"} className="text-[9px] px-1.5 py-0">
-                                {isActive ? "Actief (7d)" : "Inactief"}
+                                {isActive ? "✓ Actief" : "Inactief"}
                               </Badge>
-                              <span className="text-[10px] text-muted-foreground">Logins: {u.login_count ?? 0}</span>
-                              <span className="text-[10px] text-muted-foreground">Pools: {u.pool_count ?? 0}</span>
+                              <span className="text-[10px] text-muted-foreground">🔑 {u.login_count ?? 0}x</span>
+                              <span className="text-[10px] text-muted-foreground">🏆 {u.pool_count ?? 0} pools</span>
                             </div>
-                            <p className="text-[10px] text-muted-foreground mt-1">
-                              Laatste login: {u.last_login_at ? formatNLDateTime(u.last_login_at) : "—"}
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              Login: {u.last_login_at ? formatNLDateTime(u.last_login_at) : "—"}
                             </p>
+                            {u.last_ip && (
+                              <p className="text-[10px] text-muted-foreground truncate">
+                                IP: {u.last_ip}
+                              </p>
+                            )}
                             {u.last_device && (
                               <p className="text-[10px] text-muted-foreground truncate">
-                                Device: {u.last_device}
+                                {u.last_device}
                               </p>
                             )}
                           </div>
@@ -1482,7 +1487,7 @@ export default function AdminDashboard() {
                                       <AlertDialogContent>
                                         <AlertDialogHeader>
                                           <AlertDialogTitle>Admin-rol verwijderen?</AlertDialogTitle>
-                                          <AlertDialogDescription>Weet je zeker dat je {u.name || u.email} de adminrechten wil ontnemen?</AlertDialogDescription>
+                                          <AlertDialogDescription>Weet je zeker dat je {u.name || "deze gebruiker"} de adminrechten wil ontnemen?</AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                           <AlertDialogCancel>Annuleren</AlertDialogCancel>
@@ -1500,7 +1505,7 @@ export default function AdminDashboard() {
                                       <AlertDialogContent>
                                         <AlertDialogHeader>
                                           <AlertDialogTitle>Admin maken?</AlertDialogTitle>
-                                          <AlertDialogDescription>{u.name || u.email} krijgt volledige admin-rechten.</AlertDialogDescription>
+                                          <AlertDialogDescription>{u.name || "Deze gebruiker"} krijgt volledige admin-rechten.</AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                           <AlertDialogCancel>Annuleren</AlertDialogCancel>
@@ -1529,7 +1534,7 @@ export default function AdminDashboard() {
                   <div className="space-y-1">
                     {topLogins.map((u: any, i: number) => (
                       <div key={u.id} className="flex items-center justify-between text-xs">
-                        <span className="truncate">{i + 1}. {u.name || u.email || "Onbekend"}</span>
+                        <span className="truncate">{i + 1}. {u.name || "Onbekend"}</span>
                         <span className="text-muted-foreground">{u.login_count ?? 0} logins</span>
                       </div>
                     ))}

@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.batch-wk-news]
 verify_jwt = false
+
+[functions.log-login]
+verify_jwt = false
