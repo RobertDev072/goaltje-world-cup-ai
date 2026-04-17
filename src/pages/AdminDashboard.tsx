@@ -862,30 +862,7 @@ export default function AdminDashboard() {
     if (!roleLoading && isAdmin === false) navigate("/app");
   }, [roleLoading, isAdmin, navigate]);
 
-  if (authLoading || roleLoading || !isAdmin) {
-    return (
-      <div className="max-w-lg mx-auto px-4 pt-6 space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-2 gap-3">
-          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}
-        </div>
-      </div>
-    );
-  }
-
-  const tabs: { key: TabKey; label: string; icon?: any }[] = [
-    { key: "overview",   label: "Overzicht" },
-    { key: "scores",     label: "Wedstrijden" },
-    { key: "poules",     label: "Poules" },
-    { key: "beheer",     label: "Gebruikers" },
-    { key: "analytics",  label: "Analytics" },
-    { key: "bonus",      label: "Bonus" },
-    { key: "berichten",  label: "Berichten" },
-    { key: "ranglijst",  label: "Ranglijst" },
-    { key: "stats",      label: "Stats" },
-    { key: "systeem",    label: "Systeem" },
-  ];
-
+  // useMemo hooks moeten VOOR de conditional return staan (Rules of Hooks)
   const filteredUsers = useMemo(() => {
     const q = userSearch.trim().toLowerCase();
     const list = adminUsers || [];
@@ -920,6 +897,30 @@ export default function AdminDashboard() {
       .sort((a: any, b: any) => (b.login_count || 0) - (a.login_count || 0))
       .slice(0, 5);
   }, [adminUsers]);
+
+  if (authLoading || roleLoading || !isAdmin) {
+    return (
+      <div className="max-w-lg mx-auto px-4 pt-6 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-2 gap-3">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        </div>
+      </div>
+    );
+  }
+
+  const tabs: { key: TabKey; label: string; icon?: any }[] = [
+    { key: "overview",   label: "Overzicht" },
+    { key: "scores",     label: "Wedstrijden" },
+    { key: "poules",     label: "Poules" },
+    { key: "beheer",     label: "Gebruikers" },
+    { key: "analytics",  label: "Analytics" },
+    { key: "bonus",      label: "Bonus" },
+    { key: "berichten",  label: "Berichten" },
+    { key: "ranglijst",  label: "Ranglijst" },
+    { key: "stats",      label: "Stats" },
+    { key: "systeem",    label: "Systeem" },
+  ];
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 space-y-5 pb-8">
