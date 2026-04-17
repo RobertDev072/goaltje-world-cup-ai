@@ -876,6 +876,55 @@ export default function AdminDashboard() {
     onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
   });
 
+  // Concept-uitslagen (draft systeem)
+  const { data: resultDrafts, isLoading: draftsLoading, refetch: refetchDrafts } = useQuery({
+    queryKey: ["admin-result-drafts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("match_result_drafts")
+        .select("id, match_id, home_score, away_score, source, note, created_at, status, matches(kickoff_utc, home_team:teams!matches_home_team_id_fkey(name, short_name, flag_url), away_team:teams!matches_away_team_id_fkey(name, short_name, flag_url))")
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin === true,
+    staleTime: 30_000,
+  });
+
+  const confirmDraft = useMutation({
+    mutationFn: async (draft: any) => {
+      const { error: matchErr } = await supabase.from("matches").update({
+        home_score: draft.home_score,
+        away_score: draft.away_score,
+        status: "finished",
+        needs_recalc: true,
+      }).eq("id", draft.match_id);
+      if (matchErr) throw matchErr;
+      const { error: draftErr } = await supabase.from("match_result_drafts")
+        .update({ status: "confirmed" })
+        .eq("id", draft.id);
+      if (draftErr) throw draftErr;
+    },
+    onSuccess: () => {
+      toast({ title: "Uitslag bevestigd", description: "Punten worden automatisch herberekend." });
+      refetchDrafts();
+      queryClient.invalidateQueries({ queryKey: ["admin-warnings"] });
+    },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+  });
+
+  const rejectDraft = useMutation({
+    mutationFn: async (draftId: string) => {
+      const { error } = await supabase.from("match_result_drafts")
+        .update({ status: "rejected" })
+        .eq("id", draftId);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast({ title: "Concept afgewezen" }); refetchDrafts(); },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+  });
+
   // Bonus punten toekennen
   const awardBonus = useMutation({
     mutationFn: async ({ questionId, answer }: { questionId: string; answer: string }) => {
@@ -960,7 +1009,7 @@ export default function AdminDashboard() {
 
   const tabs: { key: TabKey; label: string; icon?: any }[] = [
     { key: "overview",   label: "Overzicht" },
-    { key: "scores",     label: "Wedstrijden" },
+    { key: "scores",     label: resultDrafts && resultDrafts.length > 0 ? `Wedstrijden (${resultDrafts.length})` : "Wedstrijden" },
     { key: "poules",     label: "Poules" },
     { key: "beheer",     label: "Gebruikers" },
     { key: "analytics",  label: "Analytics" },
@@ -1100,6 +1149,82 @@ export default function AdminDashboard() {
               <p><strong>Workflow:</strong> Zoek wedstrijd → vul score in → opslaan. Punten worden automatisch herberekend.</p>
             </CardContent>
           </Card>
+
+          {/* Concept-uitslagen van het dagelijks script */}
+          {(draftsLoading || (resultDrafts && resultDrafts.length > 0)) && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4 text-amber-500" />
+                  Concept-uitslagen
+                  {resultDrafts && resultDrafts.length > 0 && (
+                    <Badge className="bg-amber-500/20 text-amber-700 border-amber-300 text-[10px] px-1.5 py-0">
+                      {resultDrafts.length}
+                    </Badge>
+                  )}
+                </p>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => refetchDrafts()}>
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              {draftsLoading ? (
+                <div className="space-y-2">
+                  {[1, 2].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
+                </div>
+              ) : (
+                (resultDrafts || []).map((draft: any) => {
+                  const home = draft.matches?.home_team;
+                  const away = draft.matches?.away_team;
+                  const kickoff = draft.matches?.kickoff_utc;
+                  return (
+                    <Card key={draft.id} className="border-0 shadow-sm border-l-4 border-l-amber-400 overflow-hidden">
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <p className="text-sm font-semibold">
+                              {home?.short_name ?? "?"} {draft.home_score} – {draft.away_score} {away?.short_name ?? "?"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {home?.name ?? "?"} vs {away?.name ?? "?"}
+                            </p>
+                            {kickoff && (
+                              <p className="text-[10px] text-muted-foreground">{formatNLDateTime(kickoff)}</p>
+                            )}
+                            {draft.note && (
+                              <p className="text-[10px] text-muted-foreground italic">{draft.note}</p>
+                            )}
+                            <p className="text-[10px] text-muted-foreground">
+                              Ingediend: {formatNLDateTime(draft.created_at)} · bron: {draft.source}
+                            </p>
+                          </div>
+                          <div className="flex flex-col gap-1.5 shrink-0">
+                            <Button
+                              size="sm"
+                              className="h-7 px-2 text-xs bg-green-600 hover:bg-green-700 text-white"
+                              onClick={() => confirmDraft.mutate(draft)}
+                              disabled={confirmDraft.isPending || rejectDraft.isPending}
+                            >
+                              Bevestigen
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs border-red-300 text-red-600 hover:bg-red-50"
+                              onClick={() => rejectDraft.mutate(draft.id)}
+                              disabled={confirmDraft.isPending || rejectDraft.isPending}
+                            >
+                              Afwijzen
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+          )}
+
           <AdminMatchEditor />
         </div>
       )}
