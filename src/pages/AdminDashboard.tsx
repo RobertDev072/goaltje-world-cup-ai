@@ -18,7 +18,7 @@ import {
   ArrowLeft, Users, Trophy, Target, Activity, Clock, CheckCircle2,
   Search, AlertCircle, Download, RefreshCw, UserCheck, Trash2,
   AlertTriangle, FileJson, BarChart2, MessageSquare,
-  Gift, Settings, Crown, LogOut, Copy, RotateCcw, Plus, Edit2,
+  Gift, Settings, Crown, LogOut, Copy, RotateCcw, Plus, Edit2, ChevronRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatNLDateTime, formatNLDate } from "@/lib/timezone";
@@ -577,6 +577,7 @@ export default function AdminDashboard() {
 
       return profiles.map((p: any) => {
         const sess = sessionMap.get(p.user_id) || { login_count: 0, last_login_at: null, last_device: null, last_ip: null };
+        const lastLogin = sess.last_login_at ? new Date(sess.last_login_at) : null;
         return {
           id: p.user_id,
           name: p.name,
@@ -587,6 +588,7 @@ export default function AdminDashboard() {
           last_device: sess.last_device,
           last_ip: sess.last_ip,
           pool_count: poolCountMap.get(p.user_id) || 0,
+          is_active: lastLogin ? (Date.now() - lastLogin.getTime()) <= 7 * 24 * 60 * 60 * 1000 : false,
         };
       });
     },
@@ -1437,159 +1439,39 @@ export default function AdminDashboard() {
       {/* ==================== BEHEER TAB ==================== */}
       {tab === "beheer" && (
         <div className="space-y-5">
-          <div>
-            <h2 className="text-sm font-semibold text-muted-foreground mb-3">
-              Gebruikers {adminUsers && <span className="font-normal">({adminUsers.length})</span>}
-            </h2>
-            <div className="relative mb-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Zoek op naam, ip of id..."
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                className="pl-9 h-9"
-              />
-            </div>
-
-            {usersLoading ? (
-              <Skeleton className="h-24 rounded-xl" />
-            ) : (
-              <div className="space-y-2">
-                {filteredUsers.length === 0 ? (
-                  <Card className="border-0 shadow-sm">
-                    <CardContent className="p-4 text-center text-sm text-muted-foreground">
-                      Geen gebruikers gevonden.
-                    </CardContent>
-                  </Card>
-                ) : (
-                  filteredUsers.map((u: any) => {
-                    const lastLogin = u.last_login_at ? new Date(u.last_login_at) : null;
-                    const isActive = lastLogin ? (Date.now() - lastLogin.getTime()) <= 7 * 24 * 60 * 60 * 1000 : false;
-                    const isSelf = user?.id === u.id;
-                    const isUserAdmin = adminUserIds.has(u.id);
-                    const isExpanded = expandedUser === u.id;
-                    return (
-                      <Card key={u.id} className={`border-0 shadow-sm ${isUserAdmin ? "border-l-4 border-l-amber-400" : ""}`}>
-                        <CardContent className="p-3 space-y-2">
-                          <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0 flex-1" onClick={() => setExpandedUser(isExpanded ? null : u.id)} style={{cursor:"pointer"}}>
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium truncate">{u.name || "Onbekend"}</p>
-                              {isUserAdmin && <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
-                            </div>
-                            <p className="text-[10px] text-muted-foreground truncate font-mono">{u.id}</p>
-                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              <Badge variant={isActive ? "secondary" : "outline"} className="text-[9px] px-1.5 py-0">
-                                {isActive ? "✓ Actief" : "Inactief"}
-                              </Badge>
-                              <span className="text-[10px] text-muted-foreground">🔑 {u.login_count ?? 0}x</span>
-                              <span className="text-[10px] text-muted-foreground">🏆 {u.pool_count ?? 0} pools</span>
-                            </div>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                              Login: {u.last_login_at ? formatNLDateTime(u.last_login_at) : "—"}
-                            </p>
-                            {u.last_ip && (
-                              <p className="text-[10px] text-muted-foreground truncate">
-                                IP: {u.last_ip}
-                              </p>
-                            )}
-                            {u.last_device && (
-                              <p className="text-[10px] text-muted-foreground truncate">
-                                {u.last_device}
-                              </p>
-                            )}
-                          </div>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="sm" className="shrink-0"
-                                disabled={deleteUser.isPending || isSelf}
-                                title={isSelf ? "Je kunt jezelf niet verwijderen" : "Gebruiker verwijderen"}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Gebruiker verwijderen?</AlertDialogTitle>
-                                <AlertDialogDescription>Dit verwijdert alle data van deze gebruiker. Weet je het zeker?</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteUser.mutate(u.id)}>Verwijderen</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                          </div>
-
-                          {/* Uitgebreide gebruikersinfo */}
-                          {isExpanded && (
-                            <div className="pt-2 border-t border-border/50 space-y-2">
-                              <div className="flex gap-2">
-                                {!isSelf && (
-                                  isUserAdmin ? (
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button variant="outline" size="sm" className="h-7 text-xs flex-1 border-amber-300 text-amber-700 hover:bg-amber-50">
-                                          <Crown className="h-3 w-3 mr-1" /> Admin verwijderen
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Admin-rol verwijderen?</AlertDialogTitle>
-                                          <AlertDialogDescription>Weet je zeker dat je {u.name || "deze gebruiker"} de adminrechten wil ontnemen?</AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                                          <AlertDialogAction onClick={() => demoteUser.mutate(u.id)}>Verwijderen</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  ) : (
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button variant="outline" size="sm" className="h-7 text-xs flex-1">
-                                          <Crown className="h-3 w-3 mr-1" /> Admin maken
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Admin maken?</AlertDialogTitle>
-                                          <AlertDialogDescription>{u.name || "Deze gebruiker"} krijgt volledige admin-rechten.</AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                                          <AlertDialogAction onClick={() => promoteUser.mutate(u.id)}>Bevestigen</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  )
-                                )}
-                              </div>
-                              <p className="text-[10px] text-muted-foreground">ID: {u.id}</p>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    );
-                  })
-                )}
-              </div>
-            )}
-
-            {topLogins.length > 0 && (
-              <Card className="border-0 shadow-sm mt-3">
-                <CardContent className="p-3">
-                  <p className="text-xs font-semibold text-muted-foreground mb-2">Meest ingelogd</p>
-                  <div className="space-y-1">
-                    {topLogins.map((u: any, i: number) => (
-                      <div key={u.id} className="flex items-center justify-between text-xs">
-                        <span className="truncate">{i + 1}. {u.name || "Onbekend"}</span>
-                        <span className="text-muted-foreground">{u.login_count ?? 0} logins</span>
-                      </div>
-                    ))}
+          {/* Navigatiekaarten naar aparte pagina's */}
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-muted-foreground mb-3">Beheer</h2>
+            <Link to="/app/admin/users">
+              <Card className="border-0 shadow-sm hover:bg-muted/50 transition-colors cursor-pointer">
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Users className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="font-semibold text-sm">Gebruikers</p>
+                      <p className="text-xs text-muted-foreground">
+                        {adminUsers ? `${adminUsers.length} gebruikers · ${adminUsers.filter((u: any) => u.is_active).length} actief` : "Laden..."}
+                      </p>
+                    </div>
                   </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </CardContent>
               </Card>
-            )}
+            </Link>
+            <Link to="/app/admin/activity">
+              <Card className="border-0 shadow-sm hover:bg-muted/50 transition-colors cursor-pointer">
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Activity className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="font-semibold text-sm">Activiteitenlog</p>
+                      <p className="text-xs text-muted-foreground">Registraties, logins en nieuwe poules</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </CardContent>
+              </Card>
+            </Link>
           </div>
 
           <div>

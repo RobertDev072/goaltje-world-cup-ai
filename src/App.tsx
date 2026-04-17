@@ -30,6 +30,8 @@ const JoinPool = lazy(() => import("./pages/JoinPool"));
 const Bracket = lazy(() => import("./pages/Bracket"));
 const Profile = lazy(() => import("./pages/Profile"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminUsers = lazy(() => import("./pages/AdminUsers"));
+const AdminActivity = lazy(() => import("./pages/AdminActivity"));
 const BlogArticle = lazy(() => import("./pages/BlogArticle"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -135,6 +137,8 @@ const App = () => {
                       <Route path="/app/bracket" element={<Bracket />} />
                       <Route path="/app/profile" element={<Profile />} />
                       <Route path="/app/admin" element={<AdminDashboard />} />
+                      <Route path="/app/admin/users" element={<AdminUsers />} />
+                      <Route path="/app/admin/activity" element={<AdminActivity />} />
                       <Route path="/app/help" element={<HelpPage />} />
                     </Route>
 
