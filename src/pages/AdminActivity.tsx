@@ -206,7 +206,7 @@ export default function AdminActivity() {
   ];
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-4 pb-8 space-y-4">
+    <div className="max-w-lg mx-auto px-4 pt-4 pb-8 space-y-4 lg:max-w-5xl lg:px-8 lg:pt-8">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link to="/app/admin" className="p-1.5 rounded-lg hover:bg-muted transition-colors">

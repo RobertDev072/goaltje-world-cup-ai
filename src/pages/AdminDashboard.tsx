@@ -19,6 +19,7 @@ import {
   Search, AlertCircle, Download, RefreshCw, UserCheck, Trash2,
   AlertTriangle, FileJson, BarChart2, MessageSquare,
   Gift, Settings, Crown, LogOut, Copy, RotateCcw, Plus, Edit2, ChevronRight,
+  LayoutDashboard, ListOrdered,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatNLDateTime, formatNLDate } from "@/lib/timezone";
@@ -1011,55 +1012,97 @@ export default function AdminDashboard() {
   }
 
   const tabs: { key: TabKey; label: string; icon?: any }[] = [
-    { key: "overview",   label: "Overzicht" },
-    { key: "scores",     label: resultDrafts && resultDrafts.length > 0 ? `Wedstrijden (${resultDrafts.length})` : "Wedstrijden" },
-    { key: "poules",     label: "Poules" },
-    { key: "beheer",     label: "Gebruikers" },
-    { key: "analytics",  label: "Analytics" },
-    { key: "bonus",      label: "Bonus" },
-    { key: "berichten",  label: "Berichten" },
-    { key: "ranglijst",  label: "Ranglijst" },
-    { key: "stats",      label: "Stats" },
-    { key: "systeem",    label: "Systeem" },
+    { key: "overview",   label: "Overzicht",    icon: LayoutDashboard },
+    { key: "scores",     label: resultDrafts && resultDrafts.length > 0 ? `Wedstrijden (${resultDrafts.length})` : "Wedstrijden", icon: CheckCircle2 },
+    { key: "poules",     label: "Poules",        icon: Trophy },
+    { key: "beheer",     label: "Gebruikers",    icon: Users },
+    { key: "analytics",  label: "Analytics",     icon: BarChart2 },
+    { key: "bonus",      label: "Bonus",         icon: Gift },
+    { key: "berichten",  label: "Berichten",     icon: MessageSquare },
+    { key: "ranglijst",  label: "Ranglijst",     icon: ListOrdered },
+    { key: "stats",      label: "Stats",         icon: Activity },
+    { key: "systeem",    label: "Systeem",       icon: Settings },
   ];
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-6 space-y-5 pb-8">
-      <Link to="/app/profile" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm">
-        <ArrowLeft className="h-4 w-4" /> Terug
-      </Link>
+    <div className="lg:flex lg:min-h-screen">
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold font-display">Admin</h1>
-          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+      {/* ── Desktop sidebar (hidden on mobile/tablet) ───────── */}
+      <aside className="hidden lg:flex lg:flex-col lg:w-56 lg:shrink-0 lg:border-r lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:bg-card">
+        <div className="p-5 border-b">
+          <div className="flex items-center justify-between mb-1">
+            <h1 className="text-xl font-bold font-display">Admin</h1>
+            <Badge className="gradient-primary text-primary-foreground text-[10px]">Admin</Badge>
+          </div>
+          <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-1">
             <Clock className="h-3 w-3" />
             {dataUpdatedAt ? formatNLDateTime(new Date(dataUpdatedAt).toISOString()) : "..."}
           </p>
         </div>
-        <Badge className="gradient-primary text-primary-foreground">Admin</Badge>
-      </div>
+        <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 ${
+                tab === t.key
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              {t.icon && <t.icon className="h-4 w-4 shrink-0" />}
+              <span className="truncate">{t.label}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="p-4 border-t">
+          <Link to="/app/profile" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm">
+            <ArrowLeft className="h-4 w-4" /> Terug
+          </Link>
+        </div>
+      </aside>
 
-      {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-3 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap shrink-0 ${
-              tab === t.key ? "gradient-primary text-primary-foreground shadow-md" : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {/* ── Main area ──────────────────────────────────────── */}
+      <div className="flex-1 min-w-0">
+
+        {/* Mobile / tablet header + tabs (verborgen op desktop) */}
+        <div className="lg:hidden max-w-lg mx-auto px-4 pt-6 space-y-4">
+          <Link to="/app/profile" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm">
+            <ArrowLeft className="h-4 w-4" /> Terug
+          </Link>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold font-display">Admin</h1>
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                <Clock className="h-3 w-3" />
+                {dataUpdatedAt ? formatNLDateTime(new Date(dataUpdatedAt).toISOString()) : "..."}
+              </p>
+            </div>
+            <Badge className="gradient-primary text-primary-foreground">Admin</Badge>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`px-3 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap shrink-0 ${
+                  tab === t.key ? "gradient-primary text-primary-foreground shadow-md" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tab inhoud */}
+        <div className="max-w-lg mx-auto px-4 pt-4 space-y-5 pb-8 lg:max-w-none lg:px-8 lg:pt-6">
 
       {/* ==================== OVERVIEW TAB ==================== */}
       {tab === "overview" && (
         <div className="space-y-5">
           {/* System Status */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2 lg:grid-cols-6">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-3 text-center">
                 <Users className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
@@ -1116,7 +1159,7 @@ export default function AdminDashboard() {
           {/* Quick Links */}
           <div>
             <h2 className="text-sm font-semibold text-muted-foreground mb-3">Snelle navigatie</h2>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
               {([
                 { key: "scores", icon: CheckCircle2, label: "Resultaten", sub: "Scores invoeren" },
                 { key: "poules", icon: Trophy, label: "Poules", sub: "Alle poules" },
@@ -1236,12 +1279,12 @@ export default function AdminDashboard() {
       {tab === "stats" && (
         <div className="space-y-4">
           {statsLoading || !stats ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <Card className="border-0 shadow-sm">
                   <CardContent className="p-3">
                     <p className="text-xs text-muted-foreground">Accounts</p>
@@ -1936,6 +1979,8 @@ export default function AdminDashboard() {
         </div>
       )}
 
-    </div>
+        </div>{/* einde tab-inhoud */}
+      </div>{/* einde main area */}
+    </div>{/* einde lg:flex wrapper */}
   );
 }

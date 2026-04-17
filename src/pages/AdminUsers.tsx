@@ -168,7 +168,7 @@ export default function AdminUsers() {
   const activeCount = users?.filter((u: any) => u.is_active).length ?? 0;
 
   return (
-    <div className="max-w-lg mx-auto px-4 pt-4 pb-8 space-y-4">
+    <div className="max-w-lg mx-auto px-4 pt-4 pb-8 space-y-4 lg:max-w-5xl lg:px-8 lg:pt-8">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link to="/app/admin" className="p-1.5 rounded-lg hover:bg-muted transition-colors">
@@ -228,7 +228,7 @@ export default function AdminUsers() {
           <CardContent className="p-6 text-center text-sm text-muted-foreground">Geen gebruikers gevonden.</CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
           {paginated.map((u: any) => {
             const isSelf = user?.id === u.id;
             return (
