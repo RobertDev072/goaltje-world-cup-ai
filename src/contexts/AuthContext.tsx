@@ -33,10 +33,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (sessionKey && !sessionTracked.current.has(sessionKey)) {
           sessionTracked.current.add(sessionKey);
           setTimeout(() => {
-            supabase.functions.invoke("log-login", {
-              body: { device_info: navigator.userAgent?.substring(0, 200) || null },
+            supabase.functions.invoke("log-event", {
+              body: {
+                event_type: "login",
+                metadata: { provider: session.user.app_metadata?.provider || "email" },
+                session_id: sessionKey,
+              },
             }).catch(() => {
-              // fallback: direct insert without IP
+              // fallback: direct session insert without IP
               supabase.from("user_sessions").insert({
                 user_id: session.user.id,
                 device_info: navigator.userAgent?.substring(0, 200) || null,
@@ -44,6 +48,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
           }, 0);
         }
+      }
+
+      if (event === "SIGNED_OUT") {
+        supabase.functions.invoke("log-event", {
+          body: { event_type: "logout" },
+        }).catch(() => {});
       }
     });
 

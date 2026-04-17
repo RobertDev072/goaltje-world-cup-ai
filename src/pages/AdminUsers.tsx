@@ -39,19 +39,41 @@ export default function AdminUsers() {
   const { data: users, isLoading, refetch } = useQuery({
     queryKey: ["admin-users-full"],
     queryFn: async () => {
-      const { data: profiles, error } = await supabase
+      // Try with email, fall back without if column doesn't exist yet
+      let profiles: any[] = [];
+      const { data: p1, error: e1 } = await supabase
         .from("profiles")
         .select("user_id, name, email, avatar_url, created_at")
         .order("created_at", { ascending: false });
-      if (error) throw error;
-      if (!profiles || profiles.length === 0) return [];
+      if (e1) {
+        const { data: p2, error: e2 } = await supabase
+          .from("profiles")
+          .select("user_id, name, avatar_url, created_at")
+          .order("created_at", { ascending: false });
+        if (e2) throw e2;
+        profiles = (p2 || []).map((p: any) => ({ ...p, email: null }));
+      } else {
+        profiles = p1 || [];
+      }
+      if (profiles.length === 0) return [];
 
       const ids = profiles.map((p: any) => p.user_id);
 
-      const { data: sessions } = await supabase
+      // Try with ip_address, fall back without
+      let sessions: any[] = [];
+      const { data: s1, error: se1 } = await supabase
         .from("user_sessions")
         .select("user_id, login_at_utc, device_info, ip_address")
         .in("user_id", ids);
+      if (se1) {
+        const { data: s2 } = await supabase
+          .from("user_sessions")
+          .select("user_id, login_at_utc, device_info")
+          .in("user_id", ids);
+        sessions = (s2 || []).map((s: any) => ({ ...s, ip_address: null }));
+      } else {
+        sessions = s1 || [];
+      }
 
       const { data: memberships } = await supabase
         .from("pool_members")
@@ -63,7 +85,7 @@ export default function AdminUsers() {
         .select("user_id, role");
 
       const sessionMap = new Map<string, any>();
-      (sessions || []).forEach((s: any) => {
+      sessions.forEach((s: any) => {
         const e = sessionMap.get(s.user_id) || { count: 0, last_at: null, device: null, ip: null };
         e.count += 1;
         if (!e.last_at || s.login_at_utc > e.last_at) {

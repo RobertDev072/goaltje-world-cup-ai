@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.log-login]
 verify_jwt = false
+
+[functions.log-event]
+verify_jwt = false
