@@ -539,9 +539,56 @@ export default function AdminDashboard() {
   const { data: adminUsers, isLoading: usersLoading, refetch: refetchUsers } = useQuery({
     queryKey: ["admin-users"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_admin_users");
-      if (error) throw error;
-      return (data || []) as any[];
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id, name, avatar_url, created_at")
+        .order("created_at", { ascending: false });
+      if (profilesError) throw profilesError;
+      if (!profiles || profiles.length === 0) return [];
+
+      const ids = profiles.map((p: any) => p.user_id);
+
+      const { data: sessions } = await supabase
+        .from("user_sessions")
+        .select("user_id, login_at_utc, device_info, ip_address")
+        .in("user_id", ids);
+
+      const { data: memberships } = await supabase
+        .from("pool_members")
+        .select("user_id, pool_id")
+        .in("user_id", ids);
+
+      const sessionMap = new Map<string, { login_count: number; last_login_at: string | null; last_device: string | null; last_ip: string | null }>();
+      (sessions || []).forEach((s: any) => {
+        const e = sessionMap.get(s.user_id) || { login_count: 0, last_login_at: null, last_device: null, last_ip: null };
+        e.login_count += 1;
+        if (!e.last_login_at || s.login_at_utc > e.last_login_at) {
+          e.last_login_at = s.login_at_utc;
+          e.last_device = s.device_info || null;
+          e.last_ip = s.ip_address || null;
+        }
+        sessionMap.set(s.user_id, e);
+      });
+
+      const poolCountMap = new Map<string, number>();
+      (memberships || []).forEach((m: any) => {
+        poolCountMap.set(m.user_id, (poolCountMap.get(m.user_id) || 0) + 1);
+      });
+
+      return profiles.map((p: any) => {
+        const sess = sessionMap.get(p.user_id) || { login_count: 0, last_login_at: null, last_device: null, last_ip: null };
+        return {
+          id: p.user_id,
+          name: p.name,
+          avatar_url: p.avatar_url,
+          created_at: p.created_at,
+          login_count: sess.login_count,
+          last_login_at: sess.last_login_at,
+          last_device: sess.last_device,
+          last_ip: sess.last_ip,
+          pool_count: poolCountMap.get(p.user_id) || 0,
+        };
+      });
     },
     enabled: isAdmin === true,
     staleTime: 60_000,
