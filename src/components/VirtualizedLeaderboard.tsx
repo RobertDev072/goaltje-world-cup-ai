@@ -18,17 +18,25 @@ interface LeaderboardEntry {
   lastCorrectAt: string | null;
 }
 
+export interface UserBadge {
+  streak: number;
+  profileType: string;
+  profileEmoji: string;
+}
+
 interface VirtualizedLeaderboardProps {
   leaderboard: LeaderboardEntry[];
   currentUserId?: string;
   rivalUserId?: string | null;
+  /** Streak + profiel-emoji per user, gekeyed op userId. Optioneel. */
+  badgesByUser?: Map<string, UserBadge> | null;
 }
 
 const ITEM_HEIGHT = 68;
 const OVERSCAN = 5;
 const VIRTUALIZATION_THRESHOLD = 50;
 
-export function VirtualizedLeaderboard({ leaderboard, currentUserId, rivalUserId }: VirtualizedLeaderboardProps) {
+export function VirtualizedLeaderboard({ leaderboard, currentUserId, rivalUserId, badgesByUser }: VirtualizedLeaderboardProps) {
   const shouldVirtualize = leaderboard.length > VIRTUALIZATION_THRESHOLD;
 
   if (!shouldVirtualize) {
@@ -42,6 +50,7 @@ export function VirtualizedLeaderboard({ leaderboard, currentUserId, rivalUserId
             isMe={entry.userId === currentUserId}
             isRival={entry.userId === rivalUserId}
             leaderboard={leaderboard}
+            badge={badgesByUser?.get(entry.userId) ?? null}
             animate
           />
         ))}
@@ -49,10 +58,10 @@ export function VirtualizedLeaderboard({ leaderboard, currentUserId, rivalUserId
     );
   }
 
-  return <VirtualList leaderboard={leaderboard} currentUserId={currentUserId} rivalUserId={rivalUserId} />;
+  return <VirtualList leaderboard={leaderboard} currentUserId={currentUserId} rivalUserId={rivalUserId} badgesByUser={badgesByUser} />;
 }
 
-function VirtualList({ leaderboard, currentUserId, rivalUserId }: VirtualizedLeaderboardProps) {
+function VirtualList({ leaderboard, currentUserId, rivalUserId, badgesByUser }: VirtualizedLeaderboardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(600);
@@ -107,6 +116,7 @@ function VirtualList({ leaderboard, currentUserId, rivalUserId }: VirtualizedLea
               isMe={entry.userId === currentUserId}
               isRival={entry.userId === rivalUserId}
               leaderboard={leaderboard}
+              badge={badgesByUser?.get(entry.userId) ?? null}
             />
           </div>
         ))}
@@ -116,13 +126,14 @@ function VirtualList({ leaderboard, currentUserId, rivalUserId }: VirtualizedLea
 }
 
 function LeaderboardRow({
-  entry, index, isMe, isRival, leaderboard, animate = false,
+  entry, index, isMe, isRival, leaderboard, badge, animate = false,
 }: {
   entry: LeaderboardEntry;
   index: number;
   isMe: boolean;
   isRival: boolean;
   leaderboard: LeaderboardEntry[];
+  badge?: UserBadge | null;
   animate?: boolean;
 }) {
   const i = index;
@@ -178,11 +189,19 @@ function LeaderboardRow({
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">
-                {entry.name}
-                {isMe && <span className="text-primary ml-1 text-xs">(jij)</span>}
-                {isRival && <span className="text-destructive ml-1">⚔️</span>}
-                {entry.role === "admin" && <span className="ml-1">👑</span>}
+              <p className="font-medium text-sm truncate flex items-center gap-1">
+                {badge?.profileEmoji && badge.profileType !== "new" && (
+                  <span className="text-sm" title={badge.profileType}>{badge.profileEmoji}</span>
+                )}
+                <span className="truncate">{entry.name}</span>
+                {isMe && <span className="text-primary text-xs shrink-0">(jij)</span>}
+                {isRival && <span className="text-destructive shrink-0">⚔️</span>}
+                {entry.role === "admin" && <span className="shrink-0">👑</span>}
+                {badge && badge.streak >= 2 && (
+                  <span className="text-[10px] bg-destructive/15 text-destructive rounded-full px-1.5 py-0 font-bold shrink-0">
+                    🔥{badge.streak}
+                  </span>
+                )}
               </p>
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                 {i > 0 && pointsAbove > 0 && (

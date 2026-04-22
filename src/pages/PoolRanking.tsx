@@ -1,16 +1,18 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Trophy } from "lucide-react";
+import { ArrowLeft, Trophy, Search, Swords } from "lucide-react";
 import { motion } from "framer-motion";
-import { VirtualizedLeaderboard } from "@/components/VirtualizedLeaderboard";
+import { VirtualizedLeaderboard, UserBadge } from "@/components/VirtualizedLeaderboard";
 import { TiebreakerInfo } from "@/components/TiebreakerInfo";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
+
+type FilterMode = "neighborhood" | "top10" | "top50" | "all" | "streaks";
 
 interface LeaderboardEntry {
   userId: string;
@@ -29,6 +31,8 @@ export default function PoolRanking() {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterMode, setFilterMode] = useState<FilterMode>("neighborhood");
 
   const { data: pool } = useQuery({
     queryKey: ["pool", id],
@@ -78,12 +82,71 @@ export default function PoolRanking() {
     staleTime: staleTimes.matches,
   });
 
+  // Badges per user (streak + profiel-emoji)
+  const { data: badgesRaw } = useQuery({
+    queryKey: queryKeys.poolLeaderboardBadges(id || ""),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_pool_leaderboard_badges", { _pool_id: id! });
+      if (error) throw error;
+      return (data as unknown as Array<UserBadge & { userId: string }>) || [];
+    },
+    enabled: !!id,
+    staleTime: staleTimes.leaderboard,
+  });
+
+  const badgesByUser = useMemo(() => {
+    if (!badgesRaw) return null;
+    const map = new Map<string, UserBadge>();
+    badgesRaw.forEach((b) => map.set(b.userId, { streak: b.streak, profileType: b.profileType, profileEmoji: b.profileEmoji }));
+    return map;
+  }, [badgesRaw]);
+
   const myEntry = useMemo(() => leaderboard?.find(e => e.userId === user?.id), [leaderboard, user]);
   const myPosition = useMemo(() => {
     if (!leaderboard || !user) return null;
     const idx = leaderboard.findIndex(e => e.userId === user.id);
     return idx >= 0 ? idx + 1 : null;
   }, [leaderboard, user]);
+
+  // Rivaal: dichtstbijzijnde speler in punten (boven of onder jou), skip als je nr 1 bent en geen #2 exists
+  const rival = useMemo(() => {
+    if (!leaderboard || !myEntry || !myPosition) return null;
+    const idx = myPosition - 1;
+    const above = idx > 0 ? leaderboard[idx - 1] : null;
+    const below = idx < leaderboard.length - 1 ? leaderboard[idx + 1] : null;
+    if (!above && !below) return null;
+    if (!above) return below;
+    if (!below) return above;
+    const deltaAbove = above.points - myEntry.points;
+    const deltaBelow = myEntry.points - below.points;
+    return deltaAbove <= deltaBelow ? above : below;
+  }, [leaderboard, myEntry, myPosition]);
+
+  // Gefilterde lijst
+  const filteredLeaderboard = useMemo(() => {
+    if (!leaderboard) return [];
+    const q = searchQuery.trim().toLowerCase();
+    let entries = leaderboard;
+
+    // Tekst-zoek heeft voorrang over filter-mode
+    if (q.length > 0) {
+      return entries.filter(e => e.name.toLowerCase().includes(q));
+    }
+
+    if (filterMode === "top10") return entries.slice(0, 10);
+    if (filterMode === "top50") return entries.slice(0, 50);
+    if (filterMode === "streaks") {
+      if (!badgesByUser) return entries;
+      return entries.filter(e => (badgesByUser.get(e.userId)?.streak ?? 0) >= 2);
+    }
+    if (filterMode === "neighborhood" && myPosition) {
+      const idx = myPosition - 1;
+      const start = Math.max(0, idx - 5);
+      const end = Math.min(entries.length, idx + 6);
+      return entries.slice(start, end);
+    }
+    return entries;
+  }, [leaderboard, searchQuery, filterMode, myPosition, badgesByUser]);
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-4 pb-6 space-y-4">
@@ -144,10 +207,58 @@ export default function PoolRanking() {
         </div>
       )}
 
+      {/* Zoek + filter (alleen tonen bij ≥10 deelnemers) */}
+      {leaderboard && leaderboard.length >= 10 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 bg-muted/60 rounded-xl px-3 py-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <input
+              placeholder="Zoek deelnemer..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-transparent outline-none flex-1 text-sm"
+            />
+          </div>
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+            {(["neighborhood", "top10", "top50", "all", "streaks"] as FilterMode[]).map((mode) => {
+              const labels: Record<FilterMode, string> = {
+                neighborhood: myPosition ? "Mijn buurt (±5)" : "Mijn buurt",
+                top10: "Top 10",
+                top50: "Top 50",
+                all: `Alles (${leaderboard.length})`,
+                streaks: "🔥 Streaks",
+              };
+              const active = filterMode === mode && searchQuery.length === 0;
+              return (
+                <button
+                  key={mode}
+                  onClick={() => { setFilterMode(mode); setSearchQuery(""); }}
+                  className={cn(
+                    "text-[11px] px-2.5 py-1 rounded-full whitespace-nowrap font-medium transition-colors",
+                    active
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  )}
+                >
+                  {labels[mode]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Ranglijst */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Klassement</h2>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Klassement
+            {filteredLeaderboard.length !== leaderboard?.length && leaderboard && (
+              <span className="ml-2 text-[10px] normal-case text-muted-foreground/70">
+                ({filteredLeaderboard.length} van {leaderboard.length})
+              </span>
+            )}
+          </h2>
           <TiebreakerInfo />
         </div>
 
@@ -157,12 +268,21 @@ export default function PoolRanking() {
           </div>
         )}
 
-        {!isLoading && leaderboard && leaderboard.length > 0 && (
+        {!isLoading && leaderboard && leaderboard.length > 0 && filteredLeaderboard.length > 0 && (
           <VirtualizedLeaderboard
-            leaderboard={leaderboard}
+            leaderboard={filteredLeaderboard}
             currentUserId={user?.id}
-            rivalUserId={undefined}
+            rivalUserId={rival?.userId}
+            badgesByUser={badgesByUser}
           />
+        )}
+
+        {!isLoading && leaderboard && leaderboard.length > 0 && filteredLeaderboard.length === 0 && (
+          <Card className="border-0 shadow-elevation-1">
+            <CardContent className="p-6 text-center text-muted-foreground text-sm">
+              Geen resultaten voor "{searchQuery}" of filter
+            </CardContent>
+          </Card>
         )}
 
         {!isLoading && (!leaderboard || leaderboard.length === 0) && (
@@ -173,6 +293,35 @@ export default function PoolRanking() {
           </Card>
         )}
       </div>
+
+      {/* Rivaal kaart — dichtstbijzijnde speler in punten */}
+      {rival && myEntry && searchQuery.length === 0 && (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <Card className="border-0 shadow-elevation-2 overflow-hidden">
+            <div className="gradient-navy px-4 py-2 flex items-center gap-2 text-white">
+              <Swords className="h-3.5 w-3.5" />
+              <span className="text-xs font-semibold">Jouw rivaal</span>
+            </div>
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center font-bold text-destructive shrink-0">
+                {rival.avatar_url
+                  ? <img src={rival.avatar_url} alt="" className="h-full w-full object-cover rounded-full" />
+                  : rival.name[0]?.toUpperCase() || "?"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm truncate">{rival.name}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {Math.abs(rival.points - myEntry.points)} pt{" "}
+                  {rival.points > myEntry.points ? "boven" : "onder"} jou
+                </p>
+              </div>
+              <span className="text-sm font-bold text-muted-foreground tabular-nums shrink-0">
+                {rival.points}pt
+              </span>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
     </div>
   );
 }

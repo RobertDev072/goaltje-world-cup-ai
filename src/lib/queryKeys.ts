@@ -26,6 +26,41 @@ export const queryKeys = {
   // Pools
   myPools: (userId: string) => ["my-pools", userId] as const,
 
+  // Pool consensus (stemverdeling + top-3 uitslagen per match per pool)
+  poolConsensus: (poolId: string, matchId: string) =>
+    ["pool-consensus", poolId, matchId] as const,
+
+  // Batch: populairste uitslag per match voor een lijst matches binnen een pool
+  poolTopScores: (poolId: string, matchIds: string[]) =>
+    ["pool-top-scores", poolId, matchIds.slice().sort().join(",")] as const,
+
+  // Dagelijkse pool-recap (gisteren: dagwinnaar, exacten, verrassing)
+  dailyPoolRecap: (poolId: string) =>
+    ["daily-pool-recap", poolId] as const,
+
+  // Voorspeller-profiel (aggregaties + streak + afgeleid profiel-type)
+  predictorProfile: (userId: string) =>
+    ["predictor-profile", userId] as const,
+
+  // Pool leaderboard badges (streak + profile per pool-lid)
+  poolLeaderboardBadges: (poolId: string) =>
+    ["pool-leaderboard-badges", poolId] as const,
+
+  // User analytics
+  userRankEvolution: (userId: string, poolId: string, days: number) =>
+    ["user-rank-evolution", userId, poolId, days] as const,
+  userStageAccuracy: (userId: string) =>
+    ["user-stage-accuracy", userId] as const,
+
+  // Pool trends + recap feed (insights tab)
+  poolTrends: (poolId: string) => ["pool-trends", poolId] as const,
+  poolRecapFeed: (poolId: string, days: number) =>
+    ["pool-recap-feed", poolId, days] as const,
+
+  // Per-match personal trackrecord (accuratesse per fase + per team)
+  userMatchTrackrecord: (userId: string, matchId: string) =>
+    ["user-match-trackrecord", userId, matchId] as const,
+
   // Profile
   profile: (userId: string) => ["profile", userId] as const,
 

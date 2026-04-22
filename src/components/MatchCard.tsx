@@ -16,9 +16,11 @@ interface MatchCardProps {
   rankingImpact?: number | null;
   streak?: number | null;
   compact?: boolean;
+  /** Meest-voorspelde uitslag in de poule (uit get_pool_top_scores batch-RPC). Verbergt bij < 2 stemmen. */
+  poolTopScore?: { home_pred: number; away_pred: number; count: number; total: number } | null;
 }
 
-export function MatchCard({ match, prediction, index = 0, rankingImpact, streak, compact = false }: MatchCardProps) {
+export function MatchCard({ match, prediction, index = 0, rankingImpact, streak, compact = false, poolTopScore }: MatchCardProps) {
   const status = (match.status || "scheduled") as MatchStatus;
   const statusInfo = STATUS_CONFIG[status] || STATUS_CONFIG.scheduled;
   const isFinished = status === "finished";
@@ -223,6 +225,16 @@ export function MatchCard({ match, prediction, index = 0, rankingImpact, streak,
               <div className="mt-2 flex items-center justify-center gap-2 text-xs text-destructive">
                 <X className="h-3.5 w-3.5" />
                 <span className="font-medium">Niet ingevuld (0-0)</span>
+              </div>
+            )}
+
+            {(isOpen || isFilled) && poolTopScore && poolTopScore.total >= 2 && (
+              <div className="mt-2 flex justify-center">
+                <div className="inline-flex items-center gap-1.5 text-[10px] bg-primary/5 border border-primary/15 rounded-full px-2.5 py-0.5">
+                  <span className="text-muted-foreground">🗳 Poule tipt</span>
+                  <span className="font-bold text-primary tabular-nums">{poolTopScore.home_pred} – {poolTopScore.away_pred}</span>
+                  <span className="text-muted-foreground">· {poolTopScore.count}/{poolTopScore.total}</span>
+                </div>
               </div>
             )}
 

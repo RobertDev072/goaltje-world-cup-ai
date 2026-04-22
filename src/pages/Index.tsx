@@ -16,6 +16,7 @@ import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeM
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
 import { PredictionReminderBanner } from "@/components/PredictionReminderBanner";
+import { DailyPoolRecap } from "@/components/DailyPoolRecap";
 import { getPredictionState, isMissingToday } from "@/lib/predictionStatus";
 import { toast } from "@/hooks/use-toast";
 import { OnboardingModal } from "@/components/OnboardingModal";
@@ -126,6 +127,22 @@ export default function Index() {
   const predictionMap = new Map(
     myPredictions?.map((p: any) => [p.match_id, p]) || []
   );
+
+  // Batch: meest-voorspelde uitslag per match in de actieve pool
+  const { data: poolTopScores } = useQuery({
+    queryKey: queryKeys.poolTopScores(activePoolId, matchIds),
+    queryFn: async () => {
+      if (!activePoolId || matchIds.length === 0) return {} as Record<string, any>;
+      const { data, error } = await supabase.rpc("get_pool_top_scores", {
+        _pool_id: activePoolId,
+        _match_ids: matchIds,
+      });
+      if (error) throw error;
+      return (data as Record<string, any>) || {};
+    },
+    enabled: !!activePoolId && matchIds.length > 0,
+    staleTime: staleTimes.predictions,
+  });
 
   const greeting = () => {
     const hour = new Date().getHours();
@@ -265,6 +282,14 @@ export default function Index() {
       )}
 
 
+      {/* Daily recap — verbergt zichzelf bij 0 afgeronde matches gisteren */}
+      {user && activePoolId && (
+        <DailyPoolRecap
+          poolId={activePoolId}
+          poolName={pools?.find((p: any) => p.id === activePoolId)?.name}
+        />
+      )}
+
       {/* Upcoming Matches */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -288,6 +313,7 @@ export default function Index() {
                 match={match}
                 prediction={predictionMap.get(match.id)}
                 index={i}
+                poolTopScore={poolTopScores?.[match.id] ?? null}
               />
             ))}
           </div>

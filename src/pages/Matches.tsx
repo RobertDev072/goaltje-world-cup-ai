@@ -107,6 +107,22 @@ export default function Matches() {
     myPredictions?.map((p: any) => [p.match_id, p]) || []
   );
 
+  // Batch: meest-voorspelde uitslag per match in de actieve pool
+  const { data: poolTopScores } = useQuery({
+    queryKey: queryKeys.poolTopScores(activePoolId, matchIds),
+    queryFn: async () => {
+      if (!activePoolId || matchIds.length === 0) return {} as Record<string, any>;
+      const { data, error } = await supabase.rpc("get_pool_top_scores", {
+        _pool_id: activePoolId,
+        _match_ids: matchIds,
+      });
+      if (error) throw error;
+      return (data as Record<string, any>) || {};
+    },
+    enabled: !!activePoolId && matchIds.length > 0,
+    staleTime: staleTimes.predictions,
+  });
+
   const missingTodayMatches = useMemo(
     () =>
       (matches || []).filter((match: any) =>
@@ -295,6 +311,7 @@ export default function Matches() {
                       match={match}
                       prediction={predictionMap.get(match.id)}
                       index={i}
+                      poolTopScore={poolTopScores?.[match.id] ?? null}
                     />
                   ))}
                 </div>
@@ -316,6 +333,7 @@ export default function Matches() {
                         match={match}
                         prediction={predictionMap.get(match.id)}
                         index={i}
+                        poolTopScore={poolTopScores?.[match.id] ?? null}
                       />
                     ))}
                   </div>

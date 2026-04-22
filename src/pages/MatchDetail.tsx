@@ -17,6 +17,8 @@ import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { trackFirstPrediction } from "@/lib/analytics";
 import { ExactScoreConfetti, useExactScoreConfetti } from "@/components/ExactScoreConfetti";
+import { PoolConsensus } from "@/components/PoolConsensus";
+import { MatchTrackrecord } from "@/components/MatchTrackrecord";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { getPredictionState } from "@/lib/predictionStatus";
 
@@ -316,6 +318,18 @@ export default function MatchDetail() {
         </Card>
       </motion.div>
 
+      {/* Pool consensus — stemverdeling + top 3 uitslagen (verborgen bij <2 voorspellingen) */}
+      {user && activePool && match.id && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}>
+          <PoolConsensus
+            poolId={activePool}
+            matchId={match.id}
+            homeShort={match.home_team?.short_name}
+            awayShort={match.away_team?.short_name}
+          />
+        </motion.div>
+      )}
+
       {/* No pools message */}
       {user && myPools && myPools.length === 0 && showPredictionForm && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
@@ -508,6 +522,18 @@ export default function MatchDetail() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Persoonlijk trackrecord (verbergt als gebruiker nog geen relevante historie heeft) */}
+      {user && match.id && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <MatchTrackrecord
+            userId={user.id}
+            matchId={match.id}
+            homeTeamName={match.home_team?.name}
+            awayTeamName={match.away_team?.name}
+          />
+        </motion.div>
+      )}
 
       {/* Ranglijst link */}
       {activePool && (
