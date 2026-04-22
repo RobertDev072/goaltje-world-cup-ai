@@ -38,6 +38,10 @@ export const queryKeys = {
   dailyPoolRecap: (poolId: string) =>
     ["daily-pool-recap", poolId] as const,
 
+  // Voorspeller-profiel (aggregaties + streak + afgeleid profiel-type)
+  predictorProfile: (userId: string) =>
+    ["predictor-profile", userId] as const,
+
   // Profile
   profile: (userId: string) => ["profile", userId] as const,
 
