@@ -8,7 +8,8 @@ import { Trophy, Users, ChevronRight, TrendingUp, Target, AlertTriangle } from "
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { PoolSelector } from "@/components/PoolSelector";
+import { PoolHeaderCard } from "@/components/PoolHeaderCard";
+import { TournamentProgress } from "@/components/TournamentProgress";
 import { MatchCard } from "@/components/MatchCard";
 import { LiveMatchBanner } from "@/components/LiveMatchBanner";
 import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebration";
@@ -197,10 +198,21 @@ export default function Index() {
         </div>
       </motion.div>
 
-      {/* Pool Selector */}
-      {user && pools && pools.length > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
-          <PoolSelector value={selectedPoolId} onChange={setSelectedPoolId} />
+      {/* Pool header (rich) + WK voortgangs-balk */}
+      {user && pools && pools.length > 0 && activePoolId && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="space-y-3"
+        >
+          <PoolHeaderCard
+            poolId={activePoolId}
+            poolName={pools.find((p: any) => p.id === activePoolId)?.name || ""}
+            pools={pools}
+            onPoolChange={setSelectedPoolId}
+          />
+          <TournamentProgress />
         </motion.div>
       )}
 
@@ -236,17 +248,17 @@ export default function Index() {
             </CardContent>
           </Card>
           <Link to="/app/matches">
-            <Card className={`border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all overflow-hidden ${
+            <Card className={`border-0 shadow-elevation-2 hover:shadow-elevation-3 transition-all overflow-hidden ring-2 ring-secondary/60 ${
               missingTodayMatches.length > 0 ? "border-l-2 border-l-amber-500" : ""
             }`}>
               <CardContent className="p-3 text-center">
                 {missingTodayMatches.length > 0 ? (
                   <AlertTriangle className="h-4 w-4 mx-auto mb-1 text-amber-500" />
                 ) : (
-                  <Users className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                  <Users className="h-4 w-4 mx-auto mb-1 text-primary" />
                 )}
                 <p className="text-xl font-bold font-display">{remainingMatches ?? "..."}</p>
-                <p className="text-[10px] text-muted-foreground">open</p>
+                <p className="text-[10px] text-muted-foreground">open →</p>
               </CardContent>
             </Card>
           </Link>

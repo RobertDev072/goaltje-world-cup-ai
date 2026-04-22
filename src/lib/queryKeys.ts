@@ -25,6 +25,12 @@ export const queryKeys = {
 
   // Pools
   myPools: (userId: string) => ["my-pools", userId] as const,
+  poolMemberCount: (poolId: string) => ["pool-member-count", poolId] as const,
+  poolOpenPredictions: (userId: string, poolId: string) =>
+    ["pool-open-predictions", userId, poolId] as const,
+
+  // Tournament-wide
+  tournamentFinishedCount: () => ["tournament-finished-count"] as const,
 
   // Pool consensus (stemverdeling + top-3 uitslagen per match per pool)
   poolConsensus: (poolId: string, matchId: string) =>
