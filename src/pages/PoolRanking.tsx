@@ -207,8 +207,8 @@ export default function PoolRanking() {
         </div>
       )}
 
-      {/* Zoek + filter (alleen tonen bij ≥10 deelnemers) */}
-      {leaderboard && leaderboard.length >= 10 && (
+      {/* Zoek + filter — zichtbaar vanaf 3 leden */}
+      {leaderboard && leaderboard.length >= 3 && (
         <div className="space-y-2">
           <div className="flex items-center gap-2 bg-muted/60 rounded-xl px-3 py-2">
             <Search className="h-4 w-4 text-muted-foreground" />
