@@ -16,6 +16,7 @@ import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeM
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
 import { PredictionReminderBanner } from "@/components/PredictionReminderBanner";
+import { DailyPoolRecap } from "@/components/DailyPoolRecap";
 import { getPredictionState, isMissingToday } from "@/lib/predictionStatus";
 import { toast } from "@/hooks/use-toast";
 import { OnboardingModal } from "@/components/OnboardingModal";
@@ -280,6 +281,14 @@ export default function Index() {
         </div>
       )}
 
+
+      {/* Daily recap — verbergt zichzelf bij 0 afgeronde matches gisteren */}
+      {user && activePoolId && (
+        <DailyPoolRecap
+          poolId={activePoolId}
+          poolName={pools?.find((p: any) => p.id === activePoolId)?.name}
+        />
+      )}
 
       {/* Upcoming Matches */}
       <div>

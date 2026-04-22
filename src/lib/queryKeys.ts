@@ -34,6 +34,10 @@ export const queryKeys = {
   poolTopScores: (poolId: string, matchIds: string[]) =>
     ["pool-top-scores", poolId, matchIds.slice().sort().join(",")] as const,
 
+  // Dagelijkse pool-recap (gisteren: dagwinnaar, exacten, verrassing)
+  dailyPoolRecap: (poolId: string) =>
+    ["daily-pool-recap", poolId] as const,
+
   // Profile
   profile: (userId: string) => ["profile", userId] as const,
 
