@@ -326,6 +326,7 @@ export default function MatchDetail() {
             matchId={match.id}
             homeShort={match.home_team?.short_name}
             awayShort={match.away_team?.short_name}
+            userPrediction={existingPred ? { home_pred: existingPred.home_pred, away_pred: existingPred.away_pred } : null}
           />
         </motion.div>
       )}

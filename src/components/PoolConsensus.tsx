@@ -9,6 +9,8 @@ interface PoolConsensusProps {
   matchId: string;
   homeShort?: string | null;
   awayShort?: string | null;
+  /** De huidige voorspelling van de user; toont dan de "jij vs poule" hint onderaan */
+  userPrediction?: { home_pred: number | null; away_pred: number | null } | null;
   className?: string;
 }
 
@@ -26,7 +28,7 @@ interface ConsensusData {
   topScores: TopScore[];
 }
 
-export function PoolConsensus({ poolId, matchId, homeShort, awayShort, className }: PoolConsensusProps) {
+export function PoolConsensus({ poolId, matchId, homeShort, awayShort, userPrediction, className }: PoolConsensusProps) {
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.poolConsensus(poolId, matchId),
     queryFn: async () => {
@@ -128,6 +130,44 @@ export function PoolConsensus({ poolId, matchId, homeShort, awayShort, className
             </div>
           </div>
         )}
+
+        {/* Jij vs poule — alleen tonen als user heeft voorspeld */}
+        {userPrediction?.home_pred != null && userPrediction?.away_pred != null && (() => {
+          const matchedScore = topScores.find(
+            (s) => s.home_pred === userPrediction.home_pred && s.away_pred === userPrediction.away_pred
+          );
+          if (matchedScore) {
+            const pct = Math.round((matchedScore.count / totalVotes) * 100);
+            const isTop = topScores[0] === matchedScore;
+            return (
+              <div className="pt-3 border-t border-border/60 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-xl">🐑</div>
+                <div className="flex-1 text-[11px]">
+                  <p className="text-foreground">
+                    Jij tipt <b className="tabular-nums">{userPrediction.home_pred}-{userPrediction.away_pred}</b>
+                    {isTop ? " — dat is de populairste keuze" : ` — één van de top-gekozen uitslagen`} ({pct}% van de poule).
+                  </p>
+                  <p className="text-muted-foreground mt-0.5">Je speelt met de consensus mee.</p>
+                </div>
+              </div>
+            );
+          }
+          // User kiest iets dat niet in top-3 staat — contrair
+          const contrarianPct = Math.round((1 / totalVotes) * 100);
+          return (
+            <div className="pt-3 border-t border-border/60 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center shrink-0 text-xl">🎲</div>
+              <div className="flex-1 text-[11px]">
+                <p className="text-foreground">
+                  Jij tipt <b className="tabular-nums">{userPrediction.home_pred}-{userPrediction.away_pred}</b> — contrair.
+                </p>
+                <p className="text-muted-foreground mt-0.5">
+                  Slechts ~{contrarianPct}% gaat voor deze score. Hoog risico, hoge beloning.
+                </p>
+              </div>
+            </div>
+          );
+        })()}
       </CardContent>
     </Card>
   );

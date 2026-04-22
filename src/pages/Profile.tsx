@@ -15,6 +15,8 @@ import { getConsent, getConsentCategories, setConsent } from "@/lib/consent";
 import { Switch } from "@/components/ui/switch";
 import { PredictorProfile } from "@/components/PredictorProfile";
 import { UserAnalytics } from "@/components/UserAnalytics";
+import { WeekSummary } from "@/components/WeekSummary";
+import { TeamBias } from "@/components/TeamBias";
 
 export default function Profile() {
   const { user, signOut } = useAuth();
@@ -212,6 +214,13 @@ export default function Profile() {
         <PredictorProfile userId={user.id} />
       </motion.div>
 
+      {/* Deze week samenvatting — verbergt bij geen data */}
+      {myPools && myPools[0]?.id && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}>
+          <WeekSummary userId={user.id} poolId={myPools[0].id} />
+        </motion.div>
+      )}
+
       {/* Rang-evolutie + per-fase accuratesse */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
         <UserAnalytics
@@ -219,6 +228,11 @@ export default function Profile() {
           poolId={myPools?.[0]?.id ?? null}
           poolName={myPools?.[0]?.name ?? null}
         />
+      </motion.div>
+
+      {/* Team-bias — verbergt bij <2 matches per team */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+        <TeamBias userId={user.id} />
       </motion.div>
 
       {/* My Pools */}
