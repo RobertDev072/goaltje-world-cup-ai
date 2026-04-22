@@ -57,6 +57,10 @@ export const queryKeys = {
   poolRecapFeed: (poolId: string, days: number) =>
     ["pool-recap-feed", poolId, days] as const,
 
+  // Per-match personal trackrecord (accuratesse per fase + per team)
+  userMatchTrackrecord: (userId: string, matchId: string) =>
+    ["user-match-trackrecord", userId, matchId] as const,
+
   // Profile
   profile: (userId: string) => ["profile", userId] as const,
 

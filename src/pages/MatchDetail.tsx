@@ -18,6 +18,7 @@ import { motion } from "framer-motion";
 import { trackFirstPrediction } from "@/lib/analytics";
 import { ExactScoreConfetti, useExactScoreConfetti } from "@/components/ExactScoreConfetti";
 import { PoolConsensus } from "@/components/PoolConsensus";
+import { MatchTrackrecord } from "@/components/MatchTrackrecord";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { getPredictionState } from "@/lib/predictionStatus";
 
@@ -521,6 +522,18 @@ export default function MatchDetail() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Persoonlijk trackrecord (verbergt als gebruiker nog geen relevante historie heeft) */}
+      {user && match.id && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <MatchTrackrecord
+            userId={user.id}
+            matchId={match.id}
+            homeTeamName={match.home_team?.name}
+            awayTeamName={match.away_team?.name}
+          />
+        </motion.div>
+      )}
 
       {/* Ranglijst link */}
       {activePool && (
