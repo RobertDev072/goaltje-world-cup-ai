@@ -52,6 +52,11 @@ export const queryKeys = {
   userStageAccuracy: (userId: string) =>
     ["user-stage-accuracy", userId] as const,
 
+  // Pool trends + recap feed (insights tab)
+  poolTrends: (poolId: string) => ["pool-trends", poolId] as const,
+  poolRecapFeed: (poolId: string, days: number) =>
+    ["pool-recap-feed", poolId, days] as const,
+
   // Profile
   profile: (userId: string) => ["profile", userId] as const,
 

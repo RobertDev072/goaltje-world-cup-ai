@@ -26,6 +26,9 @@ import { SocialShareSheet } from "@/components/SocialShareSheet";
 import { PoolChat } from "@/components/PoolChat";
 import { ShareCard } from "@/components/ShareCard";
 import { TiebreakerInfo } from "@/components/TiebreakerInfo";
+import { DailyPoolRecap } from "@/components/DailyPoolRecap";
+import { PoolTrends } from "@/components/PoolTrends";
+import { PoolRecapFeed } from "@/components/PoolRecapFeed";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -522,6 +525,11 @@ export default function PoolDetail() {
         </TabsList>
 
         <TabsContent value="leaderboard" className="mt-4 space-y-3">
+          {/* Daily recap — verbergt zichzelf als er gisteren geen matches waren */}
+          {id && pool && (
+            <DailyPoolRecap poolId={id} poolName={pool.name} />
+          )}
+
           {/* Top 3 preview */}
           {leaderboard && leaderboard.length > 0 ? (
             <div className="space-y-2">
@@ -641,7 +649,18 @@ export default function PoolDetail() {
         </TabsContent>
 
 
-        <TabsContent value="insights" className="mt-4">
+        <TabsContent value="insights" className="mt-4 space-y-3">
+          {/* Pool-brede trends (cijfers + stemming) */}
+          {id && (
+            <PoolTrends poolId={id} poolName={pool?.name} />
+          )}
+
+          {/* Recap-feed — dagelijkse highlights laatste 7 dagen */}
+          {id && (
+            <PoolRecapFeed poolId={id} />
+          )}
+
+          {/* Persoonlijke smart insights (bestaand) */}
           <SmartInsights predictions={myPredictions || []} />
         </TabsContent>
 
