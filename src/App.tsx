@@ -45,6 +45,7 @@ const PouleTips = lazy(() => import("./pages/seo/PouleTips"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Templates = lazy(() => import("./pages/Templates"));
 const HelpPage = lazy(() => import("./pages/HelpPage"));
+const Insights = lazy(() => import("./pages/Insights"));
 
 const SEO_ROUTES: { path: string; element: React.ReactElement }[] = [
   { path: "/wk-2026-poule-maken-met-vrienden", element: <PoolMakenVrienden /> },
@@ -136,6 +137,7 @@ const App = () => {
                       <Route path="/app/pool/:id/ranking" element={<PoolRanking />} />
                       <Route path="/app/bracket" element={<Bracket />} />
                       <Route path="/app/profile" element={<Profile />} />
+                      <Route path="/app/insights" element={<Insights />} />
                       <Route path="/app/admin" element={<AdminDashboard />} />
                       <Route path="/app/admin/users" element={<AdminUsers />} />
                       <Route path="/app/admin/activity" element={<AdminActivity />} />

@@ -1,4 +1,4 @@
-import { Home, Trophy, Users, GitBranch, User, HelpCircle } from "lucide-react";
+import { Home, Trophy, Users, GitBranch, User, Sparkles } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -9,7 +9,7 @@ const tabs = [
   { to: "/app/pool", icon: Users, label: "Pool" },
   { to: "/app/bracket", icon: GitBranch, label: "Bracket" },
   { to: "/app/profile", icon: User, label: "Profiel" },
-  { to: "/app/help", icon: HelpCircle, label: "Help" },
+  { to: "/app/insights", icon: Sparkles, label: "Inzichten" },
 ];
 
 export function BottomNav() {

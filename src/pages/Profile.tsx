@@ -14,9 +14,6 @@ import { motion } from "framer-motion";
 import { getConsent, getConsentCategories, setConsent } from "@/lib/consent";
 import { Switch } from "@/components/ui/switch";
 import { PredictorProfile } from "@/components/PredictorProfile";
-import { UserAnalytics } from "@/components/UserAnalytics";
-import { WeekSummary } from "@/components/WeekSummary";
-import { TeamBias } from "@/components/TeamBias";
 
 export default function Profile() {
   const { user, signOut } = useAuth();
@@ -214,26 +211,21 @@ export default function Profile() {
         <PredictorProfile userId={user.id} />
       </motion.div>
 
-      {/* Deze week samenvatting — verbergt bij geen data */}
-      {myPools && myPools[0]?.id && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.13 }}>
-          <WeekSummary userId={user.id} poolId={myPools[0].id} />
-        </motion.div>
-      )}
-
-      {/* Rang-evolutie + per-fase accuratesse */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
-        <UserAnalytics
-          userId={user.id}
-          poolId={myPools?.[0]?.id ?? null}
-          poolName={myPools?.[0]?.name ?? null}
-        />
-      </motion.div>
-
-      {/* Team-bias — verbergt bij <2 matches per team */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-        <TeamBias userId={user.id} />
-      </motion.div>
+      {/* Link naar alle inzichten */}
+      <Link to="/app/insights">
+        <Card className="border-0 shadow-elevation-1 hover:shadow-elevation-2 transition-all">
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="h-9 w-9 rounded-full bg-secondary/15 flex items-center justify-center shrink-0">
+              <span className="text-lg">✨</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm">Alle inzichten</p>
+              <p className="text-[11px] text-muted-foreground">Deze week · Rang-evolutie · Team-bias · Pool-trends</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-primary shrink-0" />
+          </CardContent>
+        </Card>
+      </Link>
 
       {/* My Pools */}
       {myPools && myPools.length > 0 && (
