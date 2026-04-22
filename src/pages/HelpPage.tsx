@@ -12,6 +12,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { ScoringExamples } from "@/components/ScoringExamples";
 import { useSEO } from "@/lib/seo";
 
 const containerVariants = {
@@ -54,13 +55,6 @@ const steps = [
     title: "Volg de live ranglijst en kijk wie de beste voorspeller is",
     description: "Punten worden automatisch bijgewerkt. Bekijk de ranglijst en daag vrienden uit.",
   },
-];
-
-const scoringRows = [
-  { result: "Exacte score", points: "6 punten" },
-  { result: "Correct doelverschil", points: "4 punten" },
-  { result: "Correct resultaat (winner/gelijkspel)", points: "3 punten" },
-  { result: "Fout", points: "0 punten" },
 ];
 
 const faqs = [
@@ -160,43 +154,10 @@ export default function HelpPage() {
             </div>
           </motion.section>
 
-          {/* Scoring system */}
+          {/* Scoring system met concrete voorbeelden */}
           <motion.section variants={itemVariants} className="space-y-4">
             <h2 className="text-xl font-semibold text-foreground">Puntensysteem</h2>
-            <Card className="bg-card/60 border-border/50 backdrop-blur-sm overflow-hidden">
-              <CardContent className="p-0">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border/50 bg-muted/30">
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-foreground">
-                        Resultaat
-                      </th>
-                      <th className="text-right px-4 py-3 text-sm font-semibold text-foreground">
-                        Punten
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {scoringRows.map((row, i) => (
-                      <tr
-                        key={i}
-                        className="border-b border-border/30 last:border-0 hover:bg-muted/20 transition-colors"
-                      >
-                        <td className="px-4 py-3 text-sm text-foreground">{row.result}</td>
-                        <td className="px-4 py-3 text-sm text-right font-semibold text-secondary">
-                          {row.points}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="px-4 py-3 bg-muted/20 border-t border-border/30">
-                  <p className="text-xs text-muted-foreground">
-                    Punten stapelen niet — alleen de hoogste categorie telt.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <ScoringExamples />
           </motion.section>
 
           {/* FAQ */}

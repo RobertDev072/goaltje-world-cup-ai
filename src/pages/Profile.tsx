@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, Moon, Sun, Shield, Camera, Loader2, Trophy, Target, Zap, Users, ChevronRight, Cookie, Check } from "lucide-react";
+import { LogOut, Moon, Sun, Shield, Camera, Loader2, Trophy, Target, Zap, Users, ChevronRight, Cookie, Check, HelpCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { getConsent, getConsentCategories, setConsent } from "@/lib/consent";
 import { Switch } from "@/components/ui/switch";
@@ -211,21 +211,37 @@ export default function Profile() {
         <PredictorProfile userId={user.id} />
       </motion.div>
 
-      {/* Link naar alle inzichten */}
-      <Link to="/app/insights">
-        <Card className="border-0 shadow-elevation-1 hover:shadow-elevation-2 transition-all">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="h-9 w-9 rounded-full bg-secondary/15 flex items-center justify-center shrink-0">
-              <span className="text-lg">✨</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm">Alle inzichten</p>
-              <p className="text-[11px] text-muted-foreground">Deze week · Rang-evolutie · Team-bias · Pool-trends</p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-primary shrink-0" />
-          </CardContent>
-        </Card>
-      </Link>
+      {/* Snelle links naar inzichten + uitleg */}
+      <div className="space-y-2">
+        <Link to="/app/insights">
+          <Card className="border-0 shadow-elevation-1 hover:shadow-elevation-2 transition-all">
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-secondary/15 flex items-center justify-center shrink-0">
+                <span className="text-lg">✨</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">Alle inzichten</p>
+                <p className="text-[11px] text-muted-foreground">Deze week · Rang-evolutie · Team-bias · Pool-trends</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-primary shrink-0" />
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/app/help">
+          <Card className="border-0 shadow-elevation-1 hover:shadow-elevation-2 transition-all">
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <HelpCircle className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm">Help &amp; puntensysteem</p>
+                <p className="text-[11px] text-muted-foreground">Hoe werken de punten · FAQ · Voorbeelden</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-primary shrink-0" />
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
 
       {/* My Pools */}
       {myPools && myPools.length > 0 && (

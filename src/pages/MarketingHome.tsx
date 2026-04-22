@@ -282,6 +282,78 @@ export default function MarketingHome() {
         </div>
       </section>
 
+      {/* Puntentelling uitleg — veelgestelde vraag onder vrienden/collega's */}
+      <section id="puntentelling" className="mx-auto w-full max-w-4xl px-4 py-20">
+        <div className="text-center mb-10">
+          <p className="text-xs uppercase tracking-[0.18em] text-white/70">Hoe werkt het scoren?</p>
+          <h2 className="mt-2 font-display text-3xl font-bold md:text-4xl">Simpel puntensysteem</h2>
+          <p className="mx-auto mt-3 max-w-xl text-white/75">
+            Drie categorieën, geen stapeling. Je krijgt alleen de <strong>hoogste</strong> categorie die klopt.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 md:gap-5 max-w-2xl mx-auto">
+          <div className="rounded-2xl border border-primary/40 bg-primary/10 p-5 text-center">
+            <p className="font-display font-black text-4xl text-primary">6</p>
+            <p className="text-[11px] uppercase tracking-wider font-bold text-white mt-1">Exact</p>
+            <p className="text-[11px] text-white/70 mt-2">Je tipt precies de juiste eindscore</p>
+          </div>
+          <div className="rounded-2xl border border-secondary/40 bg-secondary/10 p-5 text-center">
+            <p className="font-display font-black text-4xl text-secondary">4</p>
+            <p className="text-[11px] uppercase tracking-wider font-bold text-white mt-1">Doelverschil</p>
+            <p className="text-[11px] text-white/70 mt-2">Winnaar goed + zelfde verschil</p>
+          </div>
+          <div className="rounded-2xl border border-accent/40 bg-accent/10 p-5 text-center">
+            <p className="font-display font-black text-4xl text-accent">3</p>
+            <p className="text-[11px] uppercase tracking-wider font-bold text-white mt-1">Uitslag</p>
+            <p className="text-[11px] text-white/70 mt-2">Alleen winnaar of gelijk-tip klopt</p>
+          </div>
+        </div>
+
+        {/* Concrete voorbeelden */}
+        <div className="mt-10 rounded-3xl border border-white/15 bg-white/[0.04] p-6">
+          <p className="text-sm text-white/70 mb-4 text-center">
+            Stel: de echte uitslag is <span className="inline-flex items-center gap-1 font-bold font-display bg-white text-[hsl(var(--lp-bg))] rounded-full px-3 py-0.5 tabular-nums mx-1">NED 3 – 1 BRA</span>
+          </p>
+
+          <div className="grid gap-2 md:grid-cols-2">
+            <div className="flex items-center gap-3 rounded-xl bg-primary/15 border border-primary/30 px-3 py-2.5">
+              <span className="font-mono text-xs text-white/60 w-10">3-1</span>
+              <span className="flex-1 text-xs text-white/90">Jij tipt <b>3-1</b> → exact</span>
+              <span className="font-bold font-display text-primary bg-primary/20 rounded-full px-2.5 py-0.5 text-sm">6pt</span>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl bg-secondary/15 border border-secondary/30 px-3 py-2.5">
+              <span className="font-mono text-xs text-white/60 w-10">2-0</span>
+              <span className="flex-1 text-xs text-white/90">Jij tipt <b>2-0</b> → verschil +2 klopt</span>
+              <span className="font-bold font-display text-secondary bg-secondary/20 rounded-full px-2.5 py-0.5 text-sm">4pt</span>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl bg-accent/15 border border-accent/30 px-3 py-2.5">
+              <span className="font-mono text-xs text-white/60 w-10">1-0</span>
+              <span className="flex-1 text-xs text-white/90">Jij tipt <b>1-0</b> → NED wint, maar verschil 1 ≠ 2</span>
+              <span className="font-bold font-display text-accent bg-accent/20 rounded-full px-2.5 py-0.5 text-sm">3pt</span>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl bg-destructive/15 border border-destructive/30 px-3 py-2.5">
+              <span className="font-mono text-xs text-white/60 w-10">2-2</span>
+              <span className="flex-1 text-xs text-white/90">Jij tipt <b>2-2</b> → gelijkspel, klopt niet</span>
+              <span className="font-bold font-display text-destructive bg-destructive/20 rounded-full px-2.5 py-0.5 text-sm">0pt</span>
+            </div>
+          </div>
+
+          <p className="text-xs text-white/60 text-center mt-5">
+            💡 Bij gelijkspel-uitslagen zit er geen "doelverschil"-optie tussen exact en uitslag (verschil is altijd 0).
+          </p>
+
+          <div className="mt-6 text-center">
+            <Link
+              to="/app/help"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-secondary hover:text-secondary/80"
+            >
+              Bekijk volledige uitleg + FAQ →
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section className="mx-auto w-full max-w-4xl px-4 py-20 text-center">
         <div className="rounded-3xl border border-white/15 bg-gradient-to-br from-primary/25 via-[hsl(var(--lp-surface-dark))/0.9] to-secondary/15 px-6 py-12 shadow-[var(--lp-shadow-soft)]">
           <p className="text-xs uppercase tracking-[0.18em] text-white/70">Klaar om te starten?</p>
