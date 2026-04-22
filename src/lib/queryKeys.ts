@@ -46,6 +46,12 @@ export const queryKeys = {
   poolLeaderboardBadges: (poolId: string) =>
     ["pool-leaderboard-badges", poolId] as const,
 
+  // User analytics
+  userRankEvolution: (userId: string, poolId: string, days: number) =>
+    ["user-rank-evolution", userId, poolId, days] as const,
+  userStageAccuracy: (userId: string) =>
+    ["user-stage-accuracy", userId] as const,
+
   // Profile
   profile: (userId: string) => ["profile", userId] as const,
 

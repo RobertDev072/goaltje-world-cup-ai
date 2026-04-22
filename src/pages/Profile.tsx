@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import { getConsent, getConsentCategories, setConsent } from "@/lib/consent";
 import { Switch } from "@/components/ui/switch";
 import { PredictorProfile } from "@/components/PredictorProfile";
+import { UserAnalytics } from "@/components/UserAnalytics";
 
 export default function Profile() {
   const { user, signOut } = useAuth();
@@ -209,6 +210,15 @@ export default function Profile() {
       {/* Predictor Profile — auto-gegenereerd uit voorspel-patronen */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
         <PredictorProfile userId={user.id} />
+      </motion.div>
+
+      {/* Rang-evolutie + per-fase accuratesse */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
+        <UserAnalytics
+          userId={user.id}
+          poolId={myPools?.[0]?.id ?? null}
+          poolName={myPools?.[0]?.name ?? null}
+        />
       </motion.div>
 
       {/* My Pools */}
