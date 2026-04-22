@@ -1979,8 +1979,8 @@ export default function AdminDashboard() {
         </div>
       )}
 
-        </div>{/* einde tab-inhoud */}
-      </div>{/* einde main area */}
-    </div>{/* einde lg:flex wrapper */}
+        </div>
+      </div>
+    </div>
   );
 }
