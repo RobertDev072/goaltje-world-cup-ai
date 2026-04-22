@@ -42,6 +42,10 @@ export const queryKeys = {
   predictorProfile: (userId: string) =>
     ["predictor-profile", userId] as const,
 
+  // Pool leaderboard badges (streak + profile per pool-lid)
+  poolLeaderboardBadges: (poolId: string) =>
+    ["pool-leaderboard-badges", poolId] as const,
+
   // Profile
   profile: (userId: string) => ["profile", userId] as const,
 
