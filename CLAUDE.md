@@ -6,7 +6,7 @@ This file provides guidance for AI assistants (Claude Code and others) working i
 
 ## Project Overview
 
-**Goaltje** is a free FIFA World Cup 2026 prediction pool application. Users create pools, predict outcomes for all 104 WK 2026 matches, view live scores, and compete on leaderboards. The app is primarily in Dutch but supports English, Spanish, and Portuguese.
+**Goaltje** is a free FIFA World Cup 2026 prediction pool application. Users create pools, predict outcomes for all 104 WK 2026 matches, view live scores, and compete on leaderboards. The app is primarily in Dutch with a handful of English SEO routes under `/en/`. No Spanish/Portuguese.
 
 **Stack at a glance:**
 - Frontend: React 18 + TypeScript + Vite (SWC)
@@ -84,28 +84,45 @@ npm run preview
 ├── src/
 │   ├── pages/              # Route-level page components (lazy loaded)
 │   │   └── seo/            # SEO-targeted landing pages
-│   ├── components/         # Reusable UI components
-│   │   └── ui/             # shadcn/ui primitives
+│   ├── components/         # Reusable UI components (40+)
+│   │   └── ui/             # shadcn/ui primitives (18)
 │   ├── contexts/           # React Contexts (AuthContext)
-│   ├── hooks/              # Custom React hooks
+│   ├── hooks/              # Custom React hooks (use-toast, useRealtimeMatches)
 │   ├── integrations/
 │   │   └── supabase/       # Supabase client + generated DB types
-│   ├── lib/                # Pure utility modules (scoring, analytics, SEO, etc.)
+│   ├── lib/                # Utility modules (see "Lib modules" below)
 │   ├── assets/             # Images and static assets
 │   ├── test/               # Vitest setup and example tests
 │   ├── App.tsx             # Root component — routing and global providers
 │   └── main.tsx            # React entry point
 ├── supabase/
-│   ├── migrations/         # SQL migration files (45+, applied in order)
-│   ├── functions/          # Deno-based Edge Functions
+│   ├── migrations/         # SQL migration files (60+, applied in order)
+│   ├── functions/          # Deno-based Edge Functions (8)
 │   └── config.toml         # Supabase project config
 ├── public/                 # Static assets (PWA icons, robots.txt, sitemap.xml)
+├── scripts/                # Standalone Node scripts (e.g. fetch-daily-results.mjs)
+├── docs/ at root           # README.md, DOCS.md, FEATURES.md, ANALYSE.md,
+│                           # PRODUCTHUNT-LAUNCH.md, LINKEDIN-TEMPLATES.md,
+│                           # PROMO-SCRIPTS.md — marketing + analysis, geen code
 ├── vite.config.ts
 ├── tailwind.config.ts
 ├── tsconfig.json
 ├── vercel.json
 └── vitest.config.ts
 ```
+
+### Lib modules
+
+- `scoring.ts` — point calculation (single source of truth)
+- `queryKeys.ts` — centralized React Query keys **and** `staleTimes` constants
+- `analytics.ts` — event tracking (respects consent)
+- `consent.ts` — `hasAnalyticsConsent()`, cookie/consent helpers
+- `errorLogger.ts` — client-side error reporting
+- `auditLogger.ts` — admin audit trail helpers
+- `predictionStatus.ts` — state helpers (open/filled/missed/locked)
+- `timezone.ts` — NL-date/time formatters
+- `seo.ts` — meta tags + JSON-LD
+- `utils.ts` — `cn()` (clsx + tailwind-merge)
 
 ---
 
@@ -128,7 +145,7 @@ npm run preview
 
 - All data fetching uses **TanStack React Query v5** with `useQuery` / `useMutation`.
 - **Always use keys from `src/lib/queryKeys.ts`** — never write inline string arrays.
-- **Always use stale times from `src/lib/staleTimes`** exported from the same file.
+- **Always use `staleTimes.*` constants** — exported from the same `src/lib/queryKeys.ts`.
 - Supabase calls go through `src/integrations/supabase/client.ts`.
 - Never cache Supabase API responses in the service worker (configured as `NetworkOnly` in `vite.config.ts`).
 
@@ -163,8 +180,9 @@ Rules are **non-stacking** — only the highest matching tier is awarded. Pool a
 
 ### Styling
 
-- Tailwind CSS 3 with a custom color palette (dark theme, `#0a1628` primary background).
-- Dark mode support via `next-themes`.
+- Tailwind CSS 3 with a custom color palette. **Light theme is the default** (`main.tsx` only adds the `dark` class when the user picked dark mode).
+- Navy `#0a1628` is used as accent/primary color (gradient-navy utility, headers, rank tiles) — not as default background.
+- Dark mode toggle via `next-themes` (user can switch on Profiel page).
 - Animation via both `tailwindcss-animate` and `framer-motion`. Use Framer Motion for complex choreographed animations; use Tailwind's `animate-*` utilities for simple transitions.
 
 ### Analytics & Cookie Consent
@@ -177,7 +195,7 @@ Rules are **non-stacking** — only the highest matching tier is awarded. Pool a
 
 ## Database
 
-The database is managed via Supabase with 45+ migration files in `supabase/migrations/`. Migrations are named with timestamps and applied in order.
+The database is managed via Supabase with **60+ migration files** in `supabase/migrations/`. Migrations are named with timestamps and applied in order.
 
 ### Core Tables
 
@@ -188,27 +206,64 @@ The database is managed via Supabase with 45+ migration files in `supabase/migra
 | `pools` | Prediction pools with custom scoring rules |
 | `pool_members` | Pool membership and roles |
 | `predictions` | User predictions per match per pool |
-| `profiles` | User display names and avatars |
+| `match_result_drafts` | Admin draft-results flow (enter scores before publishing) |
+| `profiles` | User display names, avatars, email |
 | `bonus_questions` / `bonus_predictions` | Bonus round questions |
 | `match_events` | Goals, cards, substitutions |
 | `pool_messages` | Real-time pool chat |
 | `wk_news_cache` | AI-generated match news cache |
 | `user_roles` | Admin/moderator roles |
+| `user_sessions` | Login tracking (IP, device) for admin overview |
+| `audit_logs` | Admin action audit trail |
 | `tenants` | White-label branding configuration |
 | `api_cache` / `api_usage` | External API response caching |
 
-### Key Database Functions
+### Database Functions (32 RPCs)
 
+Grouped by purpose:
+
+**Leaderboard & scoring:**
 - `get_pool_leaderboard(pool_id)` — ranked leaderboard with tiebreaker logic
+- `get_pool_leaderboard_admin(pool_id)` — admin-variant with extra fields
 - `get_public_leaderboard()` — public top pools and predictors
-- `recalculate_match_points()` — trigger run after match score updates
+- `get_global_ranking()` — cross-pool global ranking
+- `recalculate_match_points()` — run after match score updates
 - `validate_prediction_lock()` — blocks predictions past deadline
+
+**Self-learning pool insights (added Apr 2026):**
+- `get_pool_consensus(pool_id, match_id)` — vote distribution + top-3 scores
+- `get_pool_top_scores(pool_id, match_ids[])` — batch most-voted score per match
+- `get_pool_trends(pool_id)` — avg goals, draw-rate, upset count, mood
+- `get_pool_recap_feed(pool_id, days)` — daily highlights feed
+- `get_pool_leaderboard_badges(pool_id)` — streak + profile per member
+- `get_daily_pool_recap(pool_id)` — yesterday: winner + exact-scorers + upset
+
+**Per-user analytics (added Apr 2026):**
+- `get_user_predictor_profile(user_id)` — auto-derived profile type + stats
+- `get_user_rank_evolution(pool_id, user_id, days)` — sparkline data
+- `get_user_stage_accuracy(user_id)` — accuracy per tournament stage
+- `get_user_team_bias(user_id)` — over/underestimated teams
+- `get_user_week_summary(pool_id, user_id)` — weekly points/rank delta
+- `get_user_match_trackrecord(user_id, match_id)` — per-match context
+- `get_match_prediction_distribution(match_id)` — pool-wide vote spread
+
+**Admin tooling:**
+- `get_admin_stats()`, `get_admin_users()`
+- `admin_award_bonus_points`, `admin_delete_pool`, `admin_delete_user_data`, `admin_reset_invite_code`
+- `get_public_stats()`
+
+**Security/helpers:**
+- `has_role(user_id, role)` — auth/role check
+- `is_pool_member(user_id, pool_id)` — RLS helper used in most policies
+- `handle_new_user()`, `update_updated_at_column()` — triggers
+- `lookup_pool_by_invite_code`, `toggle_message_reaction`
 
 ### Migration Conventions
 
 - New migrations go in `supabase/migrations/` with a timestamp prefix: `YYYYMMDDHHMMSS_description.sql`
 - Always include a comment header explaining the change
 - Never modify existing migration files — always add a new one
+- All custom RPCs end with `NOTIFY pgrst, 'reload schema';` so PostgREST picks them up immediately
 
 ---
 
@@ -227,7 +282,7 @@ The database is managed via Supabase with 45+ migration files in `supabase/migra
 
 ## Edge Functions
 
-Deno-based TypeScript functions in `supabase/functions/`:
+Deno-based TypeScript functions in `supabase/functions/` (8 total):
 
 | Function | Purpose |
 |----------|---------|
@@ -236,6 +291,9 @@ Deno-based TypeScript functions in `supabase/functions/`:
 | `admin-status` | Admin metadata endpoint |
 | `admin-users` | User management actions |
 | `recalc-all` | Trigger global point recalculation |
+| `ingest-results` | Automated daily result ingestion (called by scripts/fetch-daily-results.mjs) |
+| `log-event` | Client-side event logging endpoint |
+| `log-login` | Login tracking → `user_sessions` |
 
 Edge functions use `no-verify-jwt` for admin/seed functions. Keep JWT verification on for user-facing functions.
 
@@ -325,10 +383,46 @@ Do **not** commit secrets like service role keys or private API tokens.
 2. Write the SQL with a header comment
 3. Apply locally: `supabase db reset` or `supabase migration up`
 4. Regenerate types if schema changed: `supabase gen types typescript --local > src/integrations/supabase/types.ts`
+5. (Optional) Gebruiker kan de SQL ook direct in Supabase Studio SQL Editor plakken — handig voor hotfixes. De Supabase MCP-connector kan de huidige schema inspecteren om te checken of alles gerund is.
+6. Eindig altijd met `NOTIFY pgrst, 'reload schema';` als je een nieuwe RPC/functie toevoegt
 
 ### Scoring rule changes
 
 All scoring logic flows through `src/lib/scoring.ts`. The `calculatePoints()` function is the single source of truth. If a pool has custom rules, they are passed as the `rules` parameter — never hardcode point values elsewhere.
+
+---
+
+## Pool Insights Features (added Apr 2026)
+
+Een reeks zelflerende features die zich verbergen bij onvoldoende data en zichtbaar worden zodra er voorspellingen + afgeronde matches zijn. Alles 100% afgeleid uit `predictions` + `matches` tabellen — geen externe API's.
+
+### Components → RPC mapping
+
+| Component | Zichtbaar op | RPC die het gebruikt | Drempel |
+|---|---|---|---|
+| `PoolHeaderCard` | Home | `poolMemberCount` + `tournamentFinishedCount` + `poolOpenPredictions` | altijd |
+| `TournamentProgress` | Home | count van finished matches | altijd |
+| `LiveMatchBanner` | Home | — (client-side minuten uit `kickoff_utc`) | alleen bij `status='live'` |
+| `PoolConsensus` | MatchDetail | `get_pool_consensus` | ≥ 2 voorspellingen |
+| `MatchCard` poule-tipt chip | MatchCard (home + matches) | `get_pool_top_scores` (batch) | ≥ 2 voorspellingen |
+| `DailyPoolRecap` | Home + PoolDetail + Insights | `get_daily_pool_recap` | ≥ 1 finished match gisteren |
+| `PredictorProfile` | Profile + Insights | `get_user_predictor_profile` | altijd (toont 🌱 bij < 3 preds) |
+| `WeekSummary` | Insights | `get_user_week_summary` | finished matches laatste 7 dagen |
+| `UserAnalytics` (sparkline + per-fase) | Profile + Insights | `get_user_rank_evolution` + `get_user_stage_accuracy` | finished matches met rang-variatie |
+| `TeamBias` | Insights | `get_user_team_bias` | ≥ 2 matches per team |
+| `PoolTrends` | PoolDetail insights-tab + Insights | `get_pool_trends` | ≥ 1 voorspelling |
+| `PoolRecapFeed` | PoolDetail insights-tab + Insights | `get_pool_recap_feed` | afgeronde matches laatste 7 dagen |
+| `MatchTrackrecord` | MatchDetail | `get_user_match_trackrecord` | user heeft historie met dezelfde fase/teams |
+| `VirtualizedLeaderboard` + badges + rivaal | PoolRanking | `get_pool_leaderboard_badges` | ≥ 3 leden voor filters |
+| `ScoringExamples` | HelpPage + MarketingHome | — (statisch) | altijd |
+
+### Nieuwe route
+
+- `/app/insights` → `Insights.tsx` — verzamelt alle persoonlijke + pool-inzichten in één pagina, vervangt de Help-tab in de bottom nav (Help blijft bereikbaar via Profiel-menu).
+
+### Seed-SQL voor testen pre-WK
+
+Een DO-block in `supabase/migrations/` kan gebruikt worden om een test-pool te vullen met voorspellingen zodat de insights triggeren zonder op het WK te wachten. Zie eerdere sessie-logs.
 
 ---
 
