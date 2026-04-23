@@ -18,9 +18,33 @@ This file provides guidance for AI assistants (Claude Code and others) working i
 
 ---
 
-## Development Branch
+## Branch Strategy (STRIKT)
 
-Always develop on the designated feature branch — never push directly to `main` without explicit permission. The current working branch is tracked in the session context.
+- Alle wijzigingen gebeuren op de branch `TEST-PRODUCT`
+- NOOIT direct committen of pushen naar `main`
+- NOOIT een nieuwe feature-branch aanmaken voor een sessie —
+  altijd op `TEST-PRODUCT` werken
+- Pas na expliciete goedkeuring van de gebruiker mag een merge
+  naar `main` gebeuren
+- `main` en `TEST-PRODUCT` moeten identiek zijn zodra een feature
+  is goedgekeurd (geen losse branches laten slingeren)
+
+Standaard workflow per sessie:
+1. Check: `git branch --show-current` → moet `TEST-PRODUCT` zijn
+2. Zo niet: `git checkout TEST-PRODUCT`
+3. Werk daar, commit daar
+4. Merge naar main ALLEEN op uitdrukkelijk verzoek van de gebruiker
+
+---
+
+## Working Style
+
+- Chat altijd in het Nederlands. Code en commentaar in het Engels.
+- Bij grote wijzigingen: eerst plan voorleggen, wachten op
+  goedkeuring voor de code wijzigt.
+- Bij onduidelijkheid: vragen, niet gokken.
+- Bij refactors: eerst de diff-strategie tonen, niet meteen
+  alle bestanden aanpassen.
 
 ---
 
@@ -188,6 +212,19 @@ The database is managed via Supabase with 45+ migration files in `supabase/migra
 
 ---
 
+## Supabase Access
+
+- Claude Code heeft via de Supabase MCP-connector toegang tot
+  de database van dit project.
+- Voordat je schema-wijzigingen voorstelt: ALTIJD eerst de
+  huidige tabellen, kolommen, RLS-policies en functies inspecteren
+  via de MCP-connector.
+- Migrations eerst lokaal testen met `supabase db reset`.
+- Pushen naar remote (`supabase db push`) alleen na expliciete
+  goedkeuring van de gebruiker.
+
+---
+
 ## Edge Functions
 
 Deno-based TypeScript functions in `supabase/functions/`:
@@ -210,15 +247,8 @@ Edge functions use `no-verify-jwt` for admin/seed functions. Keep JWT verificati
 
 The production build (`npm run build`) produces an ES2020 bundle with manual chunk splitting:
 
-| Chunk | Contents |
-|-------|---------|
-| `vendor` | React, React DOM, React Router |
-| `query` | TanStack React Query |
-| `motion` | Framer Motion |
-| `supabase` | Supabase JS SDK |
-| `ui` | Radix UI components |
-| `charts` | Recharts |
-| `vercel` | Analytics + Speed Insights |
+Build uses manual chunk splitting voor vendor, query, motion, supabase,
+ui, charts en vercel — zie `vite.config.ts` voor details.
 
 Source maps are **disabled** in production (`sourcemap: false`).
 
@@ -312,3 +342,24 @@ All scoring logic flows through `src/lib/scoring.ts`. The `calculatePoints()` fu
 - Do not commit `.env` with real secrets to a public repo — the current `.env` contains dev credentials only.
 - Do not use inline query key arrays — always use `queryKeys.*` from `src/lib/queryKeys.ts`.
 - Do not add analytics calls that bypass `src/lib/analytics.ts` (consent must be respected).
+- Do not create a new feature branch per session — always work on TEST-PRODUCT
+- Do not merge TEST-PRODUCT into main without explicit user approval
+
+---
+
+## CLAUDE.md Onderhoud (zelf bijhouden)
+
+Deze CLAUDE.md is een levend document. Claude Code is verantwoordelijk
+voor het actueel houden ervan:
+
+- Als er een nieuwe feature, pattern of conventie wordt toegevoegd
+  die relevant is voor toekomstige sessies → voeg het toe aan CLAUDE.md.
+- Als een beschreven pattern niet meer klopt (code verwijderd,
+  library vervangen, structuur gewijzigd) → update de betreffende sectie.
+- Als een "What Not To Do"-regel achterhaald blijkt → herzie of verwijder.
+- Bij élke niet-triviale wijziging: eindig de sessie met de check
+  "Is er iets in CLAUDE.md dat bijgewerkt moet worden?" en doe dat
+  dan direct.
+
+Houd het document kort en concreet — voeg niet alles toe, alleen wat
+tijd bespaart in toekomstige sessies.
