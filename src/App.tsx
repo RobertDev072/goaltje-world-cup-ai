@@ -9,7 +9,6 @@ import { AppLayout } from "@/components/AppLayout";
 import { AuthGate } from "@/components/AuthGate";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { InstallPrompt } from "@/components/InstallPrompt";
-import { CookieConsent } from "@/components/CookieConsent";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
@@ -103,7 +102,6 @@ const App = () => {
             <Toaster />
             <Sonner />
             <InstallPrompt />
-            <CookieConsent />
             <BrowserRouter>
               <ErrorBoundary>
                 <Suspense fallback={<PageLoader />}>

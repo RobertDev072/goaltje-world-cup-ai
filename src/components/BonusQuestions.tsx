@@ -8,16 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Lock, Check, Trophy, Clock, Star } from "lucide-react";
+import { Lock, Check, Star, Layers } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { PoolSelector } from "./PoolSelector";
 
 export function BonusQuestions() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [selectedPoolId, setSelectedPoolId] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   const { data: questions, isLoading } = useQuery({
@@ -45,20 +43,21 @@ export function BonusQuestions() {
     enabled: !!user,
   });
 
-  const activePool = selectedPoolId || (pools && pools.length > 0 ? pools[0].id : "");
+  // First pool is used only for displaying existing answers (they're the same in every pool after bulk save).
+  const viewPool = pools && pools.length > 0 ? pools[0].id : "";
 
   const { data: myPredictions } = useQuery({
-    queryKey: ["bonus-predictions", user?.id, activePool],
+    queryKey: ["bonus-predictions", user?.id, viewPool],
     queryFn: async () => {
-      if (!user || !activePool) return [];
+      if (!user || !viewPool) return [];
       const { data } = await supabase
         .from("bonus_predictions")
         .select("*")
         .eq("user_id", user.id)
-        .eq("pool_id", activePool);
+        .eq("pool_id", viewPool);
       return data || [];
     },
-    enabled: !!user && !!activePool,
+    enabled: !!user && !!viewPool,
   });
 
   const { data: teams } = useQuery({
@@ -75,33 +74,37 @@ export function BonusQuestions() {
     return map;
   }, [myPredictions]);
 
+  const poolCount = pools?.length ?? 0;
+
   const savePrediction = useMutation({
     mutationFn: async ({ questionId, answer }: { questionId: string; answer: string }) => {
-      if (!user || !activePool) throw new Error("Niet ingelogd of geen poule geselecteerd");
-      const existing = predictionMap.get(questionId);
-      if (existing) {
-        const { error } = await supabase
-          .from("bonus_predictions")
-          .update({ answer, updated_at: new Date().toISOString() })
-          .eq("id", existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("bonus_predictions")
-          .insert({
-            user_id: user.id,
-            pool_id: activePool,
-            question_id: questionId,
-            answer,
-          });
-        if (error) throw error;
-      }
+      if (!user) throw new Error("Niet ingelogd");
+      type BulkBonusResult = { savedPoolIds: string[]; skippedPoolIds: string[]; questionLocked: boolean };
+      const rpcClient = supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: BulkBonusResult | null; error: Error | null }>;
+      const { data, error } = await rpcClient("save_bonus_prediction_bulk", {
+        _question_id: questionId,
+        _answer: answer,
+      });
+      if (error) throw error;
+      return data as BulkBonusResult;
     },
-    onSuccess: () => {
-      toast({ title: "Opgeslagen! ✅" });
+    onSuccess: (result) => {
+      const savedCount = result?.savedPoolIds?.length ?? 0;
+      toast({
+        title: savedCount > 0 ? "Opgeslagen ✓" : "Niet opgeslagen",
+        description:
+          savedCount > 0
+            ? poolCount > 1
+              ? `Bonus opgeslagen in ${savedCount} poule${savedCount === 1 ? "" : "s"}.`
+              : "Je antwoord is bijgewerkt."
+            : "De bonus-vraag is gesloten.",
+      });
       queryClient.invalidateQueries({ queryKey: ["bonus-predictions"] });
     },
-    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
   });
 
   if (isLoading) return <Skeleton className="h-48 rounded-xl" />;
@@ -117,9 +120,12 @@ export function BonusQuestions() {
 
   return (
     <div className="space-y-4">
-      {/* Pool selector */}
-      {user && pools && pools.length > 0 && (
-        <PoolSelector value={selectedPoolId} onChange={setSelectedPoolId} />
+      {/* Info strip — save scope */}
+      {poolCount > 1 && (
+        <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-primary/10 text-primary">
+          <Layers className="h-3.5 w-3.5 shrink-0" />
+          <span>Antwoorden worden opgeslagen in al je {poolCount} poules</span>
+        </div>
       )}
 
       {/* Info card */}
@@ -217,7 +223,14 @@ export function BonusQuestions() {
                     onClick={() => savePrediction.mutate({ questionId: q.id, answer: currentAnswer })}
                     disabled={savePrediction.isPending}
                   >
-                    {savePrediction.isPending ? "Opslaan..." : hasAnswer ? "Bijwerken" : "Opslaan"}
+                    {poolCount > 1 && <Layers className="h-3.5 w-3.5 mr-1.5" />}
+                    {savePrediction.isPending
+                      ? "Opslaan..."
+                      : poolCount > 1
+                      ? `Opslaan in ${poolCount} poules`
+                      : hasAnswer
+                      ? "Bijwerken"
+                      : "Opslaan"}
                   </Button>
                 )}
 

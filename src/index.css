@@ -126,13 +126,17 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', sans-serif;
+    /* Twemoji Country Flags eerst zodat flag-emoji's op Windows desktop
+       (geen native flag-emoji-support) renderen via de webfont uit
+       country-flag-emoji-polyfill. unicode-range op @font-face zorgt dat
+       alleen flag-glyphs uit de webfont komen, alle andere tekens uit Inter. */
+    font-family: 'Twemoji Country Flags', 'Inter', sans-serif;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior: none;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Twemoji Country Flags', 'Space Grotesk', sans-serif;
   }
 }
 

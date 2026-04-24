@@ -1,7 +1,12 @@
 import { createRoot } from "react-dom/client";
+import { polyfillCountryFlagEmojis } from "country-flag-emoji-polyfill";
 import App from "./App.tsx";
 import "./index.css";
 import { initErrorLogger } from "./lib/errorLogger";
+
+// Vlaggen-emoji's renderen niet op Windows desktop. Polyfill laadt een Twemoji-
+// webfont alleen op browsers die het nodig hebben (no-op op iOS/Android/macOS).
+polyfillCountryFlagEmojis();
 
 // Initialize client-side error logging
 initErrorLogger();

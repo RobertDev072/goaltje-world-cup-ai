@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code local settings (contain permissions + potentially secrets)
+.claude/settings.local.json
+
+.mcp.json

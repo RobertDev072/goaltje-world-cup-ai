@@ -9,11 +9,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, Moon, Sun, Shield, Camera, Loader2, Trophy, Target, Zap, Users, ChevronRight, Cookie, Check, HelpCircle } from "lucide-react";
+import { LogOut, Moon, Sun, Shield, Camera, Loader2, Trophy, Target, Zap, Users, ChevronRight, Cookie, Check, HelpCircle, Link2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { getConsent, getConsentCategories, setConsent } from "@/lib/consent";
 import { Switch } from "@/components/ui/switch";
 import { PredictorProfile } from "@/components/PredictorProfile";
+import { useSyncPreferences } from "@/hooks/useSyncPreferences";
+import { SyncEnableConfirmModal } from "@/components/SyncEnableConfirmModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Profile() {
   const { user, signOut } = useAuth();
@@ -26,6 +38,10 @@ export default function Profile() {
   const [saved, setSaved] = useState(false);
   const [cookieAnalytics, setCookieAnalytics] = useState(() => getConsentCategories().analytics);
   const [cookieFunctional, setCookieFunctional] = useState(() => getConsentCategories().functional);
+  const [showSyncConfirm, setShowSyncConfirm] = useState(false);
+  const [showSyncDisableConfirm, setShowSyncDisableConfirm] = useState(false);
+
+  const { syncEnabled, isLoading: syncLoading, disableSync } = useSyncPreferences();
 
   const saveCookiePrefs = useCallback(() => {
     setConsent("granted", { analytics: cookieAnalytics, functional: cookieFunctional });
@@ -90,7 +106,11 @@ export default function Profile() {
   const updateProfile = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Niet ingelogd");
-      const { error } = await supabase.from("profiles").update({ name: nameValue }).eq("user_id", user.id);
+      // UPSERT zodat oudere accounts zonder profile-rij óók kunnen updaten —
+      // RLS blijft dicht omdat user_id verplicht gelijk is aan auth.uid().
+      const { error } = await supabase
+        .from("profiles")
+        .upsert({ user_id: user.id, name: nameValue }, { onConflict: "user_id" });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -121,7 +141,12 @@ export default function Profile() {
       const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
-      const { error: updateError } = await supabase.from("profiles").update({ avatar_url: `${urlData.publicUrl}?t=${Date.now()}` }).eq("user_id", user.id);
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .upsert(
+          { user_id: user.id, avatar_url: `${urlData.publicUrl}?t=${Date.now()}` },
+          { onConflict: "user_id" },
+        );
       if (updateError) throw updateError;
       toast({ title: "Profielfoto bijgewerkt! 📸" });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
@@ -261,6 +286,81 @@ export default function Profile() {
           </div>
         </motion.div>
       )}
+
+      {/* Voorspellingen — sync over alle pools */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+        <Card className="border-0 shadow-md">
+          <CardContent className="pt-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <Link2 className="h-4 w-4 text-primary shrink-0" />
+                  <Label htmlFor="sync-toggle" className="text-sm font-semibold cursor-pointer">
+                    Voorspellingen synchroniseren
+                  </Label>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Sla je voorspelling één keer op en deel 'm meteen over al je pools.
+                </p>
+              </div>
+              <Switch
+                id="sync-toggle"
+                checked={syncEnabled}
+                disabled={syncLoading || disableSync.isPending}
+                onCheckedChange={(next) => {
+                  if (next) {
+                    setShowSyncConfirm(true);
+                  } else {
+                    setShowSyncDisableConfirm(true);
+                  }
+                }}
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
+              {syncLoading
+                ? "Voorkeur laden…"
+                : syncEnabled
+                  ? `🔗 Aan — je voorspellingen worden gedeeld over al je pools (${myPools?.length ?? 0}).`
+                  : "Uit — elke pool staat los. Wijzigingen blijven binnen één pool."}
+            </p>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <SyncEnableConfirmModal open={showSyncConfirm} onOpenChange={setShowSyncConfirm} />
+
+      <AlertDialog open={showSyncDisableConfirm} onOpenChange={setShowSyncDisableConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Synchronisatie uitzetten?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bestaande voorspellingen blijven staan. Vanaf nu worden nieuwe voorspellingen alleen in de actieve pool opgeslagen.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={disableSync.isPending}>Annuleren</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={disableSync.isPending}
+              onClick={async (e) => {
+                e.preventDefault();
+                try {
+                  await disableSync.mutateAsync();
+                  toast({ title: "Synchronisatie uit" });
+                  setShowSyncDisableConfirm(false);
+                } catch (err) {
+                  toast({
+                    title: "Er ging iets mis",
+                    description: err instanceof Error ? err.message : "Probeer het opnieuw.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              {disableSync.isPending ? "Bezig…" : "Ja, uitzetten"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Edit Name */}
       <Card className="border-0 shadow-md">

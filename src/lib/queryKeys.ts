@@ -77,6 +77,11 @@ export const queryKeys = {
   // Profile
   profile: (userId: string) => ["profile", userId] as const,
 
+  // Prediction-sync voorkeuren (bulk_predict_enabled + sync_onboarded uit profiles)
+  syncPreferences: (userId: string) => ["sync-preferences", userId] as const,
+  // Globale dry-run preview: per pool current_count + will_be_added
+  syncPreview: (userId: string) => ["sync-preview", userId] as const,
+
   // All prediction-related keys (for broad realtime invalidation)
   allPredictions: () => ["my-predictions"] as const,
   allHomePredictions: () => ["home-predictions"] as const,

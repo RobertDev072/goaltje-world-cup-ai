@@ -10,8 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Lock, Check, Swords, Trophy } from "lucide-react";
+import { ArrowLeft, Lock, Check, Swords, Trophy, Layers } from "lucide-react";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -21,6 +20,8 @@ import { PoolConsensus } from "@/components/PoolConsensus";
 import { MatchTrackrecord } from "@/components/MatchTrackrecord";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { getPredictionState } from "@/lib/predictionStatus";
+import { useSyncPreferences } from "@/hooks/useSyncPreferences";
+import { Link2 } from "lucide-react";
 
 
 export default function MatchDetail() {
@@ -28,9 +29,9 @@ export default function MatchDetail() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [saveLabel, setSaveLabel] = useState<"default" | "saving" | "saved">("default");
-  const [selectedPoolId, setSelectedPoolId] = useState<string>("");
   const [homePred, setHomePred] = useState<string | null>(null);
   const [awayPred, setAwayPred] = useState<string | null>(null);
+  const { syncEnabled } = useSyncPreferences();
 
   const { data: match, isLoading } = useQuery({
     queryKey: queryKeys.matchDetail(id!),
@@ -76,7 +77,7 @@ export default function MatchDetail() {
   });
 
   // Derive activePool early so we can use it in the query key
-  const activePool = selectedPoolId || (myPools && myPools.length > 0 ? myPools[0].id : "");
+  const activePool = myPools && myPools.length > 0 ? myPools[0].id : "";
 
   // Derive scoring rules from the active pool (falls back to defaults)
   const poolRules: ScoringRules = useMemo(() => {
@@ -120,112 +121,96 @@ export default function MatchDetail() {
   const displayAwayPred = awayPred !== null ? awayPred : (existingPred?.away_pred != null ? String(existingPred.away_pred) : "");
   const predictionState = match ? getPredictionState(match, existingPred) : "open";
 
+  // Save: vertakt op de sync-flag.
+  //   * syncEnabled = true  → bulk-RPC, slaat op in alle pools tegelijk.
+  //   * syncEnabled = false → enkele upsert in alleen de actieve pool.
+  type BulkResult = { savedPoolIds: string[]; skippedPoolIds: string[]; matchLocked: boolean };
+  type SaveResult =
+    | { kind: "bulk"; bulk: BulkResult }
+    | { kind: "single"; poolId: string };
+
   const savePrediction = useMutation({
-    mutationFn: async () => {
-      if (!user || !activePool) throw new Error("Niet ingelogd of geen poule geselecteerd");
+    mutationFn: async (): Promise<SaveResult> => {
+      if (!user) throw new Error("Niet ingelogd");
       if (isLocked) throw new Error("Wedstrijd is al begonnen!");
       const hp = parseInt(displayHomePred);
       const ap = parseInt(displayAwayPred);
       if (isNaN(hp) || isNaN(ap) || hp < 0 || ap < 0) throw new Error("Vul geldige scores in");
 
-      if (existingPred) {
-        const { error } = await supabase
-          .from("predictions")
-          .update({ home_pred: hp, away_pred: ap, updated_at: new Date().toISOString() })
-          .eq("id", existingPred.id);
+      if (syncEnabled) {
+        const rpcClient = supabase.rpc.bind(supabase) as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: BulkResult | null; error: Error | null }>;
+        const { data, error } = await rpcClient("save_prediction_bulk", {
+          _match_id: id,
+          _home_pred: hp,
+          _away_pred: ap,
+        });
         if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("predictions")
-          .insert({
-            pool_id: activePool,
+        return { kind: "bulk", bulk: data as BulkResult };
+      }
+
+      if (!activePool) throw new Error("Geen actieve pool gevonden");
+      const { error } = await supabase
+        .from("predictions")
+        .upsert(
+          {
             user_id: user.id,
+            pool_id: activePool,
             match_id: id!,
             home_pred: hp,
             away_pred: ap,
-          });
-        if (error) {
-          if (error.code === "23505") throw new Error("Voorspelling bestaat al voor deze poule");
-          throw error;
-        }
-      }
-      return { hp, ap };
+          },
+          { onConflict: "pool_id,user_id,match_id" },
+        );
+      if (error) throw error;
+      return { kind: "single", poolId: activePool };
     },
     onMutate: async () => {
       setSaveLabel("saving");
-      const hp = parseInt(displayHomePred);
-      const ap = parseInt(displayAwayPred);
-      if (isNaN(hp) || isNaN(ap)) return {};
-
-      const userId = user?.id || "";
-      const myPredKey = queryKeys.myPredictions(id!, userId, activePool);
-
-      // Cancel outgoing refetches
-      await Promise.all([
-        queryClient.cancelQueries({ queryKey: myPredKey }),
-        queryClient.cancelQueries({ queryKey: queryKeys.allHomePredictions() }),
-        queryClient.cancelQueries({ queryKey: queryKeys.allMatchPredictions() }),
-      ]);
-
-      // Snapshot for rollback
-      const prevMyPred = queryClient.getQueryData(myPredKey);
-
-      // 1. Optimistic update for this pool's prediction
-      queryClient.setQueryData(myPredKey, (old: any) => {
-        if (old) return { ...old, home_pred: hp, away_pred: ap };
-        return { match_id: id, pool_id: activePool, user_id: userId, home_pred: hp, away_pred: ap, points_awarded: null };
-      });
-
-      const predUpdate = { match_id: id, pool_id: activePool, user_id: userId, home_pred: hp, away_pred: ap, points_awarded: null };
-
-      // 2. Update ALL home-predictions caches
-      queryClient.setQueriesData({ queryKey: queryKeys.allHomePredictions() }, (old: any[] | undefined) => {
-        if (!old) return old;
-        const idx = old.findIndex((p: any) => p.match_id === id && p.pool_id === activePool);
-        if (idx >= 0) {
-          const copy = [...old];
-          copy[idx] = { ...copy[idx], home_pred: hp, away_pred: ap };
-          return copy;
-        }
-        return [...old, predUpdate];
-      });
-
-      // 3. Update ALL match-predictions caches
-      queryClient.setQueriesData({ queryKey: queryKeys.allMatchPredictions() }, (old: any[] | undefined) => {
-        if (!old) return old;
-        const idx = old.findIndex((p: any) => p.match_id === id && p.pool_id === activePool);
-        if (idx >= 0) {
-          const copy = [...old];
-          copy[idx] = { ...copy[idx], home_pred: hp, away_pred: ap };
-          return copy;
-        }
-        return [...old, predUpdate];
-      });
-
-      return { prevMyPred, myPredKey };
     },
-    onSuccess: (_data, _vars, context: any) => {
-      if (!existingPred) trackFirstPrediction();
+    onSuccess: (result) => {
       setSaveLabel("saved");
       setTimeout(() => setSaveLabel("default"), 1200);
-      toast({ title: "Opgeslagen ✓", description: "Je voorspelling is bijgewerkt." });
 
-      // Background sync — targeted invalidation only
-      if (context?.myPredKey) {
-        queryClient.invalidateQueries({ queryKey: context.myPredKey });
+      if (result.kind === "bulk") {
+        const savedCount = result.bulk?.savedPoolIds?.length ?? 0;
+        const skippedCount = result.bulk?.skippedPoolIds?.length ?? 0;
+        toast({
+          title: savedCount > 0 ? "Opgeslagen 🔗" : "Geen opslag",
+          description:
+            savedCount > 0
+              ? `Voorspelling opgeslagen in ${savedCount} poule${savedCount === 1 ? "" : "s"}${
+                  skippedCount > 0 ? ` (${skippedCount} overgeslagen)` : ""
+                }.`
+              : "Alle deadlines waren verstreken.",
+        });
+        if (!existingPred && savedCount > 0) trackFirstPrediction();
+        queryClient.invalidateQueries({ queryKey: queryKeys.allPredictions() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
+        queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
+        (result.bulk?.savedPoolIds || []).forEach((poolId) => {
+          queryClient.invalidateQueries({ queryKey: queryKeys.leaderboard(poolId) });
+          queryClient.invalidateQueries({ queryKey: queryKeys.poolConsensus(poolId, id!) });
+        });
+        return;
       }
+
+      // single-pool save
+      toast({
+        title: "Opgeslagen ✓",
+        description: "Je voorspelling is bijgewerkt in deze pool.",
+      });
+      if (!existingPred) trackFirstPrediction();
+      queryClient.invalidateQueries({ queryKey: queryKeys.allPredictions() });
       queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
       queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.leaderboard(activePool) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.leaderboard(result.poolId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.poolConsensus(result.poolId, id!) });
     },
-    onError: (err: any, _vars, context: any) => {
+    onError: (err: Error) => {
       setSaveLabel("default");
-      // Rollback
-      if (context?.myPredKey && context?.prevMyPred !== undefined) {
-        queryClient.setQueryData(context.myPredKey, context.prevMyPred);
-      }
-      queryClient.invalidateQueries({ queryKey: queryKeys.allHomePredictions() });
-      queryClient.invalidateQueries({ queryKey: queryKeys.allMatchPredictions() });
       toast({ title: "Fout", description: err.message, variant: "destructive" });
     },
   });
@@ -244,7 +229,17 @@ export default function MatchDetail() {
 
   const showConfetti = useExactScoreConfetti(pointsAwarded, id);
 
-  const buttonLabel = saveLabel === "saving" ? "Opslaan…" : saveLabel === "saved" ? "Opgeslagen ✓" : existingPred ? "Bijwerken" : "Opslaan";
+  const poolCount = myPools?.length ?? 0;
+  const showSyncIndicator = syncEnabled && poolCount > 1;
+  const buttonLabel = saveLabel === "saving"
+    ? "Opslaan…"
+    : saveLabel === "saved"
+    ? "Opgeslagen ✓"
+    : showSyncIndicator
+    ? `Opslaan in ${poolCount} pools`
+    : existingPred
+    ? "Bijwerken"
+    : "Opslaan";
 
   if (isLoading) {
     return (
@@ -365,18 +360,11 @@ export default function MatchDetail() {
               {showPredictionForm && !isLocked && match?.prediction_deadline_utc && (
                 <CountdownTimer kickoffUtc={match.prediction_deadline_utc} />
               )}
-              {/* Pool selector */}
               {myPools.length > 1 && (
-                <Select value={activePool} onValueChange={(v) => { setSelectedPoolId(v); setHomePred(null); setAwayPred(null); }}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Kies poule" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {myPools.map((pool: any) => (
-                      <SelectItem key={pool.id} value={pool.id}>{pool.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-primary/10 text-primary">
+                  <Layers className="h-3.5 w-3.5 shrink-0" />
+                  <span>Wordt opgeslagen in al je {myPools.length} poules</span>
+                </div>
               )}
               {myPools.length === 1 && (
                 <p className="text-xs text-muted-foreground">Poule: {myPools[0].name}</p>
@@ -418,18 +406,29 @@ export default function MatchDetail() {
               )}
 
               {showPredictionForm && !isLocked && (
-                <Button
-                  className={`w-full h-12 font-semibold transition-all ${
-                    saveLabel === "saved"
-                      ? "bg-emerald-600 text-white hover:bg-emerald-600"
-                      : "gradient-primary text-primary-foreground"
-                  }`}
-                  onClick={() => savePrediction.mutate()}
-                  disabled={savePrediction.isPending || saveLabel === "saved"}
-                >
-                  {saveLabel === "saved" && <Check className="h-4 w-4 mr-1.5" />}
-                  {buttonLabel}
-                </Button>
+                <>
+                  {showSyncIndicator && (
+                    <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground -mt-1">
+                      <Link2 className="h-3 w-3 text-primary" />
+                      Wordt opgeslagen in al je pools ({poolCount}).
+                    </p>
+                  )}
+                  <Button
+                    className={`w-full h-12 font-semibold transition-all ${
+                      saveLabel === "saved"
+                        ? "bg-emerald-600 text-white hover:bg-emerald-600"
+                        : "gradient-primary text-primary-foreground"
+                    }`}
+                    onClick={() => savePrediction.mutate()}
+                    disabled={savePrediction.isPending || saveLabel === "saved"}
+                  >
+                    {saveLabel === "saved" && <Check className="h-4 w-4 mr-1.5" />}
+                    {showSyncIndicator && saveLabel !== "saved" && (
+                      <Link2 className="h-4 w-4 mr-1.5" />
+                    )}
+                    {buttonLabel}
+                  </Button>
+                </>
               )}
 
               {showPredictionForm && isLocked && (
@@ -557,6 +556,7 @@ export default function MatchDetail() {
           </Link>
         </motion.div>
       )}
+
     </div>
   );
 }
