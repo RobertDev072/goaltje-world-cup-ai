@@ -320,7 +320,7 @@ export default function Bedrijven() {
                     Start nu — gratis
                   </Button>
                 </a>
-                <a href="mailto:info@goaltje.nl?subject=Demo%20bedrijfspoule">
+                <a href="mailto:goaltjeapp2026@outlook.com?subject=Demo%20bedrijfspoule">
                   <Button size="lg" variant="outline" className="h-14 w-full border-white/25 bg-white/5 px-8 text-base font-semibold text-white hover:bg-white/15 sm:w-auto">
                     Plan gratis demo <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
@@ -464,7 +464,7 @@ export default function Bedrijven() {
                 Start bedrijfspoule
               </Button>
             </a>
-            <a href="mailto:info@goaltje.nl?subject=Demo%20bedrijfspoule">
+            <a href="mailto:goaltjeapp2026@outlook.com?subject=Demo%20bedrijfspoule">
               <Button size="lg" variant="outline" className="h-12 w-full border-white/25 bg-white/5 px-8 text-base font-semibold text-white hover:bg-white/15 sm:w-auto">
                 Plan gratis demo <ArrowRight className="ml-2 h-5 w-5" />
               </Button>

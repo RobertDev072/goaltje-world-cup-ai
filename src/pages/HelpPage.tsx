@@ -211,11 +211,11 @@ export default function HelpPage() {
                   <p className="text-sm text-muted-foreground mt-1">Kom je er niet uit?</p>
                 </div>
                 <a
-                  href="mailto:info@goaltje.nl"
+                  href="mailto:goaltjeapp2026@outlook.com"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary text-secondary-foreground text-sm font-medium hover:bg-secondary/90 transition-colors"
                 >
                   <Share2 className="h-4 w-4" />
-                  info@goaltje.nl
+                  goaltjeapp2026@outlook.com
                 </a>
               </CardContent>
             </Card>
