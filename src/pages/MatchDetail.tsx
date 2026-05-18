@@ -22,7 +22,8 @@ import { MatchTrackrecord } from "@/components/MatchTrackrecord";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { getPredictionState } from "@/lib/predictionStatus";
 import { useSyncPreferences } from "@/hooks/useSyncPreferences";
-import { Link2, Building2 } from "lucide-react";
+import { Link2, Building2, Camera } from "lucide-react";
+import { StadiumPhoto } from "@/components/StadiumPhoto";
 
 const StadiumModel3D = lazy(() => import("@/components/StadiumModel3D"));
 
@@ -34,7 +35,8 @@ export default function MatchDetail() {
   const [saveLabel, setSaveLabel] = useState<"default" | "saving" | "saved">("default");
   const [homePred, setHomePred] = useState<string | null>(null);
   const [awayPred, setAwayPred] = useState<string | null>(null);
-  const [show3D, setShow3D] = useState(false);
+  type StadiumView = "off" | "photo" | "3d";
+  const [stadiumView, setStadiumView] = useState<StadiumView>("off");
   const { syncEnabled } = useSyncPreferences();
 
   const { data: match, isLoading } = useQuery({
@@ -322,13 +324,13 @@ export default function MatchDetail() {
               <p className="text-xs text-muted-foreground">{formatNLDateTime(match.kickoff_utc)}</p>
               {match.venue && (
                 <button
-                  onClick={() => setShow3D((v) => !v)}
+                  onClick={() => setStadiumView((v) => (v === "off" ? "photo" : "off"))}
                   className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                 >
                   <Building2 className="h-3 w-3" />
                   📍 {match.venue}
                   <span className="text-muted-foreground ml-1">
-                    {show3D ? "verbergen" : "bekijk in 3D"}
+                    {stadiumView === "off" ? "bekijk stadion" : "verbergen"}
                   </span>
                 </button>
               )}
@@ -337,23 +339,53 @@ export default function MatchDetail() {
         </Card>
       </motion.div>
 
-      {/* 3D Stadion (lazy-loaded, alleen on demand) */}
-      {show3D && match.id && (
+      {/* Stadion viewer — foto (Wikipedia) of 3D-model */}
+      {stadiumView !== "off" && match.venue && match.id && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="border-0 shadow-md overflow-hidden">
-            <CardContent className="p-3">
-              <Suspense
-                fallback={
-                  <div className="aspect-[4/3] rounded-xl bg-muted/30 flex items-center justify-center">
-                    <Skeleton className="h-full w-full rounded-xl" />
-                  </div>
-                }
-              >
-                <StadiumModel3D matchId={match.id} venueName={match.venue} />
-              </Suspense>
-              <p className="text-[10px] text-muted-foreground text-center mt-2">
-                Stilistisch 3D-model — geen exacte replica van het stadion.
-              </p>
+            <CardContent className="p-3 space-y-2">
+              {/* View switcher */}
+              <div className="flex gap-1 justify-center">
+                <button
+                  onClick={() => setStadiumView("photo")}
+                  className={`text-[11px] px-3 py-1 rounded-full inline-flex items-center gap-1 transition-colors ${
+                    stadiumView === "photo"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                >
+                  <Camera className="h-3 w-3" /> Foto
+                </button>
+                <button
+                  onClick={() => setStadiumView("3d")}
+                  className={`text-[11px] px-3 py-1 rounded-full inline-flex items-center gap-1 transition-colors ${
+                    stadiumView === "3d"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                >
+                  <Building2 className="h-3 w-3" /> 3D
+                </button>
+              </div>
+
+              {stadiumView === "photo" && <StadiumPhoto venue={match.venue} />}
+
+              {stadiumView === "3d" && (
+                <>
+                  <Suspense
+                    fallback={
+                      <div className="aspect-[4/3] rounded-xl bg-muted/30 flex items-center justify-center">
+                        <Skeleton className="h-full w-full rounded-xl" />
+                      </div>
+                    }
+                  >
+                    <StadiumModel3D matchId={match.id} venueName={match.venue} />
+                  </Suspense>
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Stilistisch 3D-model — geen exacte replica.
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         </motion.div>
