@@ -30,16 +30,26 @@ Deno.serve(async (req) => {
     req.headers.get("X-Forwarded-For")?.split(",")[0]?.trim() ||
     null;
 
+  // Country comes free from Vercel / Cloudflare edge headers
+  const country =
+    req.headers.get("X-Vercel-IP-Country") ||
+    req.headers.get("CF-IPCountry") ||
+    null;
+
   const body = await req.json().catch(() => ({}));
   const device_info = typeof body.device_info === "string"
     ? body.device_info.substring(0, 200)
     : null;
 
+  const nowIso = new Date().toISOString();
+
   const { error: insertErr } = await supabase.from("user_sessions").insert({
     user_id: user.id,
-    login_at_utc: new Date().toISOString(),
+    login_at_utc: nowIso,
     device_info,
     ip_address: ip,
+    country,
+    last_seen_at: nowIso,
   });
 
   if (insertErr) {

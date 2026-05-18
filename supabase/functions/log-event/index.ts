@@ -23,6 +23,11 @@ Deno.serve(async (req) => {
     req.headers.get("X-Forwarded-For")?.split(",")[0]?.trim() ||
     null;
 
+  const country =
+    req.headers.get("X-Vercel-IP-Country") ||
+    req.headers.get("CF-IPCountry") ||
+    null;
+
   const body = await req.json().catch(() => ({}));
   const {
     event_type,
@@ -54,11 +59,20 @@ Deno.serve(async (req) => {
 
   // Also update/create user_session entry for login events
   if (event_type === "login" && user) {
+    const nowIso = new Date().toISOString();
     await supabase.from("user_sessions").insert({
       user_id: user.id,
-      login_at_utc: new Date().toISOString(),
+      login_at_utc: nowIso,
       device_info: device_info?.substring(0, 200) || null,
       ip_address: ip,
+      country,
+      last_seen_at: nowIso,
+    }).then(() => {});
+
+    await supabase.from("activity_events").insert({
+      event_type: "login",
+      user_id: user.id,
+      payload: { country, device: device_info?.substring(0, 100) || null },
     }).then(() => {});
   }
 

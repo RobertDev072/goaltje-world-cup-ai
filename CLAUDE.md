@@ -217,6 +217,7 @@ The database is managed via Supabase with **60+ migration files** in `supabase/m
 | `audit_logs` | Admin action audit trail |
 | `tenants` | White-label branding configuration |
 | `api_cache` / `api_usage` | External API response caching |
+| `activity_events` | Live activity feed (login, prediction, ban, …) — realtime-subscribable for admins, 7-day retention |
 
 ### Database Functions (32 RPCs)
 
@@ -248,8 +249,12 @@ Grouped by purpose:
 - `get_match_prediction_distribution(match_id)` — pool-wide vote spread
 
 **Admin tooling:**
-- `get_admin_stats()`, `get_admin_users()`
+- `get_admin_stats()`, `get_admin_users()` (incl. country + is_banned)
+- `get_admin_overview_stats()` — single roundtrip for overview cards
 - `admin_award_bonus_points`, `admin_delete_pool`, `admin_delete_user_data`, `admin_reset_invite_code`
+- `admin_set_user_ban(user, ban, reason)` — soft ban with audit trail
+- `log_activity_event(type, payload)` — write to activity_events feed
+- `user_heartbeat()` — updates last_seen_at on the latest session (used for presence fallback)
 - `get_public_stats()`
 
 **Security/helpers:**
