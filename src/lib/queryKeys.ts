@@ -36,6 +36,10 @@ export const queryKeys = {
   poolConsensus: (poolId: string, matchId: string) =>
     ["pool-consensus", poolId, matchId] as const,
 
+  // Per-member voorspellingen voor één wedstrijd (alleen na deadline)
+  matchPredictionsPerPool: (poolId: string, matchId: string) =>
+    ["match-predictions-per-pool", poolId, matchId] as const,
+
   // Batch: populairste uitslag per match voor een lijst matches binnen een pool
   poolTopScores: (poolId: string, matchIds: string[]) =>
     ["pool-top-scores", poolId, matchIds.slice().sort().join(",")] as const,
