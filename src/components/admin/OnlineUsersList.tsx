@@ -111,7 +111,7 @@ export function OnlineUsersList({ enabled }: { enabled: boolean }) {
                 </div>
                 <Badge variant="outline" className="text-[9px] gap-0.5 shrink-0">
                   <MonitorSmartphone className="h-2.5 w-2.5" />
-                  {timeAgo(u.joined_at)}
+                  {timeAgo(u.last_seen_at)}
                 </Badge>
               </div>
             ))}

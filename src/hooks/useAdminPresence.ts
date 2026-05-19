@@ -1,8 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export interface PresenceUser {
   user_id: string;
@@ -10,7 +7,8 @@ export interface PresenceUser {
   email?: string | null;
   avatar_url?: string | null;
   route: string;
-  joined_at: string;
+  last_seen_at: string;
+  country?: string | null;
   device?: string | null;
   is_admin?: boolean;
 }
@@ -22,136 +20,69 @@ export interface PresenceDiagnostics {
   channelOpenedAt: string;
 }
 
-const CHANNEL_NAME = "admin:online";
-
-export function useJoinPresence(opts?: { name?: string; isAdmin?: boolean }) {
-  const { user } = useAuth();
-  const location = useLocation();
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  const subscribedRef = useRef(false);
-
-  const nameRef    = useRef(opts?.name);
-  const adminRef   = useRef(opts?.isAdmin);
-  const routeRef   = useRef(location.pathname);
-  useEffect(() => { nameRef.current  = opts?.name;     }, [opts?.name]);
-  useEffect(() => { adminRef.current = opts?.isAdmin;  }, [opts?.isAdmin]);
-  useEffect(() => { routeRef.current = location.pathname; }, [location.pathname]);
-
-  useEffect(() => {
-    if (!user) {
-      subscribedRef.current = false;
-      return;
-    }
-
-    const channel = supabase.channel(CHANNEL_NAME, {
-      config: { presence: { key: user.id } },
-    });
-    channelRef.current = channel;
-
-    channel.subscribe(async (status) => {
-      if (status === "SUBSCRIBED") {
-        subscribedRef.current = true;
-        await channel.track({
-          user_id: user.id,
-          name: nameRef.current || user.email || "Anoniem",
-          email: user.email,
-          avatar_url: (user.user_metadata?.avatar_url as string) || null,
-          route: routeRef.current,
-          joined_at: new Date().toISOString(),
-          is_admin: !!adminRef.current,
-        });
-      }
-    });
-
-    return () => {
-      subscribedRef.current = false;
-      supabase.removeChannel(channel);
-      channelRef.current = null;
-    };
-  }, [user?.id]);
-
-  useEffect(() => {
-    const channel = channelRef.current;
-    if (!channel || !subscribedRef.current || !user) return;
-    channel
-      .track({
-        user_id: user.id,
-        name: opts?.name || user.email || "Anoniem",
-        email: user.email,
-        avatar_url: (user.user_metadata?.avatar_url as string) || null,
-        route: location.pathname,
-        joined_at: new Date().toISOString(),
-        is_admin: !!opts?.isAdmin,
-      })
-      .catch(() => {});
-  }, [location.pathname, opts?.name, opts?.isAdmin, user?.id]);
+/**
+ * No-op now. Heartbeat (in useHeartbeat) updates last_seen_at + route,
+ * which is what the admin observer reads from get_online_users().
+ *
+ * Kept as an exported symbol so AppLayout doesn't need to change.
+ */
+export function useJoinPresence(_opts?: { name?: string; isAdmin?: boolean }) {
+  // intentionally empty
 }
 
+/**
+ * Polls get_online_users() every 20s. Replaces the previous Realtime
+ * presence channel which was blocked by Supabase's private-channel RLS.
+ */
 export function useObservePresence(enabled: boolean): {
   users: PresenceUser[];
   diagnostics: PresenceDiagnostics;
 } {
-  const [users, setUsers] = useState<PresenceUser[]>([]);
-  const [diagnostics, setDiagnostics] = useState<PresenceDiagnostics>({
-    status: "idle",
-    rawEntries: 0,
-    lastSyncAt: null,
-    channelOpenedAt: "",
+  const query = useQuery({
+    queryKey: ["admin-online-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_online_users", { _minutes: 2 });
+      if (error) throw error;
+      return (data || []) as Array<{
+        user_id: string;
+        name: string | null;
+        email: string | null;
+        avatar_url: string | null;
+        last_seen_at: string;
+        country: string | null;
+        device_info: string | null;
+        current_route: string | null;
+        is_admin: boolean;
+      }>;
+    },
+    enabled,
+    refetchInterval: enabled ? 20_000 : false,
+    refetchIntervalInBackground: false,
+    staleTime: 10_000,
   });
 
-  useEffect(() => {
-    if (!enabled) {
-      setUsers([]);
-      setDiagnostics({ status: "idle", rawEntries: 0, lastSyncAt: null, channelOpenedAt: "" });
-      return;
-    }
+  const users: PresenceUser[] = (query.data || []).map((u) => ({
+    user_id: u.user_id,
+    name: u.name || u.email || "Anoniem",
+    email: u.email,
+    avatar_url: u.avatar_url,
+    route: u.current_route || "—",
+    last_seen_at: u.last_seen_at,
+    country: u.country,
+    device: u.device_info,
+    is_admin: u.is_admin,
+  }));
 
-    const openedAt = new Date().toISOString();
-    setDiagnostics((d) => ({ ...d, status: "opening", channelOpenedAt: openedAt }));
-
-    const channel = supabase.channel(CHANNEL_NAME, {
-      config: { presence: { key: `observer-${Math.random().toString(36).slice(2)}` } },
-    });
-
-    const refresh = (event: string) => {
-      const state = channel.presenceState() as Record<string, unknown[]>;
-      let rawCount = 0;
-      const dedup = new Map<string, PresenceUser>();
-      Object.values(state).forEach((entries) => {
-        (entries || []).forEach((entry) => {
-          rawCount++;
-          const e = entry as Partial<PresenceUser>;
-          if (!e?.user_id) return;
-          const prev = dedup.get(e.user_id);
-          if (!prev || (prev.joined_at && e.joined_at && prev.joined_at < e.joined_at)) {
-            dedup.set(e.user_id, e as PresenceUser);
-          }
-        });
-      });
-      setUsers(Array.from(dedup.values()));
-      setDiagnostics((d) => ({
-        ...d,
-        rawEntries: rawCount,
-        lastSyncAt: new Date().toISOString(),
-        status: `${d.status} · ${event}`,
-      }));
-    };
-
-    channel.on("presence", { event: "sync"  }, () => refresh("sync"));
-    channel.on("presence", { event: "join"  }, () => refresh("join"));
-    channel.on("presence", { event: "leave" }, () => refresh("leave"));
-
-    channel.subscribe((status, err) => {
-      setDiagnostics((d) => ({
-        ...d,
-        status: String(status) + (err ? `: ${err.message || err}` : ""),
-      }));
-    });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [enabled]);
+  const diagnostics: PresenceDiagnostics = {
+    status: query.isLoading
+      ? "loading"
+      : query.error
+      ? `error: ${(query.error as Error).message}`
+      : `ok (${users.length})`,
+    rawEntries: query.data?.length ?? 0,
+    lastSyncAt: query.dataUpdatedAt ? new Date(query.dataUpdatedAt).toISOString() : null,
+    channelOpenedAt: "",
+  };
 
   return { users, diagnostics };
 }
