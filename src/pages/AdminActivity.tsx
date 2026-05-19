@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Activity, UserPlus, LogIn, Trophy, Shield } from "lucide-react";
 import { formatNLDateTime } from "@/lib/timezone";
+import { maskIp } from "@/lib/ipMask";
 
 type LogTab = "registraties" | "logins" | "poules" | "audit";
 
@@ -289,7 +290,7 @@ export default function AdminActivity() {
                 </div>
                 <p className="text-xs text-muted-foreground">{s.profile?.email || s.user_id}</p>
                 {s.ip_address && (
-                  <p className="text-[10px] text-muted-foreground">IP: {s.ip_address}</p>
+                  <p className="text-[10px] text-muted-foreground">IP: {maskIp(s.ip_address)}</p>
                 )}
                 {s.device_info && (
                   <p className="text-[10px] text-muted-foreground truncate">{s.device_info}</p>
@@ -364,7 +365,7 @@ export default function AdminActivity() {
                     {log.email || (log.user_id ? log.user_id.substring(0, 16) + "…" : "anoniem")}
                   </p>
                   {log.ip_address && (
-                    <p className="text-[10px] text-muted-foreground">IP: {log.ip_address}</p>
+                    <p className="text-[10px] text-muted-foreground">IP: {maskIp(log.ip_address)}</p>
                   )}
                   {metaStr && (
                     <p className="text-[10px] text-muted-foreground font-mono truncate">{metaStr}</p>

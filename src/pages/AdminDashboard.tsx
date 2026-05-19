@@ -19,12 +19,14 @@ import {
   Search, AlertCircle, Download, RefreshCw, UserCheck, Trash2,
   AlertTriangle, FileJson, BarChart2, MessageSquare,
   Gift, Settings, Crown, LogOut, Copy, RotateCcw, Plus, Edit2, ChevronRight,
-  LayoutDashboard, ListOrdered,
+  LayoutDashboard, Radio,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatNLDateTime, formatNLDate } from "@/lib/timezone";
 import { toast } from "@/hooks/use-toast";
 import { getErrorLogs } from "@/lib/errorLogger";
+import { OnlineUsersList } from "@/components/admin/OnlineUsersList";
+import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
 
 interface AdminStats {
   total_users: number;
@@ -430,7 +432,7 @@ export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  type TabKey = "overview" | "scores" | "stats" | "poules" | "beheer" | "analytics" | "bonus" | "berichten" | "systeem" | "ranglijst";
+  type TabKey = "overview" | "live" | "scores" | "stats" | "poules" | "beheer" | "analytics" | "bonus" | "berichten" | "systeem";
   const [tab, setTab] = useState<TabKey>("overview");
   const [expandedPool, setExpandedPool] = useState<string | null>(null);
   const [editingPool, setEditingPool] = useState<any | null>(null);
@@ -620,23 +622,6 @@ export default function AdminDashboard() {
     },
     enabled: isAdmin === true,
     staleTime: 30_000,
-  });
-
-  const { data: globalRanking, isLoading: rankingLoading } = useQuery({
-    queryKey: ["admin-global-ranking"],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_global_ranking", { limit_count: 10 });
-      if (error) throw error;
-      return (data || []).map((row: any) => ({
-        rank: Number(row.rank),
-        user_id: row.user_id,
-        total: Number(row.total_points),
-        name: row.name || "Onbekend",
-        avatar_url: row.avatar_url || null,
-      }));
-    },
-    enabled: isAdmin === true,
-    staleTime: 120_000,
   });
 
   // Alle wedstrijden voor analytics dropdown
@@ -1013,13 +998,13 @@ export default function AdminDashboard() {
 
   const tabs: { key: TabKey; label: string; icon?: any }[] = [
     { key: "overview",   label: "Overzicht",    icon: LayoutDashboard },
+    { key: "live",       label: "Live",          icon: Radio },
     { key: "scores",     label: resultDrafts && resultDrafts.length > 0 ? `Wedstrijden (${resultDrafts.length})` : "Wedstrijden", icon: CheckCircle2 },
     { key: "poules",     label: "Poules",        icon: Trophy },
     { key: "beheer",     label: "Gebruikers",    icon: Users },
     { key: "analytics",  label: "Analytics",     icon: BarChart2 },
     { key: "bonus",      label: "Bonus",         icon: Gift },
     { key: "berichten",  label: "Berichten",     icon: MessageSquare },
-    { key: "ranglijst",  label: "Ranglijst",     icon: ListOrdered },
     { key: "stats",      label: "Stats",         icon: Activity },
     { key: "systeem",    label: "Systeem",       icon: Settings },
   ];
@@ -1563,47 +1548,11 @@ export default function AdminDashboard() {
       )}
 
       {/* ==================== RANGLIJST TAB ==================== */}
-      {tab === "ranglijst" && (
-        <div className="space-y-3">
-          <Card className="border-0 shadow-sm bg-muted/50">
-            <CardContent className="p-3 text-xs text-muted-foreground">
-              Top 10 gebruikers op basis van totale punten over alle poules (één maal per wedstrijd, hoogste score telt).
-            </CardContent>
-          </Card>
-          {rankingLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-14 rounded-xl" />)}
-            </div>
-          ) : (globalRanking || []).length === 0 ? (
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4 text-center text-sm text-muted-foreground">
-                Nog geen punten beschikbaar.
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {(globalRanking || []).map((entry: any) => {
-                const medal = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : null;
-                return (
-                  <Card key={entry.user_id} className={`border-0 shadow-sm ${entry.rank <= 3 ? "border-l-4 " + (entry.rank === 1 ? "border-l-yellow-400" : entry.rank === 2 ? "border-l-slate-400" : "border-l-amber-600") : ""}`}>
-                    <CardContent className="p-3 flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
-                        {medal || `#${entry.rank}`}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{entry.name}</p>
-                        <p className="text-[10px] text-muted-foreground">Rang #{entry.rank}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-base font-bold font-display text-primary">{entry.total}</p>
-                        <p className="text-[10px] text-muted-foreground">punten</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+      {/* ==================== LIVE ACTIVITY TAB ==================== */}
+      {tab === "live" && (
+        <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+          <OnlineUsersList enabled={tab === "live"} />
+          <LiveActivityFeed enabled={tab === "live"} />
         </div>
       )}
 
@@ -1645,63 +1594,6 @@ export default function AdminDashboard() {
             </Link>
           </div>
 
-          <div>
-            <h2 className="text-sm font-semibold text-muted-foreground mb-3">Pools</h2>
-            <div className="relative mb-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Zoek pool..."
-                value={poolSearch}
-                onChange={(e) => setPoolSearch(e.target.value)}
-                className="pl-9 h-9"
-              />
-            </div>
-
-            {filteredPools.length === 0 ? (
-              <Card className="border-0 shadow-sm">
-                <CardContent className="p-4 text-center text-sm text-muted-foreground">
-                  Geen pools gevonden.
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-2">
-                {filteredPools.map((p: any) => (
-                  <Card key={p.id} className="border-0 shadow-sm">
-                    <CardContent className="p-3 flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{p.name}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{p.id}</p>
-                      </div>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="shrink-0"
-                            disabled={deletePool.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Pool verwijderen?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Dit verwijdert de pool en alle bijbehorende data. Weet je het zeker?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deletePool.mutate(p.id)}>Verwijderen</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       )}
 
@@ -1958,24 +1850,6 @@ export default function AdminDashboard() {
             </Card>
           </div>
 
-          {/* Error logs */}
-          {errorLogs.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold text-muted-foreground mb-3">Client error logs</h2>
-              <div className="space-y-1">
-                {errorLogs.slice(0, 20).map((log: any, i: number) => (
-                  <Card key={i} className="border-0 shadow-sm">
-                    <CardContent className="p-2 flex items-center gap-2">
-                      <Badge variant={log.type === "error" ? "destructive" : "outline"} className="text-[9px] shrink-0">
-                        {log.type}
-                      </Badge>
-                      <p className="text-xs font-medium truncate">{log.message}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 

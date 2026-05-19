@@ -40,8 +40,24 @@ export function logSupabaseError(operation: string, error: string) {
 }
 
 // Global error handler
+const IGNORED_ERROR_PATTERNS: RegExp[] = [
+  // Famous benign browser quirk — fires when ResizeObserver callbacks
+  // trigger another layout change. No actual breakage. Common with
+  // Radix UI / charts / three.js Canvas.
+  /ResizeObserver loop/i,
+  // Non-actionable: cancelled fetches, network aborts on navigation
+  /AbortError/i,
+  /The user aborted a request/i,
+];
+
+function shouldIgnore(message: string | undefined | null): boolean {
+  if (!message) return false;
+  return IGNORED_ERROR_PATTERNS.some((re) => re.test(message));
+}
+
 export function initErrorLogger() {
   window.addEventListener("error", (event) => {
+    if (shouldIgnore(event.message)) return;
     addLog({
       type: "error",
       message: event.message || "Unknown error",
@@ -50,9 +66,11 @@ export function initErrorLogger() {
   });
 
   window.addEventListener("unhandledrejection", (event) => {
+    const msg = `Unhandled promise rejection: ${event.reason?.message || String(event.reason)}`;
+    if (shouldIgnore(msg)) return;
     addLog({
       type: "error",
-      message: `Unhandled promise rejection: ${event.reason?.message || String(event.reason)}`,
+      message: msg,
     });
   });
 }
