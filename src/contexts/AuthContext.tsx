@@ -28,6 +28,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       setLoading(false);
 
+      // Forward auth token to the Realtime client so presence + private channels work.
+      // Without this, channel.subscribe() can hang in "opening" indefinitely.
+      if (session?.access_token) {
+        try {
+          (supabase.realtime as unknown as { setAuth: (t: string) => void }).setAuth(session.access_token);
+        } catch { /* older client versions don't have setAuth — safe to ignore */ }
+      }
+
       if (event === "SIGNED_IN" && session?.user) {
         const sessionKey = session.access_token?.substring(0, 16);
         if (sessionKey && !sessionTracked.current.has(sessionKey)) {
@@ -61,6 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      if (session?.access_token) {
+        try {
+          (supabase.realtime as unknown as { setAuth: (t: string) => void }).setAuth(session.access_token);
+        } catch { /* noop */ }
+      }
     });
 
     return () => subscription.unsubscribe();

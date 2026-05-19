@@ -1,8 +1,13 @@
 import { Outlet } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { SyncOnboardingModal } from "./SyncOnboardingModal";
+import { useHeartbeat } from "@/hooks/useHeartbeat";
+import { usePresenceJoinForApp } from "@/hooks/usePresenceJoinForApp";
 
 export function AppLayout() {
+  useHeartbeat();
+  usePresenceJoinForApp();
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Main content area with safe area padding */}

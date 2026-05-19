@@ -12,9 +12,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Search, Trash2, Crown, RefreshCw, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Search, Trash2, Crown, RefreshCw, Users, ChevronLeft, ChevronRight, Ban, ShieldCheck } from "lucide-react";
 import { formatNLDateTime } from "@/lib/timezone";
 import { toast } from "@/hooks/use-toast";
+import { maskIp, countryFlag, countryLabel } from "@/lib/ipMask";
 
 const PAGE_SIZE = 50;
 
@@ -23,7 +24,7 @@ export default function AdminUsers() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "inactive" | "banned">("all");
   const [page, setPage] = useState(0);
 
   const { data: isAdmin } = useQuery({
@@ -39,94 +40,50 @@ export default function AdminUsers() {
   const { data: users, isLoading, refetch } = useQuery({
     queryKey: ["admin-users-full"],
     queryFn: async () => {
-      // Try with email, fall back without if column doesn't exist yet
-      let profiles: any[] = [];
-      const { data: p1, error: e1 } = await supabase
-        .from("profiles")
-        .select("user_id, name, email, avatar_url, created_at")
-        .order("created_at", { ascending: false });
-      if (e1) {
-        const { data: p2, error: e2 } = await supabase
-          .from("profiles")
-          .select("user_id, name, avatar_url, created_at")
-          .order("created_at", { ascending: false });
-        if (e2) throw e2;
-        profiles = (p2 || []).map((p: any) => ({ ...p, email: null }));
-      } else {
-        profiles = p1 || [];
-      }
-      if (profiles.length === 0) return [];
-
-      const ids = profiles.map((p: any) => p.user_id);
-
-      // Try with ip_address, fall back without
-      let sessions: any[] = [];
-      const { data: s1, error: se1 } = await supabase
-        .from("user_sessions")
-        .select("user_id, login_at_utc, device_info, ip_address")
-        .in("user_id", ids);
-      if (se1) {
-        const { data: s2 } = await supabase
-          .from("user_sessions")
-          .select("user_id, login_at_utc, device_info")
-          .in("user_id", ids);
-        sessions = (s2 || []).map((s: any) => ({ ...s, ip_address: null }));
-      } else {
-        sessions = s1 || [];
-      }
-
-      const { data: memberships } = await supabase
-        .from("pool_members")
-        .select("user_id, pool_id")
-        .in("user_id", ids);
-
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("user_id, role");
-
-      const sessionMap = new Map<string, any>();
-      sessions.forEach((s: any) => {
-        const e = sessionMap.get(s.user_id) || { count: 0, last_at: null, device: null, ip: null };
-        e.count += 1;
-        if (!e.last_at || s.login_at_utc > e.last_at) {
-          e.last_at = s.login_at_utc;
-          e.device = s.device_info || null;
-          e.ip = s.ip_address || null;
-        }
-        sessionMap.set(s.user_id, e);
-      });
-
-      const poolMap = new Map<string, number>();
-      (memberships || []).forEach((m: any) => {
-        poolMap.set(m.user_id, (poolMap.get(m.user_id) || 0) + 1);
-      });
-
-      const adminIds = new Set((roles || []).filter((r: any) => r.role === "admin").map((r: any) => r.user_id));
-
-      return profiles.map((p: any) => {
-        const s = sessionMap.get(p.user_id) || { count: 0, last_at: null, device: null, ip: null };
-        const lastLogin = s.last_at ? new Date(s.last_at) : null;
-        const registeredAt = p.created_at ? new Date(p.created_at) : null;
-        const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-        const isActive = (lastLogin && (Date.now() - lastLogin.getTime()) <= SEVEN_DAYS)
-          || (registeredAt && (Date.now() - registeredAt.getTime()) <= SEVEN_DAYS);
+      const { data, error } = await supabase.rpc("get_admin_users");
+      if (error) throw error;
+      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+      return (data || []).map((u: any) => {
+        const lastLogin = u.last_login_at ? new Date(u.last_login_at) : null;
+        const registeredAt = u.created_at ? new Date(u.created_at) : null;
+        const isActive =
+          (lastLogin && Date.now() - lastLogin.getTime() <= SEVEN_DAYS) ||
+          (registeredAt && Date.now() - registeredAt.getTime() <= SEVEN_DAYS);
         return {
-          id: p.user_id,
-          name: p.name || "—",
-          email: p.email || "—",
-          created_at: p.created_at,
-          login_count: s.count,
-          last_login_at: s.last_at,
-          last_device: s.device,
-          last_ip: s.ip,
-          pool_count: poolMap.get(p.user_id) || 0,
+          id: u.id,
+          name: u.name || "—",
+          email: u.email || "—",
+          created_at: u.created_at,
+          login_count: Number(u.login_count || 0),
+          last_login_at: u.last_login_at,
+          last_device: u.last_device,
+          last_ip: u.last_ip,
+          last_country: u.last_country,
+          pool_count: Number(u.pool_count || 0),
           is_active: isActive,
-          is_admin: adminIds.has(p.user_id),
+          is_admin: !!u.is_admin,
+          is_banned: !!u.is_banned,
         };
       });
     },
     enabled: isAdmin === true,
     staleTime: 60_000,
+  });
+
+  const setBan = useMutation({
+    mutationFn: async ({ userId, ban, reason }: { userId: string; ban: boolean; reason?: string }) => {
+      const { error } = await supabase.rpc("admin_set_user_ban", {
+        _user_id: userId,
+        _ban: ban,
+        _reason: reason || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      toast({ title: vars.ban ? "Gebruiker geband" : "Ban opgeheven" });
+      refetch();
+    },
+    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
   });
 
   const deleteUser = useMutation({
@@ -150,12 +107,14 @@ export default function AdminUsers() {
     let list = users;
     if (filter === "active") list = list.filter((u: any) => u.is_active);
     if (filter === "inactive") list = list.filter((u: any) => !u.is_active);
+    if (filter === "banned") list = list.filter((u: any) => u.is_banned);
     const q = search.trim().toLowerCase();
     if (q) list = list.filter((u: any) =>
       u.name?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
       u.id?.toLowerCase().includes(q) ||
-      u.last_ip?.toLowerCase().includes(q)
+      u.last_ip?.toLowerCase().includes(q) ||
+      u.last_country?.toLowerCase().includes(q)
     );
     return list;
   }, [users, search, filter]);
@@ -194,14 +153,14 @@ export default function AdminUsers() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Zoek op naam, e-mail, IP of ID..."
+            placeholder="Zoek op naam, e-mail, IP, land of ID..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(0); }}
             className="pl-9 h-9"
           />
         </div>
         <div className="flex gap-2">
-          {(["all", "active", "inactive"] as const).map((f) => (
+          {(["all", "active", "inactive", "banned"] as const).map((f) => (
             <button
               key={f}
               onClick={() => { setFilter(f); setPage(0); }}
@@ -211,7 +170,7 @@ export default function AdminUsers() {
                   : "border-border text-muted-foreground hover:bg-muted"
               }`}
             >
-              {f === "all" ? "Alle" : f === "active" ? "✓ Actief" : "Inactief"}
+              {f === "all" ? "Alle" : f === "active" ? "✓ Actief" : f === "inactive" ? "Inactief" : "Geband"}
             </button>
           ))}
           <span className="ml-auto text-xs text-muted-foreground self-center">{filtered.length} resultaten</span>
@@ -252,6 +211,16 @@ export default function AdminUsers() {
                         >
                           {u.is_active ? "✓ Actief" : "Inactief"}
                         </Badge>
+                        {u.is_banned && (
+                          <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
+                            <Ban className="h-2.5 w-2.5" /> Geband
+                          </Badge>
+                        )}
+                        {u.last_country && (
+                          <span className="text-[10px]" title={countryLabel(u.last_country)}>
+                            {countryFlag(u.last_country)} {u.last_country}
+                          </span>
+                        )}
                         <span className="text-[10px] text-muted-foreground">{u.login_count}x ingelogd</span>
                         <span className="text-[10px] text-muted-foreground">{u.pool_count} pools</span>
                       </div>
@@ -263,38 +232,77 @@ export default function AdminUsers() {
                       <p className="text-[10px] text-muted-foreground">
                         Aangemeld: {formatNLDateTime(u.created_at)}
                       </p>
-                      {/* IP + device */}
+                      {/* IP gemaskeerd + device */}
                       {u.last_ip && (
-                        <p className="text-[10px] text-muted-foreground">IP: {u.last_ip}</p>
+                        <p className="text-[10px] text-muted-foreground" title="IP gemaskeerd voor privacy. Volledige IP zichtbaar in audit logs.">
+                          IP: {maskIp(u.last_ip)}
+                        </p>
                       )}
                       {u.last_device && (
                         <p className="text-[10px] text-muted-foreground truncate">{u.last_device}</p>
                       )}
                     </div>
-                    {/* Verwijder knop */}
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="destructive" size="sm" className="shrink-0 h-8 w-8 p-0"
-                          disabled={deleteUser.isPending || isSelf}
-                          title={isSelf ? "Je kunt jezelf niet verwijderen" : "Verwijderen"}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Gebruiker verwijderen?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Dit verwijdert <strong>{u.name}</strong> ({u.email}) en alle bijbehorende data permanent.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteUser.mutate(u.id)}>Verwijderen</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    {/* Actie knoppen */}
+                    <div className="flex flex-col gap-1.5 shrink-0">
+                      {/* Ban / unban */}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant={u.is_banned ? "secondary" : "outline"}
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            disabled={setBan.isPending || isSelf}
+                            title={isSelf ? "Je kunt jezelf niet bannen" : (u.is_banned ? "Ban opheffen" : "Bannen")}
+                          >
+                            {u.is_banned ? <ShieldCheck className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{u.is_banned ? "Ban opheffen?" : "Gebruiker bannen?"}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {u.is_banned
+                                ? <>Dit geeft <strong>{u.name}</strong> weer toegang tot de app.</>
+                                : <>Dit blokkeert <strong>{u.name}</strong> ({u.email}) van toegang tot de app. Data blijft bewaard.</>
+                              }
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => setBan.mutate({ userId: u.id, ban: !u.is_banned })}
+                            >
+                              {u.is_banned ? "Ban opheffen" : "Bannen"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
+                      {/* Verwijder knop */}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive" size="sm" className="h-8 w-8 p-0"
+                            disabled={deleteUser.isPending || isSelf}
+                            title={isSelf ? "Je kunt jezelf niet verwijderen" : "Verwijderen"}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Gebruiker verwijderen?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Dit verwijdert <strong>{u.name}</strong> ({u.email}) en alle bijbehorende data permanent.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteUser.mutate(u.id)}>Verwijderen</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

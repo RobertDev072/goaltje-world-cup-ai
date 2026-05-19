@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -15,13 +15,17 @@ import { CountdownTimer } from "@/components/CountdownTimer";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { trackFirstPrediction } from "@/lib/analytics";
+import { logActivity } from "@/lib/activityLogger";
 import { ExactScoreConfetti, useExactScoreConfetti } from "@/components/ExactScoreConfetti";
 import { PoolConsensus } from "@/components/PoolConsensus";
 import { MatchTrackrecord } from "@/components/MatchTrackrecord";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { getPredictionState } from "@/lib/predictionStatus";
 import { useSyncPreferences } from "@/hooks/useSyncPreferences";
-import { Link2 } from "lucide-react";
+import { Link2, Building2, Camera } from "lucide-react";
+import { StadiumPhoto } from "@/components/StadiumPhoto";
+
+const StadiumModel3D = lazy(() => import("@/components/StadiumModel3D"));
 
 
 export default function MatchDetail() {
@@ -31,6 +35,8 @@ export default function MatchDetail() {
   const [saveLabel, setSaveLabel] = useState<"default" | "saving" | "saved">("default");
   const [homePred, setHomePred] = useState<string | null>(null);
   const [awayPred, setAwayPred] = useState<string | null>(null);
+  type StadiumView = "off" | "photo" | "3d";
+  const [stadiumView, setStadiumView] = useState<StadiumView>("off");
   const { syncEnabled } = useSyncPreferences();
 
   const { data: match, isLoading } = useQuery({
@@ -174,6 +180,15 @@ export default function MatchDetail() {
       setSaveLabel("saved");
       setTimeout(() => setSaveLabel("default"), 1200);
 
+      const hp = parseInt(displayHomePred);
+      const ap = parseInt(displayAwayPred);
+      logActivity("prediction_submitted", {
+        match_id: id,
+        home_pred: isNaN(hp) ? null : hp,
+        away_pred: isNaN(ap) ? null : ap,
+        bulk: result.kind === "bulk",
+      });
+
       if (result.kind === "bulk") {
         const savedCount = result.bulk?.savedPoolIds?.length ?? 0;
         const skippedCount = result.bulk?.skippedPoolIds?.length ?? 0;
@@ -307,11 +322,74 @@ export default function MatchDetail() {
 
             <div className="text-center mt-4 space-y-1">
               <p className="text-xs text-muted-foreground">{formatNLDateTime(match.kickoff_utc)}</p>
-              {match.venue && <p className="text-xs text-muted-foreground">📍 {match.venue}</p>}
+              {match.venue && (
+                <button
+                  onClick={() => setStadiumView((v) => (v === "off" ? "photo" : "off"))}
+                  className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  <Building2 className="h-3 w-3" />
+                  📍 {match.venue}
+                  <span className="text-muted-foreground ml-1">
+                    {stadiumView === "off" ? "bekijk stadion" : "verbergen"}
+                  </span>
+                </button>
+              )}
             </div>
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Stadion viewer — foto (Wikipedia) of 3D-model */}
+      {stadiumView !== "off" && match.venue && match.id && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="border-0 shadow-md overflow-hidden">
+            <CardContent className="p-3 space-y-2">
+              {/* View switcher */}
+              <div className="flex gap-1 justify-center">
+                <button
+                  onClick={() => setStadiumView("photo")}
+                  className={`text-[11px] px-3 py-1 rounded-full inline-flex items-center gap-1 transition-colors ${
+                    stadiumView === "photo"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                >
+                  <Camera className="h-3 w-3" /> Foto
+                </button>
+                <button
+                  onClick={() => setStadiumView("3d")}
+                  className={`text-[11px] px-3 py-1 rounded-full inline-flex items-center gap-1 transition-colors ${
+                    stadiumView === "3d"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/70"
+                  }`}
+                >
+                  <Building2 className="h-3 w-3" /> 3D
+                </button>
+              </div>
+
+              {stadiumView === "photo" && <StadiumPhoto venue={match.venue} />}
+
+              {stadiumView === "3d" && (
+                <>
+                  <Suspense
+                    fallback={
+                      <div className="aspect-[4/3] rounded-xl bg-muted/30 flex items-center justify-center">
+                        <Skeleton className="h-full w-full rounded-xl" />
+                      </div>
+                    }
+                  >
+                    <StadiumModel3D matchId={match.id} venueName={match.venue} />
+                  </Suspense>
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Stilistisch 3D-model — geen exacte replica.
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Pool consensus — stemverdeling + top 3 uitslagen (verborgen bij <2 voorspellingen) */}
       {user && activePool && match.id && (
