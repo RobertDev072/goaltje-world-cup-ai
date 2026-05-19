@@ -288,36 +288,64 @@ function LEDRibbon({
   );
 }
 
-// Roof ring — outer truss + inner oval opening with integrated lighting.
-function StadiumRoof({
-  radius,
-  color,
-  variant,
-}: {
-  radius: number;
-  color: string;
-  variant: "open" | "closed" | "dome-cable";
-}) {
-  const closed = variant !== "open";
-  // Outer truss ring (thick torus, scaled oval)
-  const trussGeom = useMemo(() => {
+type RoofVariant =
+  | "open"
+  | "retractable"
+  | "dome-cable"
+  | "partial-canopy"
+  | "floating-canopy"
+  | "pinwheel"
+  | "twin-arch";
+
+// Generic outer truss ring used by most variants.
+function TrussRing({ radius, color }: { radius: number; color: string }) {
+  const geom = useMemo(() => {
     const g = new THREE.TorusGeometry(radius, 0.45, 14, 96);
     g.scale(OVAL_X, 1, 1);
     return g;
   }, [radius]);
+  return (
+    <mesh geometry={geom} rotation={[Math.PI / 2, 0, 0]} castShadow>
+      <meshStandardMaterial color={color} metalness={0.7} roughness={0.25} />
+    </mesh>
+  );
+}
 
-  // Roof "membrane" — annulus filling the gap to the oval opening.
-  const membraneGeom = useMemo(() => {
+// Inner light ring along the membrane edge — gives that "night game" glow.
+function LightRing({ radius }: { radius: number }) {
+  const positions = useMemo(() => {
+    const segments = 60;
+    const arr: Array<[number, number]> = [];
+    for (let i = 0; i < segments; i++) {
+      const t = (i / segments) * Math.PI * 2;
+      arr.push([Math.cos(t) * radius * OVAL_X, Math.sin(t) * radius]);
+    }
+    return arr;
+  }, [radius]);
+  return (
+    <>
+      {positions.map((p, i) => (
+        <mesh key={i} position={[p[0], -0.05, p[1]]}>
+          <sphereGeometry args={[0.07, 8, 6]} />
+          <meshStandardMaterial color="#ffffff" emissive="#fff4cc" emissiveIntensity={1.4} />
+        </mesh>
+      ))}
+      <pointLight position={[0, -0.4, 0]} intensity={1.4} distance={26} color="#fff8e0" />
+    </>
+  );
+}
+
+// Annulus membrane between inner opening and outer truss.
+function AnnulusMembrane({
+  inner, outer, color, opacity = 1,
+}: { inner: number; outer: number; color: string; opacity?: number }) {
+  const geom = useMemo(() => {
     const segments = 96;
-    const innerScale = variant === "dome-cable" ? 0.0
-      : variant === "closed" ? 0.22
-      : 0.55;
     const pos: number[] = []; const idx: number[] = [];
-    const inner = radius * innerScale;
     for (let i = 0; i <= segments; i++) {
       const t = (i / segments) * Math.PI * 2;
       pos.push(Math.cos(t) * inner * OVAL_X, 0, Math.sin(t) * inner);
-      pos.push(Math.cos(t) * radius * OVAL_X, 0, Math.sin(t) * radius);
+      pos.push(Math.cos(t) * outer * OVAL_X, 0, Math.sin(t) * outer);
     }
     for (let i = 0; i < segments; i++) {
       const a = i * 2, b = i * 2 + 1, c = i * 2 + 3, d = i * 2 + 2;
@@ -328,68 +356,264 @@ function StadiumRoof({
     g.setIndex(idx);
     g.computeVertexNormals();
     return g;
-  }, [radius, variant]);
-
-  // Lighting strip running along the inner edge of the membrane (integrated lights).
-  const lightStrip = useMemo(() => {
-    const segments = 60;
-    const inner = radius * (
-      variant === "dome-cable" ? 0.01
-      : variant === "closed" ? 0.22
-      : 0.55
-    );
-    const positions: Array<[number, number, number]> = [];
-    for (let i = 0; i < segments; i++) {
-      const t = (i / segments) * Math.PI * 2;
-      positions.push([Math.cos(t) * inner * OVAL_X, 0, Math.sin(t) * inner]);
-    }
-    return positions;
-  }, [radius, variant]);
-
-  // BC Place style: tensile cable-suspended white sail rising from the truss.
-  const sailGeom = useMemo(() => {
-    if (variant !== "dome-cable") return null;
-    const g = new THREE.SphereGeometry(radius * 0.95, 64, 24, 0, Math.PI * 2, 0, Math.PI / 2.6);
-    g.scale(OVAL_X, 0.55, 1);
-    return g;
-  }, [radius, variant]);
-
+  }, [inner, outer]);
   return (
-    <group position={[0, 5.0, 0]}>
-      <mesh geometry={trussGeom} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <meshStandardMaterial color={color} metalness={0.7} roughness={0.25} />
+    <mesh geometry={geom} castShadow>
+      <meshStandardMaterial
+        color={color}
+        metalness={0.4}
+        roughness={0.4}
+        side={THREE.DoubleSide}
+        transparent={opacity < 1}
+        opacity={opacity}
+      />
+    </mesh>
+  );
+}
+
+// AT&T Stadium / Lumen Field: two giant steel arches spanning the long axis.
+function TwinArchRoof({ radius, color }: { radius: number; color: string }) {
+  const archGeom = useMemo(() => {
+    const length = radius * OVAL_X * 2.4;
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-length / 2, 0, 0),
+      new THREE.Vector3(0, length * 0.32, 0),
+      new THREE.Vector3(length / 2, 0, 0),
+    ]);
+    const g = new THREE.TubeGeometry(curve, 48, 0.35, 16, false);
+    return g;
+  }, [radius]);
+  return (
+    <>
+      <mesh geometry={archGeom} position={[0, 0, radius * 0.65]} castShadow>
+        <meshStandardMaterial color={color} metalness={0.85} roughness={0.2} />
       </mesh>
-      <mesh geometry={membraneGeom} castShadow>
+      <mesh geometry={archGeom} position={[0, 0, -radius * 0.65]} castShadow>
+        <meshStandardMaterial color={color} metalness={0.85} roughness={0.2} />
+      </mesh>
+      {/* Suspended fabric panels between the arches */}
+      <mesh position={[0, radius * 0.18, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[radius * OVAL_X * 2.2, radius * 1.2, 16, 8]} />
         <meshStandardMaterial
-          color={variant === "dome-cable" ? "#ffffff" : closed ? "#e6e9ef" : "#bfc6d1"}
-          metalness={0.4}
-          roughness={0.4}
+          color="#dfe3eb"
+          metalness={0.2}
+          roughness={0.55}
           side={THREE.DoubleSide}
           transparent
-          opacity={variant === "open" ? 0.85 : 1}
+          opacity={0.9}
         />
       </mesh>
-      {sailGeom && (
-        <mesh geometry={sailGeom} castShadow>
+    </>
+  );
+}
+
+// Mercedes-Benz Stadium: 8 triangular ETFE panels in pinwheel pattern.
+function PinwheelRoof({ radius, color }: { radius: number; color: string }) {
+  const tri = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    const verts = new Float32Array([
+      0, 0, 0,
+      radius * OVAL_X * 0.95, 0, -radius * 0.18,
+      radius * OVAL_X * 0.95, 0, radius * 0.42,
+    ]);
+    g.setAttribute("position", new THREE.BufferAttribute(verts, 3));
+    g.setIndex([0, 1, 2, 0, 2, 1]);
+    g.computeVertexNormals();
+    return g;
+  }, [radius]);
+
+  const panels = useMemo(() => {
+    const arr: { rot: number }[] = [];
+    for (let i = 0; i < 8; i++) arr.push({ rot: (i / 8) * Math.PI * 2 });
+    return arr;
+  }, []);
+
+  const twist = Math.PI / 8;
+
+  return (
+    <>
+      {panels.map((p, i) => (
+        <mesh
+          key={i}
+          geometry={tri}
+          position={[0, 0, 0]}
+          rotation={[0, p.rot + twist, 0]}
+          castShadow
+        >
           <meshStandardMaterial
-            color="#fafbfd"
-            roughness={0.55}
-            metalness={0.1}
+            color={color}
+            metalness={0.3}
+            roughness={0.5}
             side={THREE.DoubleSide}
-          />
-        </mesh>
-      )}
-      {lightStrip.map((p, i) => (
-        <mesh key={i} position={[p[0], -0.05, p[2]]}>
-          <sphereGeometry args={[0.07, 8, 6]} />
-          <meshStandardMaterial
-            color="#ffffff"
-            emissive="#fff4cc"
-            emissiveIntensity={1.4}
+            transparent
+            opacity={0.92}
           />
         </mesh>
       ))}
-      <pointLight position={[0, -0.4, 0]} intensity={1.4} distance={26} color="#fff8e0" />
+      {panels.map((p, i) => (
+        <mesh
+          key={`s${i}`}
+          position={[
+            Math.cos(p.rot) * radius * OVAL_X * 0.48,
+            0,
+            Math.sin(p.rot) * radius * 0.48,
+          ]}
+          rotation={[0, -p.rot, 0]}
+        >
+          <boxGeometry args={[radius, 0.12, 0.12]} />
+          <meshStandardMaterial color="#1a1c20" metalness={0.7} roughness={0.3} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+// SoFi / Hard Rock: large floating canopy extending past the bowl.
+function FloatingCanopy({ radius, color }: { radius: number; color: string }) {
+  const geom = useMemo(() => {
+    // Bulbous shell — sphere segment scaled flat and oval, oversized.
+    const g = new THREE.SphereGeometry(radius * 1.25, 64, 24, 0, Math.PI * 2, 0, Math.PI / 3);
+    g.scale(OVAL_X, 0.35, 1);
+    return g;
+  }, [radius]);
+  return (
+    <mesh geometry={geom} position={[0, -0.4, 0]} castShadow>
+      <meshStandardMaterial
+        color={color}
+        metalness={0.25}
+        roughness={0.55}
+        side={THREE.DoubleSide}
+        transparent
+        opacity={0.78}
+      />
+    </mesh>
+  );
+}
+
+// BC Place: tensile cable-suspended white sail rising from a ring of masts.
+function CableDomeRoof({ radius, color }: { radius: number; color: string }) {
+  const sailGeom = useMemo(() => {
+    const g = new THREE.SphereGeometry(radius * 0.95, 64, 24, 0, Math.PI * 2, 0, Math.PI / 2.6);
+    g.scale(OVAL_X, 0.55, 1);
+    return g;
+  }, [radius]);
+  const masts = useMemo(() => {
+    const arr: { x: number; z: number }[] = [];
+    const count = 36;
+    for (let i = 0; i < count; i++) {
+      const t = (i / count) * Math.PI * 2;
+      arr.push({ x: Math.cos(t) * radius * OVAL_X * 1.02, z: Math.sin(t) * radius * 1.02 });
+    }
+    return arr;
+  }, [radius]);
+  return (
+    <>
+      {masts.map((m, i) => (
+        <mesh key={i} position={[m.x, 0.4, m.z]} rotation={[0, 0, Math.PI / 16]}>
+          <cylinderGeometry args={[0.05, 0.05, 1.5, 6]} />
+          <meshStandardMaterial color="#8a8e94" metalness={0.7} roughness={0.3} />
+        </mesh>
+      ))}
+      <mesh geometry={sailGeom} castShadow>
+        <meshStandardMaterial color={color} roughness={0.5} metalness={0.1} side={THREE.DoubleSide} />
+      </mesh>
+    </>
+  );
+}
+
+// Partial canopy: covers two long sides of the bowl only.
+function PartialCanopy({ radius, color }: { radius: number; color: string }) {
+  const cover = useMemo(() => {
+    // Curved strip covering ~60° on each long side.
+    const seg = 32;
+    const arcs: Array<{ start: number; end: number }> = [
+      { start: -Math.PI / 6, end: Math.PI / 6 },
+      { start: Math.PI - Math.PI / 6, end: Math.PI + Math.PI / 6 },
+    ];
+    const geoms: THREE.BufferGeometry[] = [];
+    arcs.forEach(({ start, end }) => {
+      const pos: number[] = []; const idx: number[] = [];
+      for (let i = 0; i <= seg; i++) {
+        const t = start + ((end - start) * i) / seg;
+        pos.push(Math.cos(t) * radius * 0.55 * OVAL_X, 0.1, Math.sin(t) * radius * 0.55);
+        pos.push(Math.cos(t) * radius * OVAL_X, 0, Math.sin(t) * radius);
+      }
+      for (let i = 0; i < seg; i++) {
+        const a = i * 2, b = i * 2 + 1, c = i * 2 + 3, d = i * 2 + 2;
+        idx.push(a, b, c, a, c, d);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+      g.setIndex(idx);
+      g.computeVertexNormals();
+      geoms.push(g);
+    });
+    return geoms;
+  }, [radius]);
+  return (
+    <>
+      {cover.map((g, i) => (
+        <mesh key={i} geometry={g} castShadow>
+          <meshStandardMaterial
+            color={color}
+            metalness={0.4}
+            roughness={0.45}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+function StadiumRoof({
+  radius, color, variant,
+}: { radius: number; color: string; variant: RoofVariant }) {
+  return (
+    <group position={[0, 5.0, 0]}>
+      <TrussRing radius={radius} color={color} />
+      {variant === "open" && (
+        <>
+          <AnnulusMembrane inner={radius * 0.55} outer={radius} color="#bfc6d1" opacity={0.85} />
+          <LightRing radius={radius * 0.55} />
+        </>
+      )}
+      {variant === "retractable" && (
+        <>
+          <AnnulusMembrane inner={radius * 0.22} outer={radius} color="#e6e9ef" />
+          <LightRing radius={radius * 0.22} />
+        </>
+      )}
+      {variant === "partial-canopy" && (
+        <>
+          <PartialCanopy radius={radius} color={color} />
+          <LightRing radius={radius * 0.55} />
+        </>
+      )}
+      {variant === "floating-canopy" && (
+        <>
+          <FloatingCanopy radius={radius} color={color} />
+          <LightRing radius={radius * 0.4} />
+        </>
+      )}
+      {variant === "pinwheel" && (
+        <>
+          <PinwheelRoof radius={radius} color={color} />
+          <LightRing radius={radius * 0.3} />
+        </>
+      )}
+      {variant === "twin-arch" && (
+        <>
+          <TwinArchRoof radius={radius} color={color} />
+          <LightRing radius={radius * 0.55} />
+        </>
+      )}
+      {variant === "dome-cable" && (
+        <>
+          <CableDomeRoof radius={radius} color={color} />
+          <LightRing radius={radius * 0.3} />
+        </>
+      )}
     </group>
   );
 }
@@ -525,10 +749,14 @@ function Ground() {
 /* ---------- Scene ---------------------------------------------- */
 
 function Scene({ profile }: { profile: StadiumProfile }) {
-  const roofVariant: "open" | "closed" | "dome-cable" =
-    profile.roof === "open" ? "open"
-    : profile.roof === "dome-cable" ? "dome-cable"
-    : "closed";
+  const roofVariant: RoofVariant =
+    profile.roof === "open"            ? "open"
+    : profile.roof === "dome-cable"      ? "dome-cable"
+    : profile.roof === "pinwheel"        ? "pinwheel"
+    : profile.roof === "twin-arch"       ? "twin-arch"
+    : profile.roof === "floating-canopy" ? "floating-canopy"
+    : profile.roof === "partial-canopy"  ? "partial-canopy"
+    :                                      "retractable";
 
   const innerR = 6.5;
   const outerR = 9.8;
@@ -633,8 +861,15 @@ export default function StadiumModel3D({ matchId, venueName }: StadiumModel3DPro
           />
         </Suspense>
       </Canvas>
-      <div className="absolute top-3 left-3 text-xs px-2.5 py-1 rounded-md bg-black/55 text-white backdrop-blur-sm font-medium">
-        📍 {venueName || profile.name}
+      <div className="absolute top-3 left-3 space-y-1">
+        <div className="text-xs px-2.5 py-1 rounded-md bg-black/55 text-white backdrop-blur-sm font-medium">
+          📍 {venueName || profile.name}
+        </div>
+        {profile.signatureNote && (
+          <div className="text-[10px] px-2 py-0.5 rounded-md bg-primary/80 text-primary-foreground backdrop-blur-sm">
+            ✦ {profile.signatureNote}
+          </div>
+        )}
       </div>
       <div className="absolute bottom-3 right-3 text-[10px] text-white/70 px-2 py-1 rounded-md bg-black/40 backdrop-blur-sm">
         Sleep om te draaien · scroll om te zoomen
