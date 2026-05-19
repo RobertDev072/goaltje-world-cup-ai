@@ -15,16 +15,15 @@ export interface PresenceUser {
   is_admin?: boolean;
 }
 
+export interface PresenceDiagnostics {
+  status: string;
+  rawEntries: number;
+  lastSyncAt: string | null;
+  channelOpenedAt: string;
+}
+
 const CHANNEL_NAME = "admin:online";
 
-/**
- * Joins the admin:online presence channel so admins can see who's online.
- *
- * Implementation detail: we subscribe ONCE per user session (keyed by user.id)
- * and re-track when route/name/admin-status changes via a separate effect.
- * Re-subscribing on every navigation tore down the channel before the
- * presence state propagated.
- */
 export function useJoinPresence(opts?: { name?: string; isAdmin?: boolean }) {
   const { user } = useAuth();
   const location = useLocation();
@@ -38,7 +37,6 @@ export function useJoinPresence(opts?: { name?: string; isAdmin?: boolean }) {
   useEffect(() => { adminRef.current = opts?.isAdmin;  }, [opts?.isAdmin]);
   useEffect(() => { routeRef.current = location.pathname; }, [location.pathname]);
 
-  // Subscribe once per user
   useEffect(() => {
     if (!user) {
       subscribedRef.current = false;
@@ -72,7 +70,6 @@ export function useJoinPresence(opts?: { name?: string; isAdmin?: boolean }) {
     };
   }, [user?.id]);
 
-  // Re-track when route or display props change
   useEffect(() => {
     const channel = channelRef.current;
     if (!channel || !subscribedRef.current || !user) return;
@@ -90,28 +87,39 @@ export function useJoinPresence(opts?: { name?: string; isAdmin?: boolean }) {
   }, [location.pathname, opts?.name, opts?.isAdmin, user?.id]);
 }
 
-/**
- * Subscribes to the presence channel as an observer and returns the
- * current list of online users. Only used inside the admin dashboard.
- */
-export function useObservePresence(enabled: boolean): PresenceUser[] {
+export function useObservePresence(enabled: boolean): {
+  users: PresenceUser[];
+  diagnostics: PresenceDiagnostics;
+} {
   const [users, setUsers] = useState<PresenceUser[]>([]);
+  const [diagnostics, setDiagnostics] = useState<PresenceDiagnostics>({
+    status: "idle",
+    rawEntries: 0,
+    lastSyncAt: null,
+    channelOpenedAt: "",
+  });
 
   useEffect(() => {
     if (!enabled) {
       setUsers([]);
+      setDiagnostics({ status: "idle", rawEntries: 0, lastSyncAt: null, channelOpenedAt: "" });
       return;
     }
+
+    const openedAt = new Date().toISOString();
+    setDiagnostics((d) => ({ ...d, status: "opening", channelOpenedAt: openedAt }));
 
     const channel = supabase.channel(CHANNEL_NAME, {
       config: { presence: { key: `observer-${Math.random().toString(36).slice(2)}` } },
     });
 
-    const refresh = () => {
+    const refresh = (event: string) => {
       const state = channel.presenceState() as Record<string, unknown[]>;
+      let rawCount = 0;
       const dedup = new Map<string, PresenceUser>();
       Object.values(state).forEach((entries) => {
         (entries || []).forEach((entry) => {
+          rawCount++;
           const e = entry as Partial<PresenceUser>;
           if (!e?.user_id) return;
           const prev = dedup.get(e.user_id);
@@ -121,17 +129,26 @@ export function useObservePresence(enabled: boolean): PresenceUser[] {
         });
       });
       setUsers(Array.from(dedup.values()));
+      setDiagnostics((d) => ({
+        ...d,
+        rawEntries: rawCount,
+        lastSyncAt: new Date().toISOString(),
+        status: `${d.status} · ${event}`,
+      }));
     };
 
-    channel.on("presence", { event: "sync" },  refresh);
-    channel.on("presence", { event: "join" },  refresh);
-    channel.on("presence", { event: "leave" }, refresh);
-    channel.subscribe();
+    channel.on("presence", { event: "sync"  }, () => refresh("sync"));
+    channel.on("presence", { event: "join"  }, () => refresh("join"));
+    channel.on("presence", { event: "leave" }, () => refresh("leave"));
+
+    channel.subscribe((status) => {
+      setDiagnostics((d) => ({ ...d, status: String(status) }));
+    });
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [enabled]);
 
-  return users;
+  return { users, diagnostics };
 }

@@ -16,8 +16,9 @@ function timeAgo(iso: string): string {
 type Filter = "all" | "admin" | "users";
 
 export function OnlineUsersList({ enabled }: { enabled: boolean }) {
-  const presence = useObservePresence(enabled);
+  const { users: presence, diagnostics } = useObservePresence(enabled);
   const [filter, setFilter] = useState<Filter>("all");
+  const [showDebug, setShowDebug] = useState(false);
 
   const filtered = useMemo(() => {
     if (filter === "admin") return presence.filter((p) => p.is_admin);
@@ -30,7 +31,11 @@ export function OnlineUsersList({ enabled }: { enabled: boolean }) {
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-display font-semibold text-sm flex items-center gap-2">
+            <h3
+              className="font-display font-semibold text-sm flex items-center gap-2 cursor-pointer"
+              onClick={() => setShowDebug((v) => !v)}
+              title="Tik om debug-info te tonen"
+            >
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
@@ -57,6 +62,19 @@ export function OnlineUsersList({ enabled }: { enabled: boolean }) {
             ))}
           </div>
         </div>
+
+        {showDebug && (
+          <div className="text-[10px] bg-muted/60 rounded-md p-2 space-y-0.5 font-mono">
+            <p>status: <span className="text-primary">{diagnostics.status}</span></p>
+            <p>raw entries: {diagnostics.rawEntries} · valid: {presence.length}</p>
+            <p>last sync: {diagnostics.lastSyncAt
+              ? new Date(diagnostics.lastSyncAt).toLocaleTimeString("nl-NL")
+              : "nooit"}</p>
+            <p>opened: {diagnostics.channelOpenedAt
+              ? new Date(diagnostics.channelOpenedAt).toLocaleTimeString("nl-NL")
+              : "—"}</p>
+          </div>
+        )}
 
         {filtered.length === 0 ? (
           <p className="text-xs text-muted-foreground py-4 text-center">
