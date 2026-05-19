@@ -19,7 +19,7 @@ import {
   Search, AlertCircle, Download, RefreshCw, UserCheck, Trash2,
   AlertTriangle, FileJson, BarChart2, MessageSquare,
   Gift, Settings, Crown, LogOut, Copy, RotateCcw, Plus, Edit2, ChevronRight,
-  LayoutDashboard, Radio,
+  LayoutDashboard, Radio, Bug,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatNLDateTime, formatNLDate } from "@/lib/timezone";
@@ -27,6 +27,7 @@ import { toast } from "@/hooks/use-toast";
 import { getErrorLogs } from "@/lib/errorLogger";
 import { OnlineUsersList } from "@/components/admin/OnlineUsersList";
 import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
+import { ClientErrorsList } from "@/components/admin/ClientErrorsList";
 
 interface AdminStats {
   total_users: number;
@@ -432,7 +433,7 @@ export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  type TabKey = "overview" | "live" | "scores" | "stats" | "poules" | "beheer" | "analytics" | "bonus" | "berichten" | "systeem";
+  type TabKey = "overview" | "live" | "scores" | "stats" | "poules" | "beheer" | "analytics" | "errors" | "bonus" | "berichten" | "systeem";
   const [tab, setTab] = useState<TabKey>("overview");
   const [expandedPool, setExpandedPool] = useState<string | null>(null);
   const [editingPool, setEditingPool] = useState<any | null>(null);
@@ -1003,6 +1004,7 @@ export default function AdminDashboard() {
     { key: "poules",     label: "Poules",        icon: Trophy },
     { key: "beheer",     label: "Gebruikers",    icon: Users },
     { key: "analytics",  label: "Analytics",     icon: BarChart2 },
+    { key: "errors",     label: "Errors",        icon: Bug },
     { key: "bonus",      label: "Bonus",         icon: Gift },
     { key: "berichten",  label: "Berichten",     icon: MessageSquare },
     { key: "stats",      label: "Stats",         icon: Activity },
@@ -1554,6 +1556,11 @@ export default function AdminDashboard() {
           <OnlineUsersList enabled={tab === "live"} />
           <LiveActivityFeed enabled={tab === "live"} />
         </div>
+      )}
+
+      {/* ==================== ERRORS TAB ==================== */}
+      {tab === "errors" && (
+        <ClientErrorsList enabled={tab === "errors"} />
       )}
 
       {/* ==================== BEHEER TAB ==================== */}
