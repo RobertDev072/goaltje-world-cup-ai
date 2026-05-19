@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export interface PresenceUser {
   user_id: string;
@@ -17,35 +18,66 @@ export interface PresenceUser {
 const CHANNEL_NAME = "admin:online";
 
 /**
- * Joins a Realtime presence channel so admins can see who is online.
- * Every authenticated user joins; only the admin dashboard subscribes to read the list.
+ * Joins the admin:online presence channel so admins can see who's online.
+ *
+ * Implementation detail: we subscribe ONCE per user session (keyed by user.id)
+ * and re-track when route/name/admin-status changes via a separate effect.
+ * Re-subscribing on every navigation tore down the channel before the
+ * presence state propagated.
  */
 export function useJoinPresence(opts?: { name?: string; isAdmin?: boolean }) {
   const { user } = useAuth();
   const location = useLocation();
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const subscribedRef = useRef(false);
 
+  const nameRef    = useRef(opts?.name);
+  const adminRef   = useRef(opts?.isAdmin);
+  const routeRef   = useRef(location.pathname);
+  useEffect(() => { nameRef.current  = opts?.name;     }, [opts?.name]);
+  useEffect(() => { adminRef.current = opts?.isAdmin;  }, [opts?.isAdmin]);
+  useEffect(() => { routeRef.current = location.pathname; }, [location.pathname]);
+
+  // Subscribe once per user
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      subscribedRef.current = false;
+      return;
+    }
 
     const channel = supabase.channel(CHANNEL_NAME, {
       config: { presence: { key: user.id } },
     });
+    channelRef.current = channel;
 
     channel.subscribe(async (status) => {
-      if (status !== "SUBSCRIBED") return;
-      await channel.track({
-        user_id: user.id,
-        name: opts?.name || user.email || "Anoniem",
-        email: user.email,
-        avatar_url: (user.user_metadata?.avatar_url as string) || null,
-        route: location.pathname,
-        joined_at: new Date().toISOString(),
-        is_admin: !!opts?.isAdmin,
-      });
+      if (status === "SUBSCRIBED") {
+        subscribedRef.current = true;
+        await channel.track({
+          user_id: user.id,
+          name: nameRef.current || user.email || "Anoniem",
+          email: user.email,
+          avatar_url: (user.user_metadata?.avatar_url as string) || null,
+          route: routeRef.current,
+          joined_at: new Date().toISOString(),
+          is_admin: !!adminRef.current,
+        });
+      }
     });
 
-    const updateRoute = () => {
-      channel.track({
+    return () => {
+      subscribedRef.current = false;
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [user?.id]);
+
+  // Re-track when route or display props change
+  useEffect(() => {
+    const channel = channelRef.current;
+    if (!channel || !subscribedRef.current || !user) return;
+    channel
+      .track({
         user_id: user.id,
         name: opts?.name || user.email || "Anoniem",
         email: user.email,
@@ -53,20 +85,14 @@ export function useJoinPresence(opts?: { name?: string; isAdmin?: boolean }) {
         route: location.pathname,
         joined_at: new Date().toISOString(),
         is_admin: !!opts?.isAdmin,
-      }).catch(() => {});
-    };
-
-    updateRoute();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id, location.pathname, opts?.isAdmin, opts?.name]);
+      })
+      .catch(() => {});
+  }, [location.pathname, opts?.name, opts?.isAdmin, user?.id]);
 }
 
 /**
- * Subscribes to presence channel and returns the current list of online users.
- * Only used inside the admin dashboard.
+ * Subscribes to the presence channel as an observer and returns the
+ * current list of online users. Only used inside the admin dashboard.
  */
 export function useObservePresence(enabled: boolean): PresenceUser[] {
   const [users, setUsers] = useState<PresenceUser[]>([]);
@@ -78,27 +104,28 @@ export function useObservePresence(enabled: boolean): PresenceUser[] {
     }
 
     const channel = supabase.channel(CHANNEL_NAME, {
-      config: { presence: { key: "observer-" + Math.random().toString(36).slice(2) } },
+      config: { presence: { key: `observer-${Math.random().toString(36).slice(2)}` } },
     });
 
-    channel.on("presence", { event: "sync" }, () => {
+    const refresh = () => {
       const state = channel.presenceState() as Record<string, unknown[]>;
-      const flat: PresenceUser[] = [];
+      const dedup = new Map<string, PresenceUser>();
       Object.values(state).forEach((entries) => {
         (entries || []).forEach((entry) => {
           const e = entry as Partial<PresenceUser>;
-          if (e?.user_id) flat.push(e as PresenceUser);
+          if (!e?.user_id) return;
+          const prev = dedup.get(e.user_id);
+          if (!prev || (prev.joined_at && e.joined_at && prev.joined_at < e.joined_at)) {
+            dedup.set(e.user_id, e as PresenceUser);
+          }
         });
       });
-      // dedupe per user_id, latest joined wins
-      const dedup = new Map<string, PresenceUser>();
-      flat.forEach((u) => {
-        const prev = dedup.get(u.user_id);
-        if (!prev || prev.joined_at < u.joined_at) dedup.set(u.user_id, u);
-      });
       setUsers(Array.from(dedup.values()));
-    });
+    };
 
+    channel.on("presence", { event: "sync" },  refresh);
+    channel.on("presence", { event: "join" },  refresh);
+    channel.on("presence", { event: "leave" }, refresh);
     channel.subscribe();
 
     return () => {
