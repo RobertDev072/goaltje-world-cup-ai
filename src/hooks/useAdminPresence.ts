@@ -141,8 +141,11 @@ export function useObservePresence(enabled: boolean): {
     channel.on("presence", { event: "join"  }, () => refresh("join"));
     channel.on("presence", { event: "leave" }, () => refresh("leave"));
 
-    channel.subscribe((status) => {
-      setDiagnostics((d) => ({ ...d, status: String(status) }));
+    channel.subscribe((status, err) => {
+      setDiagnostics((d) => ({
+        ...d,
+        status: String(status) + (err ? `: ${err.message || err}` : ""),
+      }));
     });
 
     return () => {
