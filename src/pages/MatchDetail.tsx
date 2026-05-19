@@ -15,7 +15,6 @@ import { CountdownTimer } from "@/components/CountdownTimer";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { trackFirstPrediction } from "@/lib/analytics";
-import { logActivity } from "@/lib/activityLogger";
 import { ExactScoreConfetti, useExactScoreConfetti } from "@/components/ExactScoreConfetti";
 import { PoolConsensus } from "@/components/PoolConsensus";
 import { MatchTrackrecord } from "@/components/MatchTrackrecord";
@@ -179,15 +178,6 @@ export default function MatchDetail() {
     onSuccess: (result) => {
       setSaveLabel("saved");
       setTimeout(() => setSaveLabel("default"), 1200);
-
-      const hp = parseInt(displayHomePred);
-      const ap = parseInt(displayAwayPred);
-      logActivity("prediction_submitted", {
-        match_id: id,
-        home_pred: isNaN(hp) ? null : hp,
-        away_pred: isNaN(ap) ? null : ap,
-        bulk: result.kind === "bulk",
-      });
 
       if (result.kind === "bulk") {
         const savedCount = result.bulk?.savedPoolIds?.length ?? 0;
