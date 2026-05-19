@@ -2,6 +2,7 @@ import { Suspense, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
+import { lookupStadiumProfile, type StadiumProfile } from "@/lib/stadiumProfiles";
 
 /**
  * Modern stylized stadium. Procedural, but the proportions and
@@ -245,13 +246,15 @@ function LouverFacade({
   );
 }
 
-// LED ribbon board around the front of the suite-level — bright orange.
+// LED ribbon board around the front of the suite-level.
 function LEDRibbon({
   radius,
   y,
+  color,
 }: {
   radius: number;
   y: number;
+  color: string;
 }) {
   const geom = useMemo(() => {
     const segments = 96;
@@ -277,7 +280,7 @@ function LEDRibbon({
     <mesh geometry={geom}>
       <meshStandardMaterial
         color="#000"
-        emissive="#ff7a00"
+        emissive={color}
         emissiveIntensity={1.0}
         side={THREE.DoubleSide}
       />
@@ -289,12 +292,13 @@ function LEDRibbon({
 function StadiumRoof({
   radius,
   color,
-  closed,
+  variant,
 }: {
   radius: number;
   color: string;
-  closed: boolean;
+  variant: "open" | "closed" | "dome-cable";
 }) {
+  const closed = variant !== "open";
   // Outer truss ring (thick torus, scaled oval)
   const trussGeom = useMemo(() => {
     const g = new THREE.TorusGeometry(radius, 0.45, 14, 96);
@@ -305,7 +309,9 @@ function StadiumRoof({
   // Roof "membrane" — annulus filling the gap to the oval opening.
   const membraneGeom = useMemo(() => {
     const segments = 96;
-    const innerScale = closed ? 0.22 : 0.55;
+    const innerScale = variant === "dome-cable" ? 0.0
+      : variant === "closed" ? 0.22
+      : 0.55;
     const pos: number[] = []; const idx: number[] = [];
     const inner = radius * innerScale;
     for (let i = 0; i <= segments; i++) {
@@ -322,19 +328,31 @@ function StadiumRoof({
     g.setIndex(idx);
     g.computeVertexNormals();
     return g;
-  }, [radius, closed]);
+  }, [radius, variant]);
 
   // Lighting strip running along the inner edge of the membrane (integrated lights).
   const lightStrip = useMemo(() => {
     const segments = 60;
-    const inner = radius * (closed ? 0.22 : 0.55);
+    const inner = radius * (
+      variant === "dome-cable" ? 0.01
+      : variant === "closed" ? 0.22
+      : 0.55
+    );
     const positions: Array<[number, number, number]> = [];
     for (let i = 0; i < segments; i++) {
       const t = (i / segments) * Math.PI * 2;
       positions.push([Math.cos(t) * inner * OVAL_X, 0, Math.sin(t) * inner]);
     }
     return positions;
-  }, [radius, closed]);
+  }, [radius, variant]);
+
+  // BC Place style: tensile cable-suspended white sail rising from the truss.
+  const sailGeom = useMemo(() => {
+    if (variant !== "dome-cable") return null;
+    const g = new THREE.SphereGeometry(radius * 0.95, 64, 24, 0, Math.PI * 2, 0, Math.PI / 2.6);
+    g.scale(OVAL_X, 0.55, 1);
+    return g;
+  }, [radius, variant]);
 
   return (
     <group position={[0, 5.0, 0]}>
@@ -343,14 +361,24 @@ function StadiumRoof({
       </mesh>
       <mesh geometry={membraneGeom} castShadow>
         <meshStandardMaterial
-          color={closed ? "#e6e9ef" : "#bfc6d1"}
+          color={variant === "dome-cable" ? "#ffffff" : closed ? "#e6e9ef" : "#bfc6d1"}
           metalness={0.4}
           roughness={0.4}
           side={THREE.DoubleSide}
           transparent
-          opacity={closed ? 1 : 0.85}
+          opacity={variant === "open" ? 0.85 : 1}
         />
       </mesh>
+      {sailGeom && (
+        <mesh geometry={sailGeom} castShadow>
+          <meshStandardMaterial
+            color="#fafbfd"
+            roughness={0.55}
+            metalness={0.1}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      )}
       {lightStrip.map((p, i) => (
         <mesh key={i} position={[p[0], -0.05, p[2]]}>
           <sphereGeometry args={[0.07, 8, 6]} />
@@ -367,7 +395,9 @@ function StadiumRoof({
 }
 
 // LED scoreboards on the short sides — tall, with bezel.
-function Scoreboard({ position }: { position: [number, number, number] }) {
+function Scoreboard({
+  position, color,
+}: { position: [number, number, number]; color: string }) {
   return (
     <group position={position}>
       <mesh castShadow>
@@ -376,11 +406,7 @@ function Scoreboard({ position }: { position: [number, number, number] }) {
       </mesh>
       <mesh position={[0, 0, 0.1]}>
         <planeGeometry args={[2.55, 1.2]} />
-        <meshStandardMaterial
-          color="#000"
-          emissive="#ff8a00"
-          emissiveIntensity={1.1}
-        />
+        <meshStandardMaterial color="#000" emissive={color} emissiveIntensity={1.1} />
       </mesh>
     </group>
   );
@@ -498,16 +524,11 @@ function Ground() {
 
 /* ---------- Scene ---------------------------------------------- */
 
-function Scene({ matchId }: { matchId: string }) {
-  const seed = hashSeed(matchId);
-  const rng = useMemo(() => seededRng(seed), [seed]);
-
-  const closed = seed > 0.6;
-  const louverColor = rng() > 0.5 ? "#c7d0dc" : "#9aa6bf";
-  const lowerColor = "#2e3a4e";
-  const upperColor = "#384559";
-  const suiteColor = "#0d1320";
-  const ringColor = "#d4d7dc";
+function Scene({ profile }: { profile: StadiumProfile }) {
+  const roofVariant: "open" | "closed" | "dome-cable" =
+    profile.roof === "open" ? "open"
+    : profile.roof === "dome-cable" ? "dome-cable"
+    : "closed";
 
   const innerR = 6.5;
   const outerR = 9.8;
@@ -544,20 +565,41 @@ function Scene({ matchId }: { matchId: string }) {
         midLowH={midLowH}
         midHighH={midHighH}
         topH={topH}
-        lowerColor={lowerColor}
-        upperColor={upperColor}
-        suiteColor={suiteColor}
+        lowerColor={profile.exteriorColor}
+        upperColor={profile.accentColor}
+        suiteColor={profile.suiteColor}
       />
-      <LEDRibbon radius={innerR + (outerR - innerR) * 0.45 - 0.01} y={midLowH} />
-      <LouverFacade radius={outerR + 0.15} height={topH - 0.1} count={louverCount} color={louverColor} />
-      <StadiumRoof radius={outerR + 0.4} color={ringColor} closed={closed} />
-      <Scoreboard position={[outerR * OVAL_X + 0.3, 2.6, 0]} />
-      <Scoreboard position={[-(outerR * OVAL_X + 0.3), 2.6, 0]} />
+      <LEDRibbon
+        radius={innerR + (outerR - innerR) * 0.45 - 0.01}
+        y={midLowH}
+        color={profile.ribbonColor}
+      />
+      <LouverFacade
+        radius={outerR + 0.15}
+        height={topH - 0.1}
+        count={louverCount}
+        color={profile.louverColor}
+      />
+      <StadiumRoof
+        radius={outerR + 0.4}
+        color={profile.roofColor}
+        variant={roofVariant}
+      />
+      <Scoreboard
+        position={[outerR * OVAL_X + 0.3, 2.6, 0]}
+        color={profile.scoreboardColor}
+      />
+      <Scoreboard
+        position={[-(outerR * OVAL_X + 0.3), 2.6, 0]}
+        color={profile.scoreboardColor}
+      />
     </group>
   );
 }
 
 export default function StadiumModel3D({ matchId, venueName }: StadiumModel3DProps) {
+  const profile = useMemo(() => lookupStadiumProfile(venueName), [venueName]);
+
   return (
     <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900">
       <Canvas
@@ -580,7 +622,7 @@ export default function StadiumModel3D({ matchId, venueName }: StadiumModel3DPro
             shadow-camera-bottom={-30}
           />
           <fog attach="fog" args={["#1b2236", 40, 85]} />
-          <Scene matchId={matchId} />
+          <Scene profile={profile} key={`${profile.key}-${matchId}`} />
           <OrbitControls
             enablePan={false}
             enableZoom
@@ -591,11 +633,9 @@ export default function StadiumModel3D({ matchId, venueName }: StadiumModel3DPro
           />
         </Suspense>
       </Canvas>
-      {venueName && (
-        <div className="absolute top-3 left-3 text-xs px-2.5 py-1 rounded-md bg-black/55 text-white backdrop-blur-sm font-medium">
-          📍 {venueName}
-        </div>
-      )}
+      <div className="absolute top-3 left-3 text-xs px-2.5 py-1 rounded-md bg-black/55 text-white backdrop-blur-sm font-medium">
+        📍 {venueName || profile.name}
+      </div>
       <div className="absolute bottom-3 right-3 text-[10px] text-white/70 px-2 py-1 rounded-md bg-black/40 backdrop-blur-sm">
         Sleep om te draaien · scroll om te zoomen
       </div>
