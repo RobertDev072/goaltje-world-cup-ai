@@ -19,6 +19,7 @@ interface LeaderboardEntry {
   name: string;
   avatar_url: string | null;
   points: number;
+  bonusPoints?: number;
   todayPoints: number;
   role: string;
   exactCount: number;

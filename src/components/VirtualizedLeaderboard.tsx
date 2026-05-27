@@ -10,6 +10,7 @@ interface LeaderboardEntry {
   name: string;
   avatar_url: string | null;
   points: number;
+  bonusPoints?: number;
   todayPoints: number;
   role: string;
   exactCount: number;
@@ -218,6 +219,11 @@ function LeaderboardRow({
                 {entry.points}
               </span>
               <span className="text-xs text-muted-foreground ml-0.5">pt</span>
+              {entry.bonusPoints ? (
+                <div className="flex items-center justify-end gap-0.5 text-[10px] font-semibold text-secondary" title="Bonusvragen">
+                  ⭐ +{entry.bonusPoints} bonus
+                </div>
+              ) : null}
               {entry.todayPoints > 0 && (
                 <div className="flex items-center justify-end gap-0.5 text-xs font-semibold text-success">
                   <TrendingUp className="h-3 w-3" />+{entry.todayPoints}

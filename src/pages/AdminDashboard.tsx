@@ -929,6 +929,8 @@ export default function AdminDashboard() {
     onSuccess: (count) => {
       toast({ title: "Bonuspunten toegekend", description: `${count} voorspelling(en) beloond.` });
       refetchBonus();
+      // Bonuspunten tellen mee in het klassement → alle ranglijsten verversen.
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
     },
     onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
   });
