@@ -94,6 +94,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      // Log failed attempt server-side (rate-limited to 1/email/10s).
+      supabase.rpc("log_failed_login", {
+        _email: email,
+        _reason: error.message?.toLowerCase().includes("invalid")
+          ? "invalid_credentials"
+          : "auth_error",
+      }).then(() => {}, () => {});
+    }
     return { error: error as Error | null };
   };
 

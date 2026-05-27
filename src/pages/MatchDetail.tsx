@@ -15,9 +15,9 @@ import { CountdownTimer } from "@/components/CountdownTimer";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { trackFirstPrediction } from "@/lib/analytics";
-import { logActivity } from "@/lib/activityLogger";
 import { ExactScoreConfetti, useExactScoreConfetti } from "@/components/ExactScoreConfetti";
 import { PoolConsensus } from "@/components/PoolConsensus";
+import { MatchMemberPredictions } from "@/components/MatchMemberPredictions";
 import { MatchTrackrecord } from "@/components/MatchTrackrecord";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { getPredictionState } from "@/lib/predictionStatus";
@@ -179,15 +179,6 @@ export default function MatchDetail() {
     onSuccess: (result) => {
       setSaveLabel("saved");
       setTimeout(() => setSaveLabel("default"), 1200);
-
-      const hp = parseInt(displayHomePred);
-      const ap = parseInt(displayAwayPred);
-      logActivity("prediction_submitted", {
-        match_id: id,
-        home_pred: isNaN(hp) ? null : hp,
-        away_pred: isNaN(ap) ? null : ap,
-        bulk: result.kind === "bulk",
-      });
 
       if (result.kind === "bulk") {
         const savedCount = result.bulk?.savedPoolIds?.length ?? 0;
@@ -400,6 +391,19 @@ export default function MatchDetail() {
             homeShort={match.home_team?.short_name}
             awayShort={match.away_team?.short_name}
             userPrediction={existingPred ? { home_pred: existingPred.home_pred, away_pred: existingPred.away_pred } : null}
+          />
+        </motion.div>
+      )}
+
+      {/* Per-lid voorspellingen — alleen ná deadline (server enforced) */}
+      {user && activePool && match.id && isLocked && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.09 }}>
+          <MatchMemberPredictions
+            poolId={activePool}
+            matchId={match.id}
+            homeShort={match.home_team?.short_name}
+            awayShort={match.away_team?.short_name}
+            matchFinished={match.status === "finished"}
           />
         </motion.div>
       )}
