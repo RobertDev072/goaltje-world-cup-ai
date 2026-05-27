@@ -80,7 +80,7 @@ export function BonusQuestions() {
     mutationFn: async ({ questionId, answer }: { questionId: string; answer: string }) => {
       if (!user) throw new Error("Niet ingelogd");
       type BulkBonusResult = { savedPoolIds: string[]; skippedPoolIds: string[]; questionLocked: boolean };
-      const rpcClient = supabase.rpc as unknown as (
+      const rpcClient = supabase.rpc.bind(supabase) as unknown as (
         fn: string,
         args: Record<string, unknown>,
       ) => Promise<{ data: BulkBonusResult | null; error: Error | null }>;
