@@ -13,6 +13,7 @@ import { TournamentProgress } from "@/components/TournamentProgress";
 import { MatchCard } from "@/components/MatchCard";
 import { LiveMatchBanner } from "@/components/LiveMatchBanner";
 import { WinShirtPromo } from "@/components/WinShirtPromo";
+import { EarlyBirdStatus } from "@/components/EarlyBirdStatus";
 import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebration";
 import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
@@ -219,6 +220,9 @@ export default function Index() {
       {liveMatches.length > 0 && (
         <LiveMatchBanner matches={liveMatches} />
       )}
+
+      {/* Early-bird voortgang / badge — alleen ingelogd, niet voor admin */}
+      {user && <EarlyBirdStatus />}
 
       {/* Win-shirt promo — alleen ingelogd */}
       {user && <WinShirtPromo />}
