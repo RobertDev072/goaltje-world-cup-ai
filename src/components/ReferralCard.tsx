@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Gift, Copy, Check, Share2, Trophy } from "lucide-react";
+import { Gift, Copy, Check, Share2, Trophy, AlertTriangle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +19,7 @@ interface ReferralStatus {
 export function ReferralCard() {
   const [copied, setCopied] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["my-referral-status"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_my_referral_status");
@@ -27,10 +27,29 @@ export function ReferralCard() {
       return data as ReferralStatus;
     },
     staleTime: 60_000,
+    retry: 1,
   });
 
   if (isLoading) return <Skeleton className="h-44 rounded-xl" />;
-  if (!data) return null;
+
+  // Fallback wanneer de RPC nog niet bestaat in de DB (migration niet
+  // gerund) of een andere fout gooit. Voorheen toonde de card niets,
+  // wat verwarrend was — nu een duidelijke melding.
+  if (error || !data) {
+    return (
+      <Card className="border-0 shadow-elevation-1 bg-muted/40">
+        <CardContent className="p-4 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <p className="font-medium text-foreground">Invite-functie wordt nog ingesteld</p>
+            <p className="text-muted-foreground mt-0.5">
+              De winactie voor het Nederlands Elftal shirt is bijna klaar. Probeer 't over een paar minuten opnieuw.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const inviteUrl = `${window.location.origin}/login?ref=${data.referral_code}`;
   const progressPct = Math.min(100, (data.active_referrals / data.required) * 100);
