@@ -37,6 +37,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (event === "SIGNED_IN" && session?.user) {
+        // Verzilver een lopende referral-code (gezet op /login?ref=XXXX)
+        const pendingRef = localStorage.getItem("pending_referral_code");
+        if (pendingRef) {
+          localStorage.removeItem("pending_referral_code");
+          supabase.rpc("register_referral", { _ref_code: pendingRef })
+            .then(() => {}, () => {});
+        }
+
         const sessionKey = session.access_token?.substring(0, 16);
         if (sessionKey && !sessionTracked.current.has(sessionKey)) {
           sessionTracked.current.add(sessionKey);

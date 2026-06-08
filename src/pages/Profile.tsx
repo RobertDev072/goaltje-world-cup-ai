@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import { getConsent, getConsentCategories, setConsent } from "@/lib/consent";
 import { Switch } from "@/components/ui/switch";
 import { PredictorProfile } from "@/components/PredictorProfile";
+import { ReferralCard } from "@/components/ReferralCard";
 import { useSyncPreferences } from "@/hooks/useSyncPreferences";
 import { SyncEnableConfirmModal } from "@/components/SyncEnableConfirmModal";
 import {
@@ -234,6 +235,11 @@ export default function Profile() {
       {/* Predictor Profile — auto-gegenereerd uit voorspel-patronen */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
         <PredictorProfile userId={user.id} />
+      </motion.div>
+
+      {/* Referral card — win een officieel shirt */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
+        <ReferralCard />
       </motion.div>
 
       {/* Snelle links naar inzichten + uitleg */}

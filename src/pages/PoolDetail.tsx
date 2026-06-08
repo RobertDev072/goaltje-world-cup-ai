@@ -130,21 +130,21 @@ export default function PoolDetail() {
   const leavePool = useMutation({
     mutationFn: async () => {
       if (!user || !id) throw new Error("Not ready");
-      // Delete predictions for this pool
-      await supabase.from("predictions").delete().eq("pool_id", id).eq("user_id", user.id);
-      // Delete bonus predictions for this pool
-      await supabase.from("bonus_predictions").delete().eq("pool_id", id).eq("user_id", user.id);
-      // Delete pool messages by this user in this pool
-      await supabase.from("pool_messages").delete().eq("pool_id", id).eq("user_id", user.id);
-      // Remove membership
-      const { error } = await supabase.from("pool_members").delete().eq("pool_id", id).eq("user_id", user.id);
+      const { data, error } = await supabase.rpc("leave_pool", { _pool_id: id });
       if (error) throw error;
+      return data as { pool_deleted: boolean; ownership_transferred: boolean; new_owner_id: string | null };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["my-pools"] });
       queryClient.invalidateQueries({ queryKey: queryKeys.leaderboard(id || "") });
       queryClient.invalidateQueries({ queryKey: ["pool-members", id] });
-      toast({ title: "Je hebt de poule verlaten" });
+      toast({
+        title: result?.pool_deleted
+          ? "Poule verwijderd"
+          : result?.ownership_transferred
+          ? "Poule verlaten — eigenaarschap overgedragen"
+          : "Je hebt de poule verlaten",
+      });
       navigate("/app/pool");
     },
     onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
@@ -605,38 +605,53 @@ export default function PoolDetail() {
             </div>
           )}
 
-          {/* Leave Pool Button */}
-          {user && myMembership && myMembership.role !== "admin" && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full mt-4 gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
-                  disabled={leavePool.isPending}
-                >
-                  <LogOut className="h-4 w-4" />
-                  {leavePool.isPending ? "Verlaten..." : "Poule verlaten"}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Poule verlaten?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Weet je zeker dat je deze poule wilt verlaten? Je voorspellingen worden verwijderd en je kunt niet meer meedoen tenzij je opnieuw joinet.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annuleren</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    onClick={() => leavePool.mutate()}
+          {/* Leave Pool Button — owners zien dezelfde knop maar met andere
+              tekst (eigenaarschap-overdracht of poule-verwijderen) */}
+          {user && myMembership && (() => {
+            const isOwner = myMembership.role === "admin";
+            const memberCount = members?.length ?? 1;
+            const willDeletePool = isOwner && memberCount <= 1;
+            const willTransferOwnership = isOwner && memberCount > 1;
+            const label = willDeletePool
+              ? "Poule verwijderen"
+              : willTransferOwnership
+              ? "Eigenaarschap overdragen & verlaten"
+              : "Poule verlaten";
+            const description = willDeletePool
+              ? "Je bent de enige in deze poule. Verlaten betekent dat de poule volledig wordt verwijderd. Dit kan niet ongedaan gemaakt worden."
+              : willTransferOwnership
+              ? "Je bent de eigenaar. Bij vertrek wordt het eigenaarschap automatisch overgedragen aan het langst-actieve lid. Je eigen voorspellingen worden verwijderd."
+              : "Weet je zeker dat je deze poule wilt verlaten? Je voorspellingen worden verwijderd en je kunt niet meer meedoen tenzij je opnieuw joinet.";
+            return (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full mt-4 gap-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    disabled={leavePool.isPending}
                   >
-                    Verlaten
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+                    <LogOut className="h-4 w-4" />
+                    {leavePool.isPending ? "Verlaten..." : label}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{label}?</AlertDialogTitle>
+                    <AlertDialogDescription>{description}</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuleren</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => leavePool.mutate()}
+                    >
+                      {willDeletePool ? "Verwijderen" : "Verlaten"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            );
+          })()}
         </TabsContent>
 
 

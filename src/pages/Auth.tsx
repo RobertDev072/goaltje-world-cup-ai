@@ -24,6 +24,15 @@ export default function Auth() {
   const { user, signIn, signUp, resetPassword } = useAuth();
   const navigate = useNavigate();
 
+  // Capture ?ref=XXXX uit URL (referral van een vriend) en bewaar tot signup
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref && /^[A-Z0-9]{4,12}$/i.test(ref)) {
+      localStorage.setItem("pending_referral_code", ref.toUpperCase());
+    }
+  }, []);
+
   const navigateAfterLogin = useCallback(() => {
     const joinCode = sessionStorage.getItem("joinCode");
     if (joinCode) {

@@ -1,0 +1,122 @@
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Gift, Copy, Check, Share2, Trophy } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
+interface ReferralStatus {
+  referral_code: string;
+  total_referrals: number;
+  active_referrals: number;
+  required: number;
+  qualified: boolean;
+}
+
+export function ReferralCard() {
+  const [copied, setCopied] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["my-referral-status"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_my_referral_status");
+      if (error) throw error;
+      return data as ReferralStatus;
+    },
+    staleTime: 60_000,
+  });
+
+  if (isLoading) return <Skeleton className="h-44 rounded-xl" />;
+  if (!data) return null;
+
+  const inviteUrl = `${window.location.origin}/login?ref=${data.referral_code}`;
+  const progressPct = Math.min(100, (data.active_referrals / data.required) * 100);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      toast({ title: "Link gekopieerd ✓" });
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast({ title: "Kon niet kopiëren", variant: "destructive" });
+    }
+  };
+
+  const handleShare = async () => {
+    const text = `Doe mee met Goaltje WK 2026 ⚽\nWin een officieel landshirt via mijn invite-link:\n${inviteUrl}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: "Goaltje WK 2026", text, url: inviteUrl }); }
+      catch { /* user cancelled */ }
+    } else {
+      handleCopy();
+    }
+  };
+
+  return (
+    <Card className="border-0 shadow-elevation-2 overflow-hidden">
+      <div className="gradient-primary h-1" />
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start gap-2">
+          <div className="h-9 w-9 rounded-full bg-secondary/20 flex items-center justify-center shrink-0">
+            <Gift className="h-5 w-5 text-secondary" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-display font-semibold text-sm">Win een officieel landshirt 🎽</h3>
+            <p className="text-[11px] text-muted-foreground">
+              Haal 5 vrienden binnen die meedoen → de hoogste in de globale poel wint.
+            </p>
+          </div>
+          {data.qualified && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary text-primary-foreground font-bold flex items-center gap-1 shrink-0">
+              <Trophy className="h-3 w-3" /> Gekwalificeerd
+            </span>
+          )}
+        </div>
+
+        {/* Progress bar */}
+        <div className="space-y-1">
+          <div className="flex justify-between text-[11px]">
+            <span className="text-muted-foreground">Actieve vrienden</span>
+            <span className="font-mono font-semibold">
+              {data.active_referrals}/{data.required}
+            </span>
+          </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                data.qualified ? "bg-emerald-500" : "gradient-primary",
+              )}
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+          {data.total_referrals > data.active_referrals && (
+            <p className="text-[10px] text-muted-foreground">
+              {data.total_referrals - data.active_referrals} aangemeld, nog geen voorspelling gedaan.
+            </p>
+          )}
+        </div>
+
+        {/* Invite link */}
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 text-xs font-mono">
+          <span className="flex-1 truncate">{inviteUrl}</span>
+          <Button size="sm" variant="ghost" className="h-7 px-2 shrink-0" onClick={handleCopy}>
+            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
+
+        <Button size="sm" className="w-full gap-2 gradient-primary text-primary-foreground" onClick={handleShare}>
+          <Share2 className="h-4 w-4" /> Deel met vrienden
+        </Button>
+
+        <p className="text-[10px] text-muted-foreground italic">
+          Een vriend telt mee zodra ze zich registreren via jouw link én minimaal 1 voorspelling hebben gedaan.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}

@@ -12,6 +12,7 @@ import { PoolHeaderCard } from "@/components/PoolHeaderCard";
 import { TournamentProgress } from "@/components/TournamentProgress";
 import { MatchCard } from "@/components/MatchCard";
 import { LiveMatchBanner } from "@/components/LiveMatchBanner";
+import { WinShirtPromo } from "@/components/WinShirtPromo";
 import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebration";
 import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
@@ -218,6 +219,9 @@ export default function Index() {
       {liveMatches.length > 0 && (
         <LiveMatchBanner matches={liveMatches} />
       )}
+
+      {/* Win-shirt promo — alleen ingelogd */}
+      {user && <WinShirtPromo />}
 
       {user && activePoolId && (
         <PredictionReminderBanner

@@ -19,7 +19,7 @@ import {
   Search, AlertCircle, Download, RefreshCw, UserCheck, Trash2,
   AlertTriangle, FileJson, BarChart2, MessageSquare,
   Gift, Settings, Crown, LogOut, Copy, RotateCcw, Plus, Edit2, ChevronRight,
-  LayoutDashboard, Radio, Bug, ShieldAlert,
+  LayoutDashboard, Radio, Bug, ShieldAlert, Gem,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { formatNLDateTime, formatNLDate } from "@/lib/timezone";
@@ -29,6 +29,7 @@ import { OnlineUsersList } from "@/components/admin/OnlineUsersList";
 import { LiveActivityFeed } from "@/components/admin/LiveActivityFeed";
 import { ClientErrorsList } from "@/components/admin/ClientErrorsList";
 import { SecurityPanel } from "@/components/admin/SecurityPanel";
+import { PrizePanel } from "@/components/admin/PrizePanel";
 
 interface AdminStats {
   total_users: number;
@@ -434,7 +435,7 @@ export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  type TabKey = "overview" | "live" | "scores" | "stats" | "poules" | "beheer" | "analytics" | "errors" | "security" | "bonus" | "berichten" | "systeem";
+  type TabKey = "overview" | "live" | "scores" | "stats" | "poules" | "beheer" | "analytics" | "errors" | "security" | "prize" | "bonus" | "berichten" | "systeem";
   const [tab, setTab] = useState<TabKey>("overview");
   const [expandedPool, setExpandedPool] = useState<string | null>(null);
   const [editingPool, setEditingPool] = useState<any | null>(null);
@@ -1009,6 +1010,7 @@ export default function AdminDashboard() {
     { key: "analytics",  label: "Analytics",     icon: BarChart2 },
     { key: "errors",     label: "Errors",        icon: Bug },
     { key: "security",   label: "Security",      icon: ShieldAlert },
+    { key: "prize",      label: "Prijs",         icon: Gem },
     { key: "bonus",      label: "Bonus",         icon: Gift },
     { key: "berichten",  label: "Berichten",     icon: MessageSquare },
     { key: "stats",      label: "Stats",         icon: Activity },
@@ -1570,6 +1572,11 @@ export default function AdminDashboard() {
       {/* ==================== SECURITY TAB ==================== */}
       {tab === "security" && (
         <SecurityPanel enabled={tab === "security"} />
+      )}
+
+      {/* ==================== PRIZE TAB ==================== */}
+      {tab === "prize" && (
+        <PrizePanel enabled={tab === "prize"} />
       )}
 
       {/* ==================== BEHEER TAB ==================== */}

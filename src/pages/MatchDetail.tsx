@@ -1,5 +1,5 @@
-import { useParams, Link } from "react-router-dom";
-import { useState, useMemo, lazy, Suspense } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useState, useMemo, lazy, Suspense, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -10,9 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Lock, Check, Swords, Trophy, Layers } from "lucide-react";
+import { ArrowLeft, Lock, Check, Swords, Trophy, Layers, ChevronLeft, ChevronRight } from "lucide-react";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { toast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { motion } from "framer-motion";
 import { trackFirstPrediction } from "@/lib/analytics";
 import { ExactScoreConfetti, useExactScoreConfetti } from "@/components/ExactScoreConfetti";
@@ -30,6 +31,7 @@ const StadiumModel3D = lazy(() => import("@/components/StadiumModel3D"));
 
 export default function MatchDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [saveLabel, setSaveLabel] = useState<"default" | "saving" | "saved">("default");
@@ -38,6 +40,35 @@ export default function MatchDetail() {
   type StadiumView = "off" | "photo" | "3d";
   const [stadiumView, setStadiumView] = useState<StadiumView>("off");
   const { syncEnabled } = useSyncPreferences();
+
+  // Compact list of all matches (id + kickoff) used for prev/next nav.
+  // Cached separately so it's shared across MatchDetail visits.
+  const { data: matchIndex } = useQuery({
+    queryKey: ["match-nav-index"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("matches")
+        .select("id, kickoff_utc")
+        .order("kickoff_utc", { ascending: true });
+      return (data as Array<{ id: string; kickoff_utc: string }>) || [];
+    },
+    staleTime: staleTimes.matches,
+  });
+
+  // Scroll naar top zodra een andere match opent (via prev/next).
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }); }, [id]);
+
+  const navInfo = useMemo(() => {
+    if (!matchIndex || !id) return { prevId: null as string | null, nextId: null as string | null, position: 0, total: 0 };
+    const idx = matchIndex.findIndex((m) => m.id === id);
+    if (idx < 0) return { prevId: null, nextId: null, position: 0, total: matchIndex.length };
+    return {
+      prevId: idx > 0 ? matchIndex[idx - 1].id : null,
+      nextId: idx < matchIndex.length - 1 ? matchIndex[idx + 1].id : null,
+      position: idx + 1,
+      total: matchIndex.length,
+    };
+  }, [matchIndex, id]);
 
   const { data: match, isLoading } = useQuery({
     queryKey: queryKeys.matchDetail(id!),
@@ -180,6 +211,12 @@ export default function MatchDetail() {
       setSaveLabel("saved");
       setTimeout(() => setSaveLabel("default"), 1200);
 
+      const nextAction = navInfo.nextId ? (
+        <ToastAction altText="Volgende wedstrijd" onClick={() => navigate(`/app/matches/${navInfo.nextId}`)}>
+          Volgende ➜
+        </ToastAction>
+      ) : undefined;
+
       if (result.kind === "bulk") {
         const savedCount = result.bulk?.savedPoolIds?.length ?? 0;
         const skippedCount = result.bulk?.skippedPoolIds?.length ?? 0;
@@ -191,6 +228,7 @@ export default function MatchDetail() {
                   skippedCount > 0 ? ` (${skippedCount} overgeslagen)` : ""
                 }.`
               : "Alle deadlines waren verstreken.",
+          action: savedCount > 0 ? nextAction : undefined,
         });
         if (!existingPred && savedCount > 0) trackFirstPrediction();
         queryClient.invalidateQueries({ queryKey: queryKeys.allPredictions() });
@@ -207,6 +245,7 @@ export default function MatchDetail() {
       toast({
         title: "Opgeslagen ✓",
         description: "Je voorspelling is bijgewerkt in deze pool.",
+        action: nextAction,
       });
       if (!existingPred) trackFirstPrediction();
       queryClient.invalidateQueries({ queryKey: queryKeys.allPredictions() });
@@ -267,9 +306,38 @@ export default function MatchDetail() {
   return (
     <div className="max-w-lg mx-auto px-4 pt-4 pb-4 space-y-4">
       <ExactScoreConfetti trigger={showConfetti} />
-      <Link to="/app/matches" className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm">
-        <ArrowLeft className="h-4 w-4" /> Terug
-      </Link>
+      <div className="flex items-center justify-between text-sm">
+        <Link to="/app/matches" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Terug
+        </Link>
+        {navInfo.total > 0 && (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 gap-0.5"
+              disabled={!navInfo.prevId}
+              onClick={() => navInfo.prevId && navigate(`/app/matches/${navInfo.prevId}`)}
+              aria-label="Vorige wedstrijd"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-[11px] text-muted-foreground tabular-nums px-1">
+              {navInfo.position}/{navInfo.total}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 gap-0.5"
+              disabled={!navInfo.nextId}
+              onClick={() => navInfo.nextId && navigate(`/app/matches/${navInfo.nextId}`)}
+              aria-label="Volgende wedstrijd"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Score Card */}
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>

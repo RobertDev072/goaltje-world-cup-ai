@@ -10,6 +10,7 @@ import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeM
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { motion } from "framer-motion";
 import { PredictionReminderBanner } from "@/components/PredictionReminderBanner";
+import { WinShirtPromo } from "@/components/WinShirtPromo";
 import { getPredictionState, isMissingToday } from "@/lib/predictionStatus";
 import { Calendar, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -250,6 +251,9 @@ export default function Matches() {
           missedMatches={missedMatches}
         />
       )}
+
+      {/* Win-shirt promo (compact, één keer in de lijst) */}
+      {user && <WinShirtPromo compact />}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-muted rounded-xl p-1">
