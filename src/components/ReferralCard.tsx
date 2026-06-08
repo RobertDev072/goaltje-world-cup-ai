@@ -14,6 +14,8 @@ interface ReferralStatus {
   active_referrals: number;
   required: number;
   qualified: boolean;
+  completed?: boolean;
+  has_made_prediction?: boolean;
 }
 
 export function ReferralCard() {
@@ -31,6 +33,9 @@ export function ReferralCard() {
   });
 
   if (isLoading) return <Skeleton className="h-44 rounded-xl" />;
+
+  // Gebruiker heeft alles voltooid → card verbergen (zoals de promo).
+  if (data?.completed) return null;
 
   // Fallback wanneer de RPC nog niet bestaat in de DB (migration niet
   // gerund) of een andere fout gooit. Voorheen toonde de card niets,

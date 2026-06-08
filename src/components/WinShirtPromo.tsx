@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, ArrowRight, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
@@ -6,17 +8,31 @@ import { motion } from "framer-motion";
 /**
  * Promo-banner: doe mee om het officiële Nederlands Elftal shirt 2026 te winnen.
  * Plek: Home (boven matches) en in de matches-lijst (één keer).
- * Klikt door naar Profile waar de referral-link en voortgang staan.
- * Doel: groei via referrals — boodschap wijst expliciet op "haal vrienden binnen".
+ * Klikt door naar /app/win-shirt — dedicated pagina met verhaal + invite-link.
+ * Verbergt zichzelf zodra de gebruiker gekwalificeerd is (5 actieve refs +
+ * zelf ≥1 voorspelling).
  */
 export function WinShirtPromo({ compact = false }: { compact?: boolean }) {
+  const { data } = useQuery({
+    queryKey: ["my-referral-status"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_my_referral_status");
+      if (error) throw error;
+      return data as { completed?: boolean };
+    },
+    staleTime: 60_000,
+    retry: 0,
+  });
+
+  if (data?.completed) return null;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.05 }}
     >
-      <Link to="/app/profile#invite">
+      <Link to="/app/win-shirt">
         <Card className="border-0 shadow-md overflow-hidden relative">
           <div className="absolute inset-0 gradient-primary opacity-90" />
           <div className="absolute -right-6 -top-6 opacity-15">
