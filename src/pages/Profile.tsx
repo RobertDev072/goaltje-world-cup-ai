@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +43,20 @@ export default function Profile() {
   const [showSyncDisableConfirm, setShowSyncDisableConfirm] = useState(false);
 
   const { syncEnabled, isLoading: syncLoading, disableSync } = useSyncPreferences();
+
+  // Scroll naar de referral-card als de URL #invite bevat (vanaf de promo-banner)
+  // en geef de card een korte oranje glow zodat 't oog er meteen naartoe trekt.
+  useEffect(() => {
+    if (window.location.hash !== "#invite") return;
+    const el = document.getElementById("invite");
+    if (!el) return;
+    const t = setTimeout(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add("ring-2", "ring-secondary", "ring-offset-2");
+      setTimeout(() => el.classList.remove("ring-2", "ring-secondary", "ring-offset-2"), 2400);
+    }, 150);
+    return () => clearTimeout(t);
+  }, []);
 
   const saveCookiePrefs = useCallback(() => {
     setConsent("granted", { analytics: cookieAnalytics, functional: cookieFunctional });
@@ -238,7 +252,13 @@ export default function Profile() {
       </motion.div>
 
       {/* Referral card — win een officieel shirt */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
+      <motion.div
+        id="invite"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.14 }}
+        className="scroll-mt-4 rounded-xl"
+      >
         <ReferralCard />
       </motion.div>
 

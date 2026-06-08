@@ -16,7 +16,7 @@ export function WinShirtPromo({ compact = false }: { compact?: boolean }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.05 }}
     >
-      <Link to="/app/profile">
+      <Link to="/app/profile#invite">
         <Card className="border-0 shadow-md overflow-hidden relative">
           <div className="absolute inset-0 gradient-primary opacity-90" />
           <div className="absolute -right-6 -top-6 opacity-15">
