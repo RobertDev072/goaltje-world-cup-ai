@@ -12,6 +12,7 @@ import {
 import { motion } from "framer-motion";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import shirtPhoto from "@/assets/nl-shirt-2026.jpeg";
 
 interface ReferralStatus {
   referral_code: string;
@@ -82,25 +83,21 @@ export default function WinShirt() {
         <ArrowLeft className="h-4 w-4" /> Terug
       </button>
 
-      {/* Hero — shirt visual */}
+      {/* Hero — officiële Nike Nederlands Elftal shirt 2026 */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-        <Card className="border-0 shadow-xl overflow-hidden relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700" />
-          {/* Stylized shirt silhouet — geen externe afbeelding */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-15">
-            <svg viewBox="0 0 200 200" className="w-72 h-72">
-              <path
-                d="M40 50 L70 30 L80 40 L120 40 L130 30 L160 50 L150 80 L130 75 L130 170 L70 170 L70 75 L50 80 Z"
-                fill="white"
-                stroke="white"
-                strokeWidth="2"
-              />
-            </svg>
-          </div>
-          <CardContent className="p-6 relative text-white">
-            <Badge className="bg-white/20 text-white text-[10px] mb-2 backdrop-blur-sm border-0">
+        <Card className="border-0 shadow-xl overflow-hidden">
+          <div className="relative bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700">
+            <img
+              src={shirtPhoto}
+              alt="Officieel Nederlands Elftal Nike shirt 2026"
+              className="block w-full h-72 object-contain drop-shadow-2xl py-4"
+              loading="eager"
+            />
+            <Badge className="absolute top-3 left-3 bg-white/25 text-white text-[10px] backdrop-blur-sm border-0">
               EXCLUSIEVE WINACTIE
             </Badge>
+          </div>
+          <CardContent className="p-5 bg-gradient-to-b from-orange-700 to-orange-800 text-white">
             <h1 className="font-display font-bold text-2xl leading-tight">
               Win het officiële<br />
               <span className="text-3xl">Nederlands Elftal</span><br />
