@@ -55,8 +55,15 @@ export default function MatchDetail() {
     staleTime: staleTimes.matches,
   });
 
-  // Scroll naar top zodra een andere match opent (via prev/next).
-  useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }); }, [id]);
+  // Scroll naar top + reset prediction-state zodra een andere match opent
+  // (anders blijft de score van de vorige match in het invulvak staan
+  // omdat het component niet remount bij een route-param change).
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+    setHomePred(null);
+    setAwayPred(null);
+    setSaveLabel("default");
+  }, [id]);
 
   const navInfo = useMemo(() => {
     if (!matchIndex || !id) return { prevId: null as string | null, nextId: null as string | null, position: 0, total: 0 };
