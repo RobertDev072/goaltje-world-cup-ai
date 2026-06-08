@@ -4,7 +4,7 @@ import { Trophy, ArrowRight, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 
 /**
- * Promo-banner: doe mee om het officiële Elftal shirt 2026 te winnen.
+ * Promo-banner: doe mee om het officiële Nederlands Elftal shirt 2026 te winnen.
  * Plek: Home (boven matches) en in de matches-lijst (één keer).
  * Klikt door naar Profile waar de referral-link en voortgang staan.
  * Doel: groei via referrals — boodschap wijst expliciet op "haal vrienden binnen".
@@ -29,7 +29,7 @@ export function WinShirtPromo({ compact = false }: { compact?: boolean }) {
               </div>
               <div className="flex-1 min-w-0 text-white">
                 <p className="font-display font-bold text-sm leading-tight">
-                  Win het officiële Elftal shirt 2026! 🎽
+                  Win het officiële Nederlands Elftal shirt 2026! 🎽
                 </p>
                 <p className="text-[11px] opacity-90 mt-0.5">
                   {compact

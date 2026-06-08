@@ -47,7 +47,7 @@ export function ReferralCard() {
   };
 
   const handleShare = async () => {
-    const text = `Doe mee met Goaltje WK 2026 ⚽\nMaak kans op het officiële Elftal shirt 2026 via mijn invite-link:\n${inviteUrl}`;
+    const text = `Doe mee met Goaltje WK 2026 ⚽\nMaak kans op het officiële Nederlands Elftal shirt 2026 via mijn invite-link:\n${inviteUrl}`;
     if (navigator.share) {
       try { await navigator.share({ title: "Goaltje WK 2026", text, url: inviteUrl }); }
       catch { /* user cancelled */ }
@@ -65,7 +65,7 @@ export function ReferralCard() {
             <Gift className="h-5 w-5 text-secondary" />
           </div>
           <div className="flex-1">
-            <h3 className="font-display font-semibold text-sm">Win het officiële Elftal shirt 2026 🎽</h3>
+            <h3 className="font-display font-semibold text-sm">Win het officiële Nederlands Elftal shirt 2026 🎽</h3>
             <p className="text-[11px] text-muted-foreground">
               Nodig 5 vrienden uit en wordt het hoogst in de globale poel om het shirt te winnen.
             </p>
