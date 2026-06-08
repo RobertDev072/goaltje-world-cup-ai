@@ -46,14 +46,14 @@ BEGIN
           WHERE ur.user_id = pm.user_id AND ur.role = 'admin'
        )
        AND (
-         SELECT COUNT(*) FROM predictions p
-          JOIN matches m ON m.id = p.match_id
-         WHERE p.user_id = pm.user_id
-           AND p.pool_id = pm.pool_id
-           AND m.stage = 'group'
-           AND m.home_team_id IS NOT NULL
-           AND m.away_team_id IS NOT NULL
-           AND p.created_at <= first_kickoff
+         SELECT COUNT(DISTINCT pr.match_id) FROM predictions pr
+          JOIN matches mt ON mt.id = pr.match_id
+         WHERE pr.user_id = pm.user_id
+           AND pr.pool_id = pm.pool_id
+           AND mt.stage = 'group'
+           AND mt.home_team_id IS NOT NULL
+           AND mt.away_team_id IS NOT NULL
+           AND pr.created_at <= first_kickoff
        ) >= total_group_matches
   ),
   updated AS (
@@ -101,16 +101,16 @@ BEGIN
   -- BEST poolgevulde lidmaatschap (op tijd ingevuld)
   SELECT COALESCE(MAX(c), 0) INTO best_pred_count
     FROM (
-      SELECT COUNT(*) AS c
-        FROM predictions p
-        JOIN matches m ON m.id = p.match_id
-        JOIN pool_members pm ON pm.user_id = p.user_id AND pm.pool_id = p.pool_id
-       WHERE p.user_id = uid
-         AND m.stage = 'group'
-         AND m.home_team_id IS NOT NULL
-         AND m.away_team_id IS NOT NULL
-         AND (first_kickoff IS NULL OR p.created_at <= first_kickoff)
-       GROUP BY p.pool_id
+      SELECT COUNT(DISTINCT pr.match_id) AS c
+        FROM predictions pr
+        JOIN matches mt ON mt.id = pr.match_id
+        JOIN pool_members pm ON pm.user_id = pr.user_id AND pm.pool_id = pr.pool_id
+       WHERE pr.user_id = uid
+         AND mt.stage = 'group'
+         AND mt.home_team_id IS NOT NULL
+         AND mt.away_team_id IS NOT NULL
+         AND (first_kickoff IS NULL OR pr.created_at <= first_kickoff)
+       GROUP BY pr.pool_id
     ) t;
 
   SELECT COUNT(*) INTO earned_in_pools
