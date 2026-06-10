@@ -30,26 +30,32 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Verifieer de aanroeper als admin via JWT
+    // Verifieer de aanroeper als admin via JWT.
+    // Bracket-notation voor "id" voorkomt dat markdown-renderers
+    // userData.user.id als een .id-TLD autolink interpreteren tijdens
+    // copy/paste — heeft eerder een deploy doen falen.
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return json({ error: "Missing authorization" }, 401);
     }
-    const supabase = createClient(
+    const sbClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } },
     );
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData?.user) return json({ error: "Unauthorized" }, 401);
+    const userResp = await sbClient.auth.getUser();
+    const authedUser = userResp?.data?.user;
+    if (!authedUser) return json({ error: "Unauthorized" }, 401);
 
-    const { data: roleRow } = await supabase
+    const callerId = authedUser["id"];
+
+    const roleResp = await sbClient
       .from("user_roles")
       .select("role")
-      .eq("user_id", userData.user.id)
+      .eq("user_id", callerId)
       .eq("role", "admin")
       .maybeSingle();
-    if (!roleRow) return json({ error: "Admin only" }, 403);
+    if (!roleResp?.data) return json({ error: "Admin only" }, 403);
 
     const payload = (await req.json()) as ProxyRequest;
     if (!payload?.path || !payload?.bearer) {
