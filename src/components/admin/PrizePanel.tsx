@@ -69,7 +69,7 @@ export function PrizePanel({ enabled }: { enabled: boolean }) {
       queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
       queryClient.invalidateQueries({ queryKey: ["admin-prize-qualified"] });
     },
-    onError: (err: any) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
+    onError: (err: Error) => toast({ title: "Fout", description: err.message, variant: "destructive" }),
   });
 
   // Groepeer log per referrer
