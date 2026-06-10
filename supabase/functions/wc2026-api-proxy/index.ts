@@ -6,9 +6,13 @@
 //   3. We loggen rate-limit headers (x-ratelimit-*) zodat de admin-UI
 //      ze kan tonen
 //   4. Logged calls tellen niet mee in de gewone polling-budget
+//
+// Bewust geen URL-imports gebruikt: markdown clients autolinken
+// patronen als "supabase-js@2" en breken zo de copy/paste-flow naar
+// Supabase Studio. Met Deno.serve (built-in) en npm: specifier blijft
+// de source schoon.
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,14 +30,10 @@ interface ProxyRequest {
 
 const ALLOWED_HOST = "api.wc2026api.com";
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Verifieer de aanroeper als admin via JWT.
-    // Bracket-notation voor "id" voorkomt dat markdown-renderers
-    // userData.user.id als een .id-TLD autolink interpreteren tijdens
-    // copy/paste — heeft eerder een deploy doen falen.
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return json({ error: "Missing authorization" }, 401);
@@ -47,6 +47,8 @@ serve(async (req) => {
     const authedUser = userResp?.data?.user;
     if (!authedUser) return json({ error: "Unauthorized" }, 401);
 
+    // Bracket-notation voorkomt dat copy-paste-autolinkers
+    // `authedUser.id` als TLD-link interpreteren.
     const callerId = authedUser["id"];
 
     const roleResp = await sbClient
@@ -62,7 +64,7 @@ serve(async (req) => {
       return json({ error: "path en bearer zijn verplicht" }, 400);
     }
 
-    const url = new URL(`https://${ALLOWED_HOST}${payload.path}`);
+    const url = new URL("https://" + ALLOWED_HOST + payload.path);
     if (payload.query) {
       for (const [k, v] of Object.entries(payload.query)) {
         if (v != null && v !== "") url.searchParams.set(k, v);
@@ -74,7 +76,7 @@ serve(async (req) => {
       method: payload.method || "GET",
       headers: {
         "Accept": "application/json",
-        "Authorization": `Bearer ${payload.bearer}`,
+        "Authorization": "Bearer " + payload.bearer,
       },
       body: payload.body && payload.method !== "GET"
         ? JSON.stringify(payload.body)
@@ -82,7 +84,6 @@ serve(async (req) => {
     });
     const durationMs = Date.now() - started;
 
-    // Lees response (proberen JSON, anders raw text)
     const raw = await upstream.text();
     let parsed: unknown = null;
     let parseError: string | null = null;
