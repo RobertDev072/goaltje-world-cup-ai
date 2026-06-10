@@ -1,0 +1,114 @@
+// Proxy voor de WC2026 API (api.wc2026api.com) — alleen voor admins.
+//
+// Waarom een proxy:
+//   1. CORS: de externe API blokkeert browser-calls
+//   2. Bearer-token blijft serverside, niet zichtbaar in network-tab
+//   3. We loggen rate-limit headers (x-ratelimit-*) zodat de admin-UI
+//      ze kan tonen
+//   4. Logged calls tellen niet mee in de gewone polling-budget
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+interface ProxyRequest {
+  path: string;          // bv. "/teams"
+  method?: string;       // default "GET"
+  query?: Record<string, string>;
+  bearer: string;        // door admin ingegeven
+  body?: unknown;
+}
+
+const ALLOWED_HOST = "api.wc2026api.com";
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  try {
+    // Verifieer de aanroeper als admin via JWT
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return json({ error: "Missing authorization" }, 401);
+    }
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData?.user) return json({ error: "Unauthorized" }, 401);
+
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userData.user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!roleRow) return json({ error: "Admin only" }, 403);
+
+    const payload = (await req.json()) as ProxyRequest;
+    if (!payload?.path || !payload?.bearer) {
+      return json({ error: "path en bearer zijn verplicht" }, 400);
+    }
+
+    const url = new URL(`https://${ALLOWED_HOST}${payload.path}`);
+    if (payload.query) {
+      for (const [k, v] of Object.entries(payload.query)) {
+        if (v != null && v !== "") url.searchParams.set(k, v);
+      }
+    }
+
+    const started = Date.now();
+    const upstream = await fetch(url.toString(), {
+      method: payload.method || "GET",
+      headers: {
+        "Accept": "application/json",
+        "Authorization": `Bearer ${payload.bearer}`,
+      },
+      body: payload.body && payload.method !== "GET"
+        ? JSON.stringify(payload.body)
+        : undefined,
+    });
+    const durationMs = Date.now() - started;
+
+    // Lees response (proberen JSON, anders raw text)
+    const raw = await upstream.text();
+    let parsed: unknown = null;
+    let parseError: string | null = null;
+    try { parsed = JSON.parse(raw); }
+    catch (e) { parseError = (e as Error).message; }
+
+    const headerSnapshot: Record<string, string> = {};
+    upstream.headers.forEach((v, k) => { headerSnapshot[k.toLowerCase()] = v; });
+
+    return json({
+      ok: upstream.ok,
+      status: upstream.status,
+      duration_ms: durationMs,
+      request_url: url.toString(),
+      headers: headerSnapshot,
+      rate_limit: {
+        limit:     headerSnapshot["x-ratelimit-limit"]     ?? null,
+        remaining: headerSnapshot["x-ratelimit-remaining"] ?? null,
+        reset:     headerSnapshot["x-ratelimit-reset"]     ?? null,
+      },
+      body:     parsed,
+      raw_body: parsed == null ? raw.slice(0, 5000) : null,
+      parse_error: parseError,
+    }, 200);
+  } catch (err) {
+    return json({ error: (err as Error).message }, 500);
+  }
+});
+
+function json(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
