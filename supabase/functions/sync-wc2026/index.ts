@@ -151,6 +151,15 @@ Deno.serve(async (req) => {
     }
 
     // mode === "live"
+    // Budget-throttle: hooguit 1 externe poll per 3 minuten (op de klok),
+    // zodat meerdere wedstrijden op één dag binnen 500 req/dag blijven.
+    // De cron tikt elke minuut; alleen op minuut 0,3,6,... wordt gepolld.
+    const POLL_EVERY_MIN = 3;
+    if (new Date().getUTCMinutes() % POLL_EVERY_MIN !== 0) {
+      stats.skipped_reason = "throttled";
+      return json({ ok: true, ...stats }, 200);
+    }
+
     // Kandidaten: nu live OF binnen 15 min start, begonnen < 4u geleden.
     const horizon = new Date(Date.now() + 15 * 60_000).toISOString();
     const lookback = new Date(Date.now() - 4 * 60 * 60_000).toISOString();
