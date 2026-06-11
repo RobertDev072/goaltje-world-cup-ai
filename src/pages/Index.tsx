@@ -15,6 +15,7 @@ import { LiveMatchBanner } from "@/components/LiveMatchBanner";
 import { WinShirtPromo } from "@/components/WinShirtPromo";
 import { EarlyBirdStatus } from "@/components/EarlyBirdStatus";
 import { CompensationBanner } from "@/components/CompensationBanner";
+import { getActivePoolId, setActivePoolId } from "@/lib/activePool";
 import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebration";
 import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
@@ -27,7 +28,7 @@ import { toast } from "@/hooks/use-toast";
 
 export default function Index() {
   const { user } = useAuth();
-  const [selectedPoolId, setSelectedPoolId] = useState("");
+  const [selectedPoolId, setSelectedPoolId] = useState(() => getActivePoolId());
   const { showGoal, triggerGoal, hideGoal } = useGoalCelebration();
 
   // Realtime subscriptions
@@ -78,6 +79,9 @@ export default function Index() {
   });
 
   const activePoolId = selectedPoolId || pools?.[0]?.id || "";
+
+  // Deel de poule-keuze met MatchDetail/Matches via localStorage
+  useEffect(() => { if (activePoolId) setActivePoolId(activePoolId); }, [activePoolId]);
 
   // Leaderboard for ranking display
   const { data: leaderboard } = useQuery({

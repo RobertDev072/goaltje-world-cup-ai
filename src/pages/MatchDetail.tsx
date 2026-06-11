@@ -25,6 +25,8 @@ import { getPredictionState } from "@/lib/predictionStatus";
 import { useSyncPreferences } from "@/hooks/useSyncPreferences";
 import { Link2, Building2, Camera } from "lucide-react";
 import { StadiumPhoto } from "@/components/StadiumPhoto";
+import { PoolSelector } from "@/components/PoolSelector";
+import { getActivePoolId, setActivePoolId } from "@/lib/activePool";
 
 const StadiumModel3D = lazy(() => import("@/components/StadiumModel3D"));
 
@@ -120,8 +122,17 @@ export default function MatchDetail() {
     staleTime: staleTimes.pools,
   });
 
-  // Derive activePool early so we can use it in the query key
-  const activePool = myPools && myPools.length > 0 ? myPools[0].id : "";
+  // Actieve poule: gedeeld via localStorage (zelfde keuze als Home/Matches).
+  // Valt terug op de eerste poule als de bewaarde keuze niet (meer) geldig is.
+  const [selectedPool, setSelectedPool] = useState<string>(() => getActivePoolId());
+  const activePool = useMemo(() => {
+    if (!myPools || myPools.length === 0) return "";
+    const valid = myPools.some((p: any) => p.id === selectedPool);
+    return valid ? selectedPool : myPools[0].id;
+  }, [myPools, selectedPool]);
+
+  // Houd de keuze in sync met localStorage
+  useEffect(() => { if (activePool) setActivePoolId(activePool); }, [activePool]);
 
   // Derive scoring rules from the active pool (falls back to defaults)
   const poolRules: ScoringRules = useMemo(() => {
@@ -455,6 +466,12 @@ export default function MatchDetail() {
             </CardContent>
           </Card>
         </motion.div>
+      )}
+
+      {/* Poule-kiezer — alleen bij meerdere poules. Bepaalt welke leden +
+          consensus je ziet en in welke poule je los opslaat. */}
+      {user && myPools && myPools.length > 1 && (
+        <PoolSelector value={activePool} onChange={setSelectedPool} />
       )}
 
       {/* Pool consensus — stemverdeling + top 3 uitslagen (verborgen bij <2 voorspellingen) */}

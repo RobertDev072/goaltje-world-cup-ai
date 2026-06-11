@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -11,6 +11,7 @@ import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { motion } from "framer-motion";
 import { PredictionReminderBanner } from "@/components/PredictionReminderBanner";
 import { WinShirtPromo } from "@/components/WinShirtPromo";
+import { getActivePoolId, setActivePoolId } from "@/lib/activePool";
 import { getPredictionState, isMissingToday } from "@/lib/predictionStatus";
 import { Calendar, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,7 +51,7 @@ function capitalize(s: string) {
 
 export default function Matches() {
   const { user } = useAuth();
-  const [selectedPoolId, setSelectedPoolId] = useState("");
+  const [selectedPoolId, setSelectedPoolId] = useState(() => getActivePoolId());
   const [activeTab, setActiveTab] = useState<Tab>("aankomend");
   const [visibleResults, setVisibleResults] = useState(20);
   const { showGoal, triggerGoal, hideGoal } = useGoalCelebration();
@@ -87,6 +88,9 @@ export default function Matches() {
   });
 
   const activePoolId = selectedPoolId || pools?.[0]?.id || "";
+
+  // Bewaar de keuze zodat MatchDetail/Home dezelfde poule gebruiken
+  useEffect(() => { if (activePoolId) setActivePoolId(activePoolId); }, [activePoolId]);
 
   const matchIds = matches?.map((m: any) => m.id) || [];
   const { data: myPredictions } = useQuery({
