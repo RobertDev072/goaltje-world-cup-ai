@@ -26,7 +26,9 @@ export function BonusQuestions() {
         .select("*")
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return data || [];
+      // Verberg interne [SYSTEM]-vragen (compensatie, top-20 bonus, etc.):
+      // dat zijn punten-haakjes, geen echte vragen voor gebruikers.
+      return (data || []).filter((q: any) => !String(q.question).startsWith("[SYSTEM]"));
     },
   });
 

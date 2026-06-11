@@ -676,7 +676,8 @@ export default function AdminDashboard() {
         .select("*")
         .order("closes_at", { ascending: true });
       if (error) throw error;
-      return data || [];
+      // Verberg interne [SYSTEM]-vragen (compensatie / top-20 bonus)
+      return (data || []).filter((q: any) => !String(q.question).startsWith("[SYSTEM]"));
     },
     enabled: isAdmin === true && tab === "bonus",
     staleTime: 60_000,
