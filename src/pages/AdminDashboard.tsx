@@ -31,6 +31,7 @@ import { ClientErrorsList } from "@/components/admin/ClientErrorsList";
 import { SecurityPanel } from "@/components/admin/SecurityPanel";
 import { PrizePanel } from "@/components/admin/PrizePanel";
 import { ApiTestPanel } from "@/components/admin/ApiTestPanel";
+import { LiveTestPanel } from "@/components/admin/LiveTestPanel";
 
 interface AdminStats {
   total_users: number;
@@ -436,7 +437,7 @@ export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  type TabKey = "overview" | "live" | "scores" | "stats" | "poules" | "beheer" | "analytics" | "errors" | "security" | "prize" | "apitest" | "bonus" | "berichten" | "systeem";
+  type TabKey = "overview" | "live" | "scores" | "stats" | "poules" | "beheer" | "analytics" | "errors" | "security" | "prize" | "apitest" | "livetest" | "bonus" | "berichten" | "systeem";
   const [tab, setTab] = useState<TabKey>("overview");
   const [expandedPool, setExpandedPool] = useState<string | null>(null);
   const [editingPool, setEditingPool] = useState<any | null>(null);
@@ -1013,6 +1014,7 @@ export default function AdminDashboard() {
     { key: "security",   label: "Security",      icon: ShieldAlert },
     { key: "prize",      label: "Prijs",         icon: Gem },
     { key: "apitest",    label: "API test",      icon: PlugZap },
+    { key: "livetest",   label: "Live test",     icon: Radio },
     { key: "bonus",      label: "Bonus",         icon: Gift },
     { key: "berichten",  label: "Berichten",     icon: MessageSquare },
     { key: "stats",      label: "Stats",         icon: Activity },
@@ -1584,6 +1586,11 @@ export default function AdminDashboard() {
       {/* ==================== API TEST TAB ==================== */}
       {tab === "apitest" && (
         <ApiTestPanel enabled={tab === "apitest"} />
+      )}
+
+      {/* ==================== LIVE TEST TAB ==================== */}
+      {tab === "livetest" && (
+        <LiveTestPanel enabled={tab === "livetest"} />
       )}
 
       {/* ==================== BEHEER TAB ==================== */}
