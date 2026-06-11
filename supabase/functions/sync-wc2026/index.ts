@@ -2,16 +2,13 @@
 //
 // Twee modi via body:
 //   { "mode": "full" } → teams + stadiums + matches schedule (1×/dag)
-//   { "mode": "live" } → alleen scores van live wedstrijden (elke minuut)
+//   { "mode": "live" } → scores + statuses van live/recente wedstrijden
 //
-// Budget hard cap 500/dag via claim_api_budget() RPC. Pas bij granted=true
-// wordt er een upstream call gedaan.
+// Budget hard cap 500/dag via claim_api_budget() RPC.
+// Geen URL-imports (Deno.serve + npm: specifier) i.v.m. Studio copy/paste.
 //
-// Bewust geen URL-imports — Deno.serve built-in + npm: specifier,
-// zodat copy/paste-plumbing in Studio niet door autolinks gesloopt wordt.
-//
-// NB: deze function is via Supabase Studio gedeployed onder de auto-slug
-// "bright-processor"; de cron-jobs verwijzen daarnaar.
+// NB: in Studio gedeployed onder auto-slug "bright-processor"; de cron
+// verwijst daarnaar.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -34,6 +31,16 @@ function mapStage(r) {
   if (r === "3rd") return "third_place";
   if (r === "final") return "final";
   return r;
+}
+
+// Q&B status-woorden → onze 3 statussen (scheduled/live/finished/cancelled)
+function mapStatus(s) {
+  if (!s) return "scheduled";
+  const v = String(s).toLowerCase();
+  if (["live","in_play","inplay","playing","1h","2h","ht","et","et1","et2","pen"].includes(v)) return "live";
+  if (["completed","finished","ft","ft_pen","aet","full_time","done","ended"].includes(v)) return "finished";
+  if (["cancelled","canceled","void","abandoned","postponed"].includes(v)) return "cancelled";
+  return "scheduled";
 }
 
 Deno.serve(async (req) => {
@@ -79,7 +86,6 @@ Deno.serve(async (req) => {
     if (mode === "full") {
       const teams = await callApi("/teams");
       if (Array.isArray(teams)) {
-        // flag_url bewust niet meegestuurd — wij beheren emoji-vlaggen zelf
         const rows = teams.map((t) => ({
           external_id: String(t["id"]),
           name: t.name,
@@ -126,11 +132,11 @@ Deno.serve(async (req) => {
             stage: mapStage(round),
             group: m.group_name ?? null,
             kickoff_utc: ko,
-            prediction_deadline_utc: ko, // voorspellen kan tot aftrap
+            prediction_deadline_utc: ko,
             home_team_id: h,
             away_team_id: a,
             stadium_id: st,
-            status: m.status ?? "scheduled",
+            status: mapStatus(m.status),
             home_score: m.home_score ?? null,
             away_score: m.away_score ?? null,
           };
@@ -145,8 +151,9 @@ Deno.serve(async (req) => {
     }
 
     // mode === "live"
+    // Kandidaten: nu live OF binnen 15 min start, begonnen < 4u geleden.
     const horizon = new Date(Date.now() + 15 * 60_000).toISOString();
-    const lookback = new Date(Date.now() - 3 * 60 * 60_000).toISOString();
+    const lookback = new Date(Date.now() - 4 * 60 * 60_000).toISOString();
     const liveQ = await adminClient.from("matches")
       .select("id, external_id, home_score, away_score, status")
       .or("status.eq.live,and(status.eq.scheduled,kickoff_utc.lte." + horizon + ")")
@@ -159,35 +166,24 @@ Deno.serve(async (req) => {
       return json({ ok: true, ...stats }, 200);
     }
 
-    let liveMatches = null;
-    try {
-      const r = await callApi("/matches?status=live");
-      if (Array.isArray(r)) liveMatches = r;
-    } catch (_e) { /* fallback hieronder */ }
-    if (!liveMatches) {
-      const all = await callApi("/matches");
-      if (Array.isArray(all)) {
-        liveMatches = all.filter((m) =>
-          m.status === "live" ||
-          (m.status === "scheduled" && m.kickoff_utc &&
-           new Date(m.kickoff_utc).getTime() <= Date.now() + 15 * 60_000));
-      }
-    }
-    if (!liveMatches || liveMatches.length === 0) return json({ ok: true, ...stats }, 200);
+    // Volle /matches lijst (1 call): bevat ook 'completed' matches, zodat een
+    // wedstrijd van live -> finished overgaat (die valt uit ?status=live).
+    const all = await callApi("/matches");
+    if (!Array.isArray(all)) return json({ ok: true, ...stats }, 200);
 
-    const byExt = new Map();
-    candidates.forEach((c) => { if (c.external_id) byExt.set(c.external_id, c); });
-    for (const qm of liveMatches) {
-      const ext = String(qm["id"]);
-      const cur = byExt.get(ext);
-      if (!cur) continue;
-      const nStatus = qm.status ?? cur.status;
+    const qbByExt = new Map();
+    all.forEach((m) => { qbByExt.set(String(m["id"]), m); });
+
+    for (const cur of candidates) {
+      const qm = qbByExt.get(String(cur.external_id));
+      if (!qm) continue;
+      const nStatus = mapStatus(qm.status);
       const nHome = qm.home_score ?? null;
       const nAway = qm.away_score ?? null;
       if (nStatus === cur.status && nHome === cur.home_score && nAway === cur.away_score) continue;
       const upd = await adminClient.from("matches")
         .update({ status: nStatus, home_score: nHome, away_score: nAway, last_updated: new Date().toISOString() })
-        .eq("external_id", ext);
+        .eq("external_id", cur.external_id);
       if (!upd.error) stats.matches_score_updated += 1;
     }
     return json({ ok: true, ...stats }, 200);
