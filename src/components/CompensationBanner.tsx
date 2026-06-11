@@ -10,6 +10,8 @@ import { motion, AnimatePresence } from "framer-motion";
  * weggeklikt. Bump de _KEY als je later een nieuwe melding wilt tonen.
  */
 const DISMISS_KEY = "compensation_banner_2026_06_11";
+// Banner verdwijnt automatisch voor iedereen na deze datum (±1 dag).
+const HIDE_AFTER = new Date("2026-06-13T00:00:00Z");
 
 export function CompensationBanner() {
   const [dismissed, setDismissed] = useState(
@@ -17,6 +19,7 @@ export function CompensationBanner() {
   );
 
   if (dismissed) return null;
+  if (new Date() >= HIDE_AFTER) return null;
 
   const close = () => {
     localStorage.setItem(DISMISS_KEY, "1");
