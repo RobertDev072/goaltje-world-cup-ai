@@ -28,12 +28,12 @@ function stageLabel(match: any): string {
 function getMatchPeriod(kickoffUtc: string, now: number): string {
   const elapsed = (now - new Date(kickoffUtc).getTime()) / 60_000;
   if (elapsed < 0) return "Begint zo";
-  if (elapsed < 45) return `1e helft · ${Math.max(1, Math.floor(elapsed))}'`;
-  if (elapsed < 48) return "1e helft · 45+";
-  if (elapsed < 60) return "Rust";
-  if (elapsed < 105) return `2e helft · ${Math.min(90, Math.floor(elapsed - 15))}'`;
-  if (elapsed < 110) return "2e helft · 90+";
-  if (elapsed < 120) return "Verlenging";
+  if (elapsed < 48)  return `1e helft · ${Math.max(1, Math.floor(elapsed))}'`;
+  if (elapsed < 52)  return "1e helft · 45+";
+  if (elapsed < 67)  return "Rust";
+  if (elapsed < 112) return `2e helft · ${Math.min(90, Math.floor(elapsed - 22))}'`;
+  if (elapsed < 117) return "2e helft · 90+";
+  if (elapsed < 132) return "Verlenging";
   return "Bijna afgelopen";
 }
 
