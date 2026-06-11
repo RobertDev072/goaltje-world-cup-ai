@@ -133,6 +133,13 @@ export default function Index() {
     myPredictions?.map((p: any) => [p.match_id, p]) || []
   );
 
+  // Voorspellingen "klaar" = query heeft data geleverd, OF er zijn geen
+  // wedstrijden / geen actieve poule (dan valt er niks te missen).
+  // Voorkomt dat de "mist X voorspellingen"-melding flitst tijdens het laden
+  // (race: wedstrijden laden sneller dan voorspellingen → vals "gemist").
+  const predictionsReady =
+    myPredictions !== undefined || matchIds.length === 0 || !activePoolId;
+
   // Batch: meest-voorspelde uitslag per match in de actieve pool
   const { data: poolTopScores } = useQuery({
     queryKey: queryKeys.poolTopScores(activePoolId, matchIds),
@@ -161,13 +168,17 @@ export default function Index() {
   const upcoming = upcomingMatches?.filter((m: any) => m.status === "scheduled").slice(0, 5) || [];
 
   const missingTodayMatches = useMemo(
-    () => (upcomingMatches || []).filter((match: any) => isMissingToday(match, predictionMap.get(match.id))),
-    [upcomingMatches, predictionMap],
+    () => predictionsReady
+      ? (upcomingMatches || []).filter((match: any) => isMissingToday(match, predictionMap.get(match.id)))
+      : [],
+    [predictionsReady, upcomingMatches, predictionMap],
   );
 
   const missedMatches = useMemo(
-    () => (upcomingMatches || []).filter((match: any) => getPredictionState(match, predictionMap.get(match.id)) === "missed"),
-    [upcomingMatches, predictionMap],
+    () => predictionsReady
+      ? (upcomingMatches || []).filter((match: any) => getPredictionState(match, predictionMap.get(match.id)) === "missed")
+      : [],
+    [predictionsReady, upcomingMatches, predictionMap],
   );
 
   useEffect(() => {
