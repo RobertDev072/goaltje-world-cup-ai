@@ -13,6 +13,16 @@ const DISMISS_KEY = "compensation_banner_2026_06_11";
 // Banner verdwijnt automatisch voor iedereen na deze datum (±1 dag).
 const HIDE_AFTER = new Date("2026-06-13T00:00:00Z");
 
+/** Of de compensatie-banner nu getoond mag worden (datum + niet weggeklikt). */
+export function isCompensationVisible(): boolean {
+  if (new Date() >= HIDE_AFTER) return false;
+  try {
+    return localStorage.getItem(DISMISS_KEY) !== "1";
+  } catch {
+    return true;
+  }
+}
+
 export function CompensationBanner() {
   const [dismissed, setDismissed] = useState(
     () => localStorage.getItem(DISMISS_KEY) === "1",

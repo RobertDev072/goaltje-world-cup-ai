@@ -12,9 +12,7 @@ import { PoolHeaderCard } from "@/components/PoolHeaderCard";
 import { TournamentProgress } from "@/components/TournamentProgress";
 import { MatchCard } from "@/components/MatchCard";
 import { LiveMatchBanner } from "@/components/LiveMatchBanner";
-import { WinShirtPromo } from "@/components/WinShirtPromo";
-import { EarlyBirdStatus } from "@/components/EarlyBirdStatus";
-import { CompensationBanner } from "@/components/CompensationBanner";
+import { HomePromos } from "@/components/HomePromos";
 import { getActivePoolId, setActivePoolId } from "@/lib/activePool";
 import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebration";
 import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
@@ -226,14 +224,8 @@ export default function Index() {
         <LiveMatchBanner matches={liveMatches} />
       )}
 
-      {/* Compensatie-melding storing 11 juni — dismissbaar */}
-      {user && <CompensationBanner />}
-
-      {/* Early-bird voortgang / badge — alleen ingelogd, niet voor admin */}
-      {user && <EarlyBirdStatus />}
-
-      {/* Win-shirt promo — alleen ingelogd */}
-      {user && <WinShirtPromo />}
+      {/* Promo's — toont hooguit 1 tegelijk (compensatie > early-bird > win-shirt) */}
+      {user && <HomePromos />}
 
       {user && activePoolId && (
         <PredictionReminderBanner
@@ -308,8 +300,9 @@ export default function Index() {
       )}
 
 
-      {/* Daily recap — verbergt zichzelf bij 0 afgeronde matches gisteren */}
-      {user && activePoolId && (
+      {/* Daily recap — verbergt zichzelf bij 0 afgeronde matches gisteren.
+          Tijdens een live wedstrijd verbergen we 'm zodat de focus op nu ligt. */}
+      {user && activePoolId && liveMatches.length === 0 && (
         <DailyPoolRecap
           poolId={activePoolId}
           poolName={pools?.find((p: any) => p.id === activePoolId)?.name}
