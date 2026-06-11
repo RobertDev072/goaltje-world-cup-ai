@@ -14,6 +14,7 @@ import { MatchCard } from "@/components/MatchCard";
 import { LiveMatchBanner } from "@/components/LiveMatchBanner";
 import { WinShirtPromo } from "@/components/WinShirtPromo";
 import { EarlyBirdStatus } from "@/components/EarlyBirdStatus";
+import { CompensationBanner } from "@/components/CompensationBanner";
 import { GoalCelebration, useGoalCelebration } from "@/components/GoalCelebration";
 import { useRealtimeMatches, useRealtimePredictions } from "@/hooks/useRealtimeMatches";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
@@ -220,6 +221,9 @@ export default function Index() {
       {liveMatches.length > 0 && (
         <LiveMatchBanner matches={liveMatches} />
       )}
+
+      {/* Compensatie-melding storing 11 juni — dismissbaar */}
+      {user && <CompensationBanner />}
 
       {/* Early-bird voortgang / badge — alleen ingelogd, niet voor admin */}
       {user && <EarlyBirdStatus />}
