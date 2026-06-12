@@ -74,12 +74,20 @@ export function BackupPanel({ enabled }: { enabled: boolean }) {
     mutationFn: async (id: string) => {
       const { data, error } = await supabase.rpc("restore_prediction_backup", { _backup_id: id });
       if (error) throw error;
-      return data as { restored_predictions: number; restored_bonus: number };
+      return data as {
+        restored_predictions: number;
+        restored_bonus: number;
+        matches_recalced?: number;
+        predictions_repointed?: number;
+      };
     },
     onSuccess: (d) => {
+      const recalcInfo = (d?.matches_recalced ?? 0) > 0
+        ? ` · ${d?.predictions_repointed ?? 0} punten herberekend over ${d?.matches_recalced ?? 0} wedstrijden`
+        : "";
       toast({
         title: "Herstel voltooid",
-        description: `${d?.restored_predictions ?? 0} voorspellingen + ${d?.restored_bonus ?? 0} bonus teruggezet (alleen ontbrekende).`,
+        description: `${d?.restored_predictions ?? 0} voorspellingen + ${d?.restored_bonus ?? 0} bonus teruggezet (alleen ontbrekende).${recalcInfo}`,
       });
       queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
     },
