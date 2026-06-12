@@ -257,6 +257,13 @@ Grouped by purpose:
 - `user_heartbeat()` — updates last_seen_at on the latest session (used for presence fallback)
 - `get_public_stats()`
 
+**Prediction backups (added Jun 2026 — Free plan safety net):**
+- `prediction_backups` table — snapshots of all predictions + bonus_predictions; keeps the 14 newest. Nightly auto-backup at 03:30; UI in `src/components/admin/BackupPanel.tsx`.
+- `create_prediction_backup(_kind)` — snapshot. Stores per prediction the **team short_names + kickoff_utc** so restore survives changing match-ids.
+- `list_prediction_backups()` / `get_prediction_backup(_backup_id)` — list (light) / full data for download.
+- `restore_prediction_backup(_backup_id)` — admin-only. Resolves each prediction to a match via team-code pair + kickoff (fallback: old match_id), inserts with `ON CONFLICT DO NOTHING` (**never deletes/overwrites — only fills gaps**), then recalculates points from current match results. Returns counts incl. `matches_recalced` + `predictions_repointed`.
+- `recalc_match_predictions(_match_id)` — callable scoring recalc for one match (mirrors the BEFORE-UPDATE trigger `recalculate_match_points`, which can't be called directly).
+
 **Security/helpers:**
 - `has_role(user_id, role)` — auth/role check
 - `is_pool_member(user_id, pool_id)` — RLS helper used in most policies
