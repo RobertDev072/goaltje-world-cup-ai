@@ -9,9 +9,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  PlugZap, Play, Eye, EyeOff, Clock, Gauge, ShieldCheck, AlertTriangle, Copy, Check,
+  PlugZap, Play, Eye, EyeOff, Clock, Gauge, ShieldCheck, AlertTriangle, Copy, Check, RefreshCw,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+
+// Edge function is in Studio gedeployed onder de auto-slug "bright-processor".
+const SYNC_FN_SLUG = "bright-processor";
 
 const PRESETS: Array<{ label: string; path: string; method: "GET"; description: string }> = [
   { label: "Teams",     path: "/teams",     method: "GET", description: "Lijst van alle 48 teams" },
@@ -67,6 +70,41 @@ export function ApiTestPanel({ enabled }: { enabled: boolean }) {
     },
   });
 
+  // Handmatige resync: triggert sync-wc2026 met mode "full" of "live".
+  const resync = useMutation({
+    mutationFn: async (mode: "full" | "live") => {
+      const { data, error } = await supabase.functions.invoke(SYNC_FN_SLUG, {
+        body: { mode },
+      });
+      if (error) throw error;
+      return data as {
+        ok: boolean;
+        mode: string;
+        teams_upserted?: number;
+        stadiums_upserted?: number;
+        matches_upserted?: number;
+        matches_score_updated?: number;
+        matches_teams_filled?: number;
+        budget_remaining?: number | null;
+        skipped_reason?: string | null;
+      };
+    },
+    onSuccess: (d) => {
+      const parts: string[] = [];
+      if (d.matches_upserted) parts.push(`${d.matches_upserted} wedstrijden`);
+      if (d.matches_teams_filled) parts.push(`${d.matches_teams_filled} teams ingevuld`);
+      if (d.matches_score_updated) parts.push(`${d.matches_score_updated} scores`);
+      if (d.skipped_reason) parts.push(`overgeslagen: ${d.skipped_reason}`);
+      toast({
+        title: `Sync (${d.mode}) klaar`,
+        description: parts.length ? parts.join(" · ") : "Niets te updaten.",
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Sync mislukt", description: err.message, variant: "destructive" });
+    },
+  });
+
   const handleCopy = () => {
     const text = response?.body
       ? JSON.stringify(response.body, null, 2)
@@ -82,6 +120,41 @@ export function ApiTestPanel({ enabled }: { enabled: boolean }) {
 
   return (
     <div className="space-y-4">
+      {/* Resync nu */}
+      <Card className="border-0 shadow-sm bg-primary/5">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start gap-2 text-xs">
+            <RefreshCw className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+            <div className="text-muted-foreground">
+              <p className="font-medium text-foreground">Handmatig syncen</p>
+              <p>Trigger nu een sync naar Q&amp;B i.p.v. te wachten tot 03:00.
+                Gebruik <b>Full</b> als knockout-teams of nieuwe wedstrijden ontbreken
+                (kost 3 API-calls). <b>Live</b> ververst alleen scores + TBD-team-invullingen
+                voor de eerstvolgende 14 dagen (1 call).</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              className="flex-1 gap-2"
+              onClick={() => resync.mutate("full")}
+              disabled={resync.isPending}
+            >
+              <RefreshCw className={"h-4 w-4 " + (resync.isPending && resync.variables === "full" ? "animate-spin" : "")} />
+              {resync.isPending && resync.variables === "full" ? "Bezig..." : "Full sync nu"}
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 gap-2"
+              onClick={() => resync.mutate("live")}
+              disabled={resync.isPending}
+            >
+              <RefreshCw className={"h-4 w-4 " + (resync.isPending && resync.variables === "live" ? "animate-spin" : "")} />
+              {resync.isPending && resync.variables === "live" ? "Bezig..." : "Live tick"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Intro */}
       <Card className="border-0 shadow-sm bg-muted/30">
         <CardContent className="p-3 flex items-start gap-2 text-xs">
