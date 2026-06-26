@@ -1,14 +1,20 @@
 // sync-wc2026 — productie sync van api.wc2026api.com naar onze DB.
 //
+// BELANGRIJK: onze matches gebruiken external_id "fd_537xxx" en Q&B
+// gebruikt numerieke ids — die matchen NOOIT. Daarom koppelen we op
+// **kickoff_utc** (+ teamcode bij gelijktijdige kickoffs). Teams worden
+// gekoppeld via **short_name (code)**, niet via id. Niets wordt
+// overschreven: team/stadion/kickoff worden alleen INGEVULD als leeg.
+//
 // Twee modi via body:
-//   { "mode": "full" } → teams + stadiums + matches schedule (1×/dag)
-//   { "mode": "live" } → scores + statuses van live/recente wedstrijden
+//   { "mode": "full" } → verwerk alle matches (handmatige volledige resync)
+//   { "mode": "live" } → alleen live-window + nog-lege knockout matches
 //
-// Budget hard cap 500/dag via claim_api_budget() RPC.
-// Geen URL-imports (Deno.serve + npm: specifier) i.v.m. Studio copy/paste.
+// Budget hard cap 500/dag via claim_api_budget(). Live-poll: elke 3 min
+// als er een wedstrijd live is, elke 30 min als er alleen nog lege
+// knockout-fixtures zijn (teams nog onbekend).
 //
-// NB: in Studio gedeployed onder auto-slug "bright-processor"; de cron
-// verwijst daarnaar.
+// NB: in Studio gedeployed onder auto-slug "bright-processor".
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -20,20 +26,7 @@ const corsHeaders = {
 
 const API_HOST = "api.wc2026api.com";
 
-// Q&B round-codes → onze stage-namen
-function mapStage(r) {
-  if (!r) return "group";
-  if (r === "group") return "group";
-  if (r === "R32") return "round_of_32";
-  if (r === "R16") return "round_of_16";
-  if (r === "QF") return "quarter_final";
-  if (r === "SF") return "semi_final";
-  if (r === "3rd") return "third_place";
-  if (r === "final") return "final";
-  return r;
-}
-
-// Q&B status-woorden → onze 3 statussen (scheduled/live/finished/cancelled)
+// Q&B status-woorden → onze statussen (scheduled/live/finished/cancelled)
 function mapStatus(s) {
   if (!s) return "scheduled";
   const v = String(s).toLowerCase();
@@ -41,6 +34,16 @@ function mapStatus(s) {
   if (["completed","finished","ft","ft_pen","aet","full_time","done","ended"].includes(v)) return "finished";
   if (["cancelled","canceled","void","abandoned","postponed"].includes(v)) return "cancelled";
   return "scheduled";
+}
+
+function normCode(c) {
+  return c != null && String(c).trim() !== "" ? String(c).trim().toUpperCase() : null;
+}
+
+function isoKickoff(v) {
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 Deno.serve(async (req) => {
@@ -59,8 +62,8 @@ Deno.serve(async (req) => {
     const mode = body?.mode === "full" ? "full" : "live";
 
     const stats = {
-      mode, api_calls_made: 0, teams_upserted: 0, stadiums_upserted: 0,
-      matches_upserted: 0, matches_score_updated: 0,
+      mode, api_calls_made: 0, matches_matched: 0,
+      teams_filled: 0, scores_updated: 0, kickoffs_updated: 0,
       skipped_reason: null, budget_remaining: null, rate_limit_remaining: null,
     };
 
@@ -83,176 +86,127 @@ Deno.serve(async (req) => {
       return await upstream.json();
     }
 
-    if (mode === "full") {
-      const teams = await callApi("/teams");
-      if (Array.isArray(teams)) {
-        const rows = teams.map((t) => ({
-          external_id: String(t["id"]),
-          name: t.name,
-          short_name: t.code ?? null,
-          group: t.group_name ?? null,
-        }));
-        const up = await adminClient.from("teams").upsert(rows, { onConflict: "external_id" });
-        if (up.error) throw new Error("teams: " + up.error.message);
-        stats.teams_upserted = rows.length;
+    // --- Onze data laden (geen API-calls) ---
+    const teamRows = await adminClient.from("teams").select("id, short_name");
+    if (teamRows.error) return json({ ok: false, error: "teams: " + teamRows.error.message, ...stats }, 500);
+    const teamIdByCode = new Map();   // CODE -> our team uuid
+    const codeByTeamId = new Map();   // our team uuid -> CODE
+    (teamRows.data ?? []).forEach((t) => {
+      const c = normCode(t.short_name);
+      if (c) {
+        if (!teamIdByCode.has(c)) teamIdByCode.set(c, t.id);
+        codeByTeamId.set(t.id, c);
       }
-      const stadiums = await callApi("/stadiums");
-      if (Array.isArray(stadiums)) {
-        const rows = stadiums.map((s) => ({
-          external_id: String(s["id"]),
-          name: s.name,
-          city: s.city ?? null,
-          country: s.country ?? null,
-          capacity: s.capacity ?? null,
-          updated_at: new Date().toISOString(),
-        }));
-        const up = await adminClient.from("stadiums").upsert(rows, { onConflict: "external_id" });
-        if (up.error) throw new Error("stadiums: " + up.error.message);
-        stats.stadiums_upserted = rows.length;
-      }
-      const matches = await callApi("/matches");
-      if (Array.isArray(matches)) {
-        const teamRows = await adminClient.from("teams").select("id, external_id");
-        const stadRows = await adminClient.from("stadiums").select("id, external_id");
-        const teamMap = new Map();
-        (teamRows.data ?? []).forEach((r) => { if (r.external_id != null) teamMap.set(String(r.external_id), r["id"]); });
-        const stadMap = new Map();
-        (stadRows.data ?? []).forEach((r) => { if (r.external_id != null) stadMap.set(String(r.external_id), r["id"]); });
-        const rows = matches.map((m) => {
-          const homeId = m["home_team_id"];
-          const awayId = m["away_team_id"];
-          const h = homeId != null ? teamMap.get(String(homeId)) ?? null : null;
-          const a = awayId != null ? teamMap.get(String(awayId)) ?? null : null;
-          const round = m.round ?? "group";
-          if (round === "group" && (!h || !a)) return null;
-          const st = m["stadium_id"] != null ? stadMap.get(String(m["stadium_id"])) ?? null : null;
-          const ko = m.kickoff_utc ?? null;
-          return {
-            external_id: String(m["id"]),
-            stage: mapStage(round),
-            group: m.group_name ?? null,
-            kickoff_utc: ko,
-            prediction_deadline_utc: ko,
-            home_team_id: h,
-            away_team_id: a,
-            stadium_id: st,
-            status: mapStatus(m.status),
-            home_score: m.home_score ?? null,
-            away_score: m.away_score ?? null,
-          };
-        }).filter((r) => r != null && !!r.kickoff_utc);
-        if (rows.length > 0) {
-          const up = await adminClient.from("matches").upsert(rows, { onConflict: "external_id" });
-          if (up.error) throw new Error("matches: " + up.error.message);
-          stats.matches_upserted = rows.length;
+    });
+
+    const stadRows = await adminClient.from("stadiums").select("id, name");
+    const stadIdByName = new Map();   // lowercased name -> our stadium uuid
+    (stadRows.data ?? []).forEach((s) => {
+      if (s.name) stadIdByName.set(String(s.name).trim().toLowerCase(), s.id);
+    });
+
+    const matchRows = await adminClient.from("matches")
+      .select("id, kickoff_utc, stage, home_team_id, away_team_id, stadium_id, status, home_score, away_score");
+    if (matchRows.error) return json({ ok: false, error: "matches: " + matchRows.error.message, ...stats }, 500);
+    const ourByKickoff = new Map();   // ISO kickoff -> [matches]
+    (matchRows.data ?? []).forEach((m) => {
+      const k = isoKickoff(m.kickoff_utc);
+      if (!k) return;
+      if (!ourByKickoff.has(k)) ourByKickoff.set(k, []);
+      ourByKickoff.get(k).push(m);
+    });
+
+    // --- Live-mode: bepaal of pollen nodig is (spaart API-budget) ---
+    const nowMs = Date.now();
+    if (mode === "live") {
+      const horizon = nowMs + 15 * 60_000;        // start binnen 15 min
+      const lookback = nowMs - 4 * 60 * 60_000;   // begonnen < 4u geleden
+      const tbdHorizon = nowMs + 14 * 24 * 60 * 60_000;
+      let liveNow = false, tbdExists = false;
+      for (const arr of ourByKickoff.values()) {
+        for (const m of arr) {
+          const km = new Date(m.kickoff_utc).getTime();
+          if (m.status === "live" || (m.status === "scheduled" && km <= horizon && km >= lookback)) liveNow = true;
+          if ((!m.home_team_id || !m.away_team_id) && km >= nowMs && km <= tbdHorizon) tbdExists = true;
         }
       }
-      return json({ ok: true, ...stats }, 200);
+      const minute = new Date().getUTCMinutes();
+      const shouldPoll = (liveNow && minute % 3 === 0) || (tbdExists && minute % 30 === 0);
+      if (!shouldPoll) {
+        stats.skipped_reason = liveNow || tbdExists ? "throttled" : "no_live_window";
+        return json({ ok: true, ...stats }, 200);
+      }
     }
 
-    // mode === "live"
-    // Budget-throttle: hooguit 1 externe poll per 3 minuten (op de klok),
-    // zodat meerdere wedstrijden op één dag binnen 500 req/dag blijven.
-    // De cron tikt elke minuut; alleen op minuut 0,3,6,... wordt gepolld.
-    const POLL_EVERY_MIN = 3;
-    if (new Date().getUTCMinutes() % POLL_EVERY_MIN !== 0) {
-      stats.skipped_reason = "throttled";
-      return json({ ok: true, ...stats }, 200);
-    }
-
-    // Kandidaten:
-    //  (a) nu live, of binnen 15 min start, en niet langer dan 4u geleden begonnen
-    //  (b) toekomstige matches binnen 14 dagen waarvan team-IDs of stadium nog
-    //      ontbreken (knockout-fixtures die Q&B inmiddels bevestigd heeft)
-    const horizon = new Date(Date.now() + 15 * 60_000).toISOString();
-    const lookback = new Date(Date.now() - 4 * 60 * 60_000).toISOString();
-    const tbdHorizon = new Date(Date.now() + 14 * 24 * 60 * 60_000).toISOString();
-    const nowIso = new Date().toISOString();
-
-    const liveQ = await adminClient.from("matches")
-      .select("id, external_id, home_score, away_score, status, home_team_id, away_team_id, stadium_id, kickoff_utc")
-      .or("status.eq.live,and(status.eq.scheduled,kickoff_utc.lte." + horizon + ")")
-      .gte("kickoff_utc", lookback);
-    if (liveQ.error) return json({ ok: false, error: liveQ.error.message, ...stats }, 500);
-
-    const tbdQ = await adminClient.from("matches")
-      .select("id, external_id, home_score, away_score, status, home_team_id, away_team_id, stadium_id, kickoff_utc")
-      .or("home_team_id.is.null,away_team_id.is.null,stadium_id.is.null")
-      .gte("kickoff_utc", nowIso)
-      .lte("kickoff_utc", tbdHorizon);
-    if (tbdQ.error) return json({ ok: false, error: tbdQ.error.message, ...stats }, 500);
-
-    const byExt = new Map();
-    [...(liveQ.data ?? []), ...(tbdQ.data ?? [])].forEach((m) => {
-      if (m.external_id) byExt.set(String(m.external_id), m);
-    });
-    const candidates = Array.from(byExt.values());
-    if (candidates.length === 0) {
-      stats.skipped_reason = "no_live_window";
-      return json({ ok: true, ...stats }, 200);
-    }
-
-    // Volle /matches lijst (1 call): bevat ook 'completed' matches, zodat een
-    // wedstrijd van live -> finished overgaat (die valt uit ?status=live).
+    // --- Q&B ophalen (1 call) ---
     const all = await callApi("/matches");
     if (!Array.isArray(all)) return json({ ok: true, ...stats }, 200);
 
-    // Team + stadium lookups (geen extra API-call) zodat we knockout-fixtures
-    // die Q&B nu wel met teams levert kunnen invullen.
-    const teamRows = await adminClient.from("teams").select("id, external_id");
-    const stadRows = await adminClient.from("stadiums").select("id, external_id");
-    const teamMap = new Map();
-    (teamRows.data ?? []).forEach((r) => { if (r.external_id != null) teamMap.set(String(r.external_id), r.id); });
-    const stadMap = new Map();
-    (stadRows.data ?? []).forEach((r) => { if (r.external_id != null) stadMap.set(String(r.external_id), r.id); });
+    for (const qm of all) {
+      const k = isoKickoff(qm.kickoff_utc);
+      if (!k) continue;
+      const candidates = ourByKickoff.get(k) || [];
+      if (candidates.length === 0) continue;
 
-    const qbByExt = new Map();
-    all.forEach((m) => { qbByExt.set(String(m["id"]), m); });
+      const hCode = normCode(qm.home_team_code);
+      const aCode = normCode(qm.away_team_code);
 
-    let teams_filled = 0;
-    for (const cur of candidates) {
-      const qm = qbByExt.get(String(cur.external_id));
-      if (!qm) continue;
-      const nStatus = mapStatus(qm.status);
-      const nHome = qm.home_score ?? null;
-      const nAway = qm.away_score ?? null;
+      // Koppel: bij 1 kandidaat direct; bij meerdere (gelijktijdige groeps-
+      // wedstrijden) op bestaande teamcodes, anders eerste nog-lege.
+      let target = null;
+      if (candidates.length === 1) {
+        target = candidates[0];
+      } else {
+        target = candidates.find((c) =>
+          codeByTeamId.get(c.home_team_id) === hCode &&
+          codeByTeamId.get(c.away_team_id) === aCode
+        ) || candidates.find((c) => !c.home_team_id && !c.away_team_id) || null;
+      }
+      if (!target) continue;
+      stats.matches_matched += 1;
 
-      // Vul team/stadion/kickoff alleen aan als wij ze nog niet hebben.
-      // Nooit overschrijven: handmatige correcties + reeds bekende IDs blijven.
       const patch = {};
-      if (!cur.home_team_id && qm["home_team_id"] != null) {
-        const h = teamMap.get(String(qm["home_team_id"]));
-        if (h) patch.home_team_id = h;
+
+      // Teams invullen — alleen als nog leeg (nooit overschrijven)
+      if (!target.home_team_id && hCode && teamIdByCode.has(hCode)) patch.home_team_id = teamIdByCode.get(hCode);
+      if (!target.away_team_id && aCode && teamIdByCode.has(aCode)) patch.away_team_id = teamIdByCode.get(aCode);
+
+      // Stadion invullen — alleen als nog leeg
+      if (!target.stadium_id && qm.stadium) {
+        const sid = stadIdByName.get(String(qm.stadium).trim().toLowerCase());
+        if (sid) patch.stadium_id = sid;
       }
-      if (!cur.away_team_id && qm["away_team_id"] != null) {
-        const a = teamMap.get(String(qm["away_team_id"]));
-        if (a) patch.away_team_id = a;
-      }
-      if (!cur.stadium_id && qm["stadium_id"] != null) {
-        const st = stadMap.get(String(qm["stadium_id"]));
-        if (st) patch.stadium_id = st;
-      }
-      if (qm.kickoff_utc && qm.kickoff_utc !== cur.kickoff_utc) {
-        // Q&B verschuift soms knockout-tijden zodra teams bekend zijn.
+
+      // Kickoff bijwerken als Q&B die verschuift (knockout-tijden)
+      const qbIso = isoKickoff(qm.kickoff_utc);
+      const ourIso = isoKickoff(target.kickoff_utc);
+      if (qbIso && qbIso !== ourIso) {
         patch.kickoff_utc = qm.kickoff_utc;
         patch.prediction_deadline_utc = qm.kickoff_utc;
       }
-      const scoreChanged = nStatus !== cur.status || nHome !== cur.home_score || nAway !== cur.away_score;
+
+      // Score + status bijwerken als veranderd
+      const nStatus = mapStatus(qm.status);
+      const nHome = qm.home_score ?? null;
+      const nAway = qm.away_score ?? null;
+      const scoreChanged = nStatus !== target.status || nHome !== target.home_score || nAway !== target.away_score;
       if (scoreChanged) {
         patch.status = nStatus;
         patch.home_score = nHome;
         patch.away_score = nAway;
       }
+
       if (Object.keys(patch).length === 0) continue;
       patch.last_updated = new Date().toISOString();
 
-      const upd = await adminClient.from("matches").update(patch).eq("external_id", cur.external_id);
+      const upd = await adminClient.from("matches").update(patch).eq("id", target.id);
       if (!upd.error) {
-        if (scoreChanged) stats.matches_score_updated += 1;
-        if (patch.home_team_id || patch.away_team_id || patch.stadium_id || patch.kickoff_utc) teams_filled += 1;
+        if (patch.home_team_id || patch.away_team_id) stats.teams_filled += 1;
+        if (scoreChanged) stats.scores_updated += 1;
+        if (patch.kickoff_utc) stats.kickoffs_updated += 1;
       }
     }
-    (stats as any).matches_teams_filled = teams_filled;
+
     return json({ ok: true, ...stats }, 200);
   } catch (err) {
     return json({ error: err.message }, 500);
