@@ -160,16 +160,33 @@ Deno.serve(async (req) => {
       return json({ ok: true, ...stats }, 200);
     }
 
-    // Kandidaten: nu live OF binnen 15 min start, begonnen < 4u geleden.
+    // Kandidaten:
+    //  (a) nu live, of binnen 15 min start, en niet langer dan 4u geleden begonnen
+    //  (b) toekomstige matches binnen 14 dagen waarvan team-IDs of stadium nog
+    //      ontbreken (knockout-fixtures die Q&B inmiddels bevestigd heeft)
     const horizon = new Date(Date.now() + 15 * 60_000).toISOString();
     const lookback = new Date(Date.now() - 4 * 60 * 60_000).toISOString();
+    const tbdHorizon = new Date(Date.now() + 14 * 24 * 60 * 60_000).toISOString();
+    const nowIso = new Date().toISOString();
+
     const liveQ = await adminClient.from("matches")
-      .select("id, external_id, home_score, away_score, status")
+      .select("id, external_id, home_score, away_score, status, home_team_id, away_team_id, stadium_id, kickoff_utc")
       .or("status.eq.live,and(status.eq.scheduled,kickoff_utc.lte." + horizon + ")")
       .gte("kickoff_utc", lookback);
     if (liveQ.error) return json({ ok: false, error: liveQ.error.message, ...stats }, 500);
 
-    const candidates = liveQ.data ?? [];
+    const tbdQ = await adminClient.from("matches")
+      .select("id, external_id, home_score, away_score, status, home_team_id, away_team_id, stadium_id, kickoff_utc")
+      .or("home_team_id.is.null,away_team_id.is.null,stadium_id.is.null")
+      .gte("kickoff_utc", nowIso)
+      .lte("kickoff_utc", tbdHorizon);
+    if (tbdQ.error) return json({ ok: false, error: tbdQ.error.message, ...stats }, 500);
+
+    const byExt = new Map();
+    [...(liveQ.data ?? []), ...(tbdQ.data ?? [])].forEach((m) => {
+      if (m.external_id) byExt.set(String(m.external_id), m);
+    });
+    const candidates = Array.from(byExt.values());
     if (candidates.length === 0) {
       stats.skipped_reason = "no_live_window";
       return json({ ok: true, ...stats }, 200);
@@ -180,21 +197,62 @@ Deno.serve(async (req) => {
     const all = await callApi("/matches");
     if (!Array.isArray(all)) return json({ ok: true, ...stats }, 200);
 
+    // Team + stadium lookups (geen extra API-call) zodat we knockout-fixtures
+    // die Q&B nu wel met teams levert kunnen invullen.
+    const teamRows = await adminClient.from("teams").select("id, external_id");
+    const stadRows = await adminClient.from("stadiums").select("id, external_id");
+    const teamMap = new Map();
+    (teamRows.data ?? []).forEach((r) => { if (r.external_id != null) teamMap.set(String(r.external_id), r.id); });
+    const stadMap = new Map();
+    (stadRows.data ?? []).forEach((r) => { if (r.external_id != null) stadMap.set(String(r.external_id), r.id); });
+
     const qbByExt = new Map();
     all.forEach((m) => { qbByExt.set(String(m["id"]), m); });
 
+    let teams_filled = 0;
     for (const cur of candidates) {
       const qm = qbByExt.get(String(cur.external_id));
       if (!qm) continue;
       const nStatus = mapStatus(qm.status);
       const nHome = qm.home_score ?? null;
       const nAway = qm.away_score ?? null;
-      if (nStatus === cur.status && nHome === cur.home_score && nAway === cur.away_score) continue;
-      const upd = await adminClient.from("matches")
-        .update({ status: nStatus, home_score: nHome, away_score: nAway, last_updated: new Date().toISOString() })
-        .eq("external_id", cur.external_id);
-      if (!upd.error) stats.matches_score_updated += 1;
+
+      // Vul team/stadion/kickoff alleen aan als wij ze nog niet hebben.
+      // Nooit overschrijven: handmatige correcties + reeds bekende IDs blijven.
+      const patch = {};
+      if (!cur.home_team_id && qm["home_team_id"] != null) {
+        const h = teamMap.get(String(qm["home_team_id"]));
+        if (h) patch.home_team_id = h;
+      }
+      if (!cur.away_team_id && qm["away_team_id"] != null) {
+        const a = teamMap.get(String(qm["away_team_id"]));
+        if (a) patch.away_team_id = a;
+      }
+      if (!cur.stadium_id && qm["stadium_id"] != null) {
+        const st = stadMap.get(String(qm["stadium_id"]));
+        if (st) patch.stadium_id = st;
+      }
+      if (qm.kickoff_utc && qm.kickoff_utc !== cur.kickoff_utc) {
+        // Q&B verschuift soms knockout-tijden zodra teams bekend zijn.
+        patch.kickoff_utc = qm.kickoff_utc;
+        patch.prediction_deadline_utc = qm.kickoff_utc;
+      }
+      const scoreChanged = nStatus !== cur.status || nHome !== cur.home_score || nAway !== cur.away_score;
+      if (scoreChanged) {
+        patch.status = nStatus;
+        patch.home_score = nHome;
+        patch.away_score = nAway;
+      }
+      if (Object.keys(patch).length === 0) continue;
+      patch.last_updated = new Date().toISOString();
+
+      const upd = await adminClient.from("matches").update(patch).eq("external_id", cur.external_id);
+      if (!upd.error) {
+        if (scoreChanged) stats.matches_score_updated += 1;
+        if (patch.home_team_id || patch.away_team_id || patch.stadium_id || patch.kickoff_utc) teams_filled += 1;
+      }
     }
+    (stats as any).matches_teams_filled = teams_filled;
     return json({ ok: true, ...stats }, 200);
   } catch (err) {
     return json({ error: err.message }, 500);
