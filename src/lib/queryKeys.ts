@@ -71,6 +71,9 @@ export const queryKeys = {
   userMatchTrackrecord: (userId: string, matchId: string) =>
     ["user-match-trackrecord", userId, matchId] as const,
 
+  // Team-statistieken per wedstrijd (vorm, W/G/V, doelpunten, h2h)
+  matchTeamStats: (matchId: string) => ["match-team-stats", matchId] as const,
+
   // Team-bias (over/onderschatte teams van deze user)
   userTeamBias: (userId: string) => ["user-team-bias", userId] as const,
 

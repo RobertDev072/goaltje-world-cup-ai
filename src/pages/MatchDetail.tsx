@@ -20,6 +20,7 @@ import { ExactScoreConfetti, useExactScoreConfetti } from "@/components/ExactSco
 import { PoolConsensus } from "@/components/PoolConsensus";
 import { MatchMemberPredictions } from "@/components/MatchMemberPredictions";
 import { MatchTrackrecord } from "@/components/MatchTrackrecord";
+import { MatchTeamStats } from "@/components/MatchTeamStats";
 import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import { getPredictionState } from "@/lib/predictionStatus";
 import { useSyncPreferences } from "@/hooks/useSyncPreferences";
@@ -672,6 +673,17 @@ export default function MatchDetail() {
             </CardContent>
           </Card>
         </motion.div>
+      )}
+
+      {/* Team-statistieken dit toernooi (vorm, W/G/V, doelpunten, h2h) */}
+      {match.id && (
+        <MatchTeamStats
+          matchId={match.id}
+          homeName={match.home_team?.name}
+          awayName={match.away_team?.name}
+          homeFlag={match.home_team?.flag_url}
+          awayFlag={match.away_team?.flag_url}
+        />
       )}
 
       {/* Scoring Rules */}
