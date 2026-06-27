@@ -87,6 +87,27 @@ export function isMissingToday(
   return isToday(match.kickoff_utc) && getPredictionState(match, prediction) === "open";
 }
 
+/**
+ * A match counts as "recently missed" for reminder purposes when it is in the
+ * `missed` state AND its kickoff is recent (within `withinHours`) or still in
+ * the future (deadline passed but not yet played).
+ *
+ * This keeps the reminder banner timely: without this window an old missed
+ * match would stay flagged as "missed" for the rest of the tournament, so the
+ * "Je hebt een wedstrijd zonder voorspelling gemist" banner would never
+ * disappear ("blijft hangen").
+ */
+export function isRecentlyMissed(
+  match: MatchForPredictionStatus,
+  prediction?: PredictionForStatus | null,
+  withinHours = 48,
+): boolean {
+  if (getPredictionState(match, prediction) !== "missed") return false;
+  const hoursSinceKickoff =
+    (new Date().getTime() - new Date(match.kickoff_utc).getTime()) / (1000 * 60 * 60);
+  return hoursSinceKickoff <= withinHours;
+}
+
 export function getShortMatchLabel(match: MatchForPredictionStatus): string {
   const home = match.home_team?.short_name || match.home_team?.name || "Home";
   const away = match.away_team?.short_name || match.away_team?.name || "Away";
