@@ -12,7 +12,7 @@ import { motion } from "framer-motion";
 import { PredictionReminderBanner } from "@/components/PredictionReminderBanner";
 import { WinShirtPromo } from "@/components/WinShirtPromo";
 import { getActivePoolId, setActivePoolId } from "@/lib/activePool";
-import { getPredictionState, isMissingToday } from "@/lib/predictionStatus";
+import { isMissingToday, isRecentlyMissed } from "@/lib/predictionStatus";
 import { Calendar, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
@@ -138,9 +138,8 @@ export default function Matches() {
 
   const missedMatches = useMemo(
     () =>
-      (matches || []).filter(
-        (match: any) =>
-          getPredictionState(match, predictionMap.get(match.id)) === "missed"
+      (matches || []).filter((match: any) =>
+        isRecentlyMissed(match, predictionMap.get(match.id))
       ),
     [matches, predictionMap]
   );

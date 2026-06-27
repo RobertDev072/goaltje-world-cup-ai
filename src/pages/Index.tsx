@@ -20,7 +20,7 @@ import { queryKeys, staleTimes } from "@/lib/queryKeys";
 import goaltjeLogo from "@/assets/goaltje-logo.png";
 import { PredictionReminderBanner } from "@/components/PredictionReminderBanner";
 import { DailyPoolRecap } from "@/components/DailyPoolRecap";
-import { getPredictionState, isMissingToday } from "@/lib/predictionStatus";
+import { isMissingToday, isRecentlyMissed } from "@/lib/predictionStatus";
 import { toast } from "@/hooks/use-toast";
 
 
@@ -176,7 +176,7 @@ export default function Index() {
 
   const missedMatches = useMemo(
     () => predictionsReady
-      ? (upcomingMatches || []).filter((match: any) => getPredictionState(match, predictionMap.get(match.id)) === "missed")
+      ? (upcomingMatches || []).filter((match: any) => isRecentlyMissed(match, predictionMap.get(match.id)))
       : [],
     [predictionsReady, upcomingMatches, predictionMap],
   );
