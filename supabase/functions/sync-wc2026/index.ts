@@ -116,6 +116,19 @@ Deno.serve(async (req) => {
       ourByKickoff.get(k).push(m);
     });
 
+    // Welke teams staan al in een ronde? Voorkomt dat hetzelfde team twee keer
+    // in dezelfde stage belandt (bv. Brazil in twee achtste finales). Geseed
+    // met de huidige DB-stand, daarna bijgewerkt naarmate we deze run invullen.
+    const teamsByStage = new Map();   // stage -> Set(team uuid)
+    const stageSet = (stage) => {
+      if (!teamsByStage.has(stage)) teamsByStage.set(stage, new Set());
+      return teamsByStage.get(stage);
+    };
+    (matchRows.data ?? []).forEach((m) => {
+      if (m.home_team_id) stageSet(m.stage).add(m.home_team_id);
+      if (m.away_team_id) stageSet(m.stage).add(m.away_team_id);
+    });
+
     // --- Live-mode: bepaal of pollen nodig is (spaart API-budget) ---
     const nowMs = Date.now();
     if (mode === "live") {
@@ -150,26 +163,36 @@ Deno.serve(async (req) => {
 
       const hCode = normCode(qm.home_team_code);
       const aCode = normCode(qm.away_team_code);
+      const hId = hCode && teamIdByCode.has(hCode) ? teamIdByCode.get(hCode) : null;
+      const aId = aCode && teamIdByCode.has(aCode) ? teamIdByCode.get(aCode) : null;
 
-      // Koppel: bij 1 kandidaat direct; bij meerdere (gelijktijdige groeps-
-      // wedstrijden) op bestaande teamcodes, anders eerste nog-lege.
-      let target = null;
-      if (candidates.length === 1) {
-        target = candidates[0];
-      } else {
-        target = candidates.find((c) =>
+      // Koppel: exacte teamcode-match eerst; anders (bij 1 kandidaat) die ene;
+      // anders de eerste rij die nog volledig leeg is. Een al (deels) gevulde
+      // rij wordt nooit als "lege" hergebruikt.
+      const target =
+        candidates.find((c) =>
           codeByTeamId.get(c.home_team_id) === hCode &&
           codeByTeamId.get(c.away_team_id) === aCode
-        ) || candidates.find((c) => !c.home_team_id && !c.away_team_id) || null;
-      }
+        ) ||
+        (candidates.length === 1 ? candidates[0] : null) ||
+        candidates.find((c) => !c.home_team_id && !c.away_team_id) ||
+        null;
       if (!target) continue;
       stats.matches_matched += 1;
 
+      const placed = stageSet(target.stage);
       const patch = {};
 
-      // Teams invullen — alleen als nog leeg (nooit overschrijven)
-      if (!target.home_team_id && hCode && teamIdByCode.has(hCode)) patch.home_team_id = teamIdByCode.get(hCode);
-      if (!target.away_team_id && aCode && teamIdByCode.has(aCode)) patch.away_team_id = teamIdByCode.get(aCode);
+      // Teams invullen — alleen als nog leeg (nooit overschrijven), nooit een
+      // team twee keer in dezelfde ronde, en nooit home === away.
+      if (!target.home_team_id && hId && !placed.has(hId)) patch.home_team_id = hId;
+      const effHome = patch.home_team_id ?? target.home_team_id;
+      if (!target.away_team_id && aId && aId !== effHome && !placed.has(aId)) patch.away_team_id = aId;
+
+      // In-memory bijwerken zodat dezelfde kickoff-collisie deze rij/teams niet
+      // opnieuw pakt verderop in deze run.
+      if (patch.home_team_id) { target.home_team_id = patch.home_team_id; placed.add(patch.home_team_id); }
+      if (patch.away_team_id) { target.away_team_id = patch.away_team_id; placed.add(patch.away_team_id); }
 
       // Stadion invullen — alleen als nog leeg
       if (!target.stadium_id && qm.stadium) {
@@ -177,10 +200,13 @@ Deno.serve(async (req) => {
         if (sid) patch.stadium_id = sid;
       }
 
-      // Kickoff bijwerken als Q&B die verschuift (knockout-tijden)
+      // Kickoff bijwerken als Q&B die verschuift — maar NIET voor nog-lege
+      // knockout-fixtures: hun placeholder-tijden zouden meerdere rijen op
+      // dezelfde kickoff laten botsen → verkeerde teamkoppeling.
+      const teamsKnown = (patch.home_team_id ?? target.home_team_id) && (patch.away_team_id ?? target.away_team_id);
       const qbIso = isoKickoff(qm.kickoff_utc);
       const ourIso = isoKickoff(target.kickoff_utc);
-      if (qbIso && qbIso !== ourIso) {
+      if (teamsKnown && qbIso && qbIso !== ourIso) {
         patch.kickoff_utc = qm.kickoff_utc;
         patch.prediction_deadline_utc = qm.kickoff_utc;
       }
